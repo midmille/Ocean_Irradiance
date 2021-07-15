@@ -182,9 +182,9 @@ def Eu_at_surface(wavelength, mask, ab_wat, ab_diat, ab_syn,
     nanophyt : 3-D Array
         Nanophytoplankton concentrations from ROMS
     z_w : 3-D Array
-        The ROMS grid velocity points located at cell centers. 
+        The ROMS grid velocity points located at cell edges. 
     z_r : 3-D Array
-        The ROMS grid rho point located at cell edges. 
+        The ROMS grid rho point located at cell centers. 
     E_d_0 : Float
         Initial value for downward direct irradiance. 
     E_s_0 : Float

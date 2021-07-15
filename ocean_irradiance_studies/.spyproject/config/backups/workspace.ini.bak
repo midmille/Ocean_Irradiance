@@ -6,5 +6,5 @@ save_non_project_files = False
 
 [main]
 version = 0.2.0
-recent_files = ['..\\ocean_irradiance_module\\Ocean_Irradiance.py', '..\\ocean_irradiance_module\\Ocean_Irradiance_ROMS.py', 'ROMS_Eu_result_and_plot_shoot_method.py', '..\\..\\..\\Old_Work\\Summer_2020_archived\\oceanirradiance\\Shoot_Method_Sensitivity_Studies\\ROMS_Grid_Sensitivity_Studies.py', 'zbot_dependence_study.py', 'Integrate_and_Bin_Representative_Points.py']
+recent_files = ['ROMS_Eu_result_and_plot_shoot_method.py', '..\\..\\..\\Old_Work\\Summer_2020_archived\\oceanirradiance\\Shoot_Method_Sensitivity_Studies\\ROMS_Grid_Sensitivity_Studies.py', '..\\ocean_irradiance_module\\Ocean_Irradiance_ROMS.py', '..\\ocean_irradiance_module\\Ocean_Irradiance.py', 'PARAMS.py', 'zbot_Dependence_Study.py', 'Integrate_and_Bin_Representative_ROMS_Points.py']
 
