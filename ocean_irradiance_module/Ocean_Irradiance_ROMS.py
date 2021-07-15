@@ -186,20 +186,21 @@ def Eu_at_surface(wavelength, mask, ab_wat, ab_diat, ab_syn,
     z_r : 3-D Array
         The ROMS grid rho point located at cell edges. 
     E_d_0 : Float
-        Initial Value for 
-    E_s_0 : TYPE
-        DESCRIPTION.
-    E_u_h : TYPE
-        DESCRIPTION.
-    Chl2NL : TYPE
-        DESCRIPTION.
-    Chl2NS : TYPE
-        DESCRIPTION.
+        Initial value for downward direct irradiance. 
+    E_s_0 : Float
+        Initial value for downward diffuse irradiance. 
+    E_u_h : FLoat
+        Bottom boundary condition on upwelling irradiance. 
+    Chl2NL : Float
+        Conversion rate of Chl to NL
+    Chl2NS : Float 
+        Conversion rate of Chl to NS
 
     Returns
     -------
-    Eu_arr : TYPE
-        DESCRIPTION.
+    Eu_arr : 2-D Array
+        The array of surface values of upwelling irradiance. 
+        
 
     """
 

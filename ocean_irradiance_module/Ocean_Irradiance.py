@@ -5,23 +5,6 @@ Created on Thu Dec 10 08:52:28 2020
 """
 import numpy as np
 
-
-# def analytical_Ed(zarr,c,E_d_0):
-    
-#     Np1 = len(zarr)  # N+1 edges
-#     N=Np1-1          # N cell centers on which c is defined
-#     Nm1 = N - 1
-   
-#     if len(c)!=N:
-#         print('incompatible lengths of c and zarr')
-
-#     Ed = np.zeros(Np1)
-    
-#     Ed[N]=E_d_0
-#     for k in range(Nm1,-1,-1): ##k goes from Nm1 --> 0
-#         Ed[k] = Ed[k+1]*np.exp(-c[k]*(zarr[k+1]-zarr[k]))
-
-#     return Ed
 class Phy:
     """
     The Phytoplankton Class includes:
@@ -396,3 +379,24 @@ if __name__ == '__main__':
         Demo()
 
 
+
+
+
+###################################ARCHIVED WORK##############################
+
+# def analytical_Ed(zarr,c,E_d_0):
+    
+#     Np1 = len(zarr)  # N+1 edges
+#     N=Np1-1          # N cell centers on which c is defined
+#     Nm1 = N - 1
+   
+#     if len(c)!=N:
+#         print('incompatible lengths of c and zarr')
+
+#     Ed = np.zeros(Np1)
+    
+#     Ed[N]=E_d_0
+#     for k in range(Nm1,-1,-1): ##k goes from Nm1 --> 0
+#         Ed[k] = Ed[k+1]*np.exp(-c[k]*(zarr[k+1]-zarr[k]))
+
+#     return Ed

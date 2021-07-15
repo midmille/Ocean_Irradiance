@@ -6,5 +6,5 @@ save_non_project_files = False
 
 [main]
 version = 0.2.0
-recent_files = ['..\\..\\Winter2020\\prob6.py']
+recent_files = ['absorbtion_and_scattering_coefficients.py', 'Ocean_Irradiance.py', 'Ocean_Irradiance_ROMS.py']
 
