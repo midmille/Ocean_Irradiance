@@ -105,7 +105,7 @@ def Log_Trans(zbot,Nlayers):
     return zarr
 
 
-def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30):
+def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30, pt1_perc_zbot = True):
     """
     The main ocean_irradiance function that calculates the three stream model solution 
     following the equations and coefficients of Dutkiewicz (2015) and solved as a boundary 
@@ -127,6 +127,12 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30):
         Gives information as according to Phy class on phytoplankton profile(s), 
         corresponding z-grid, and coefficients of absorbtion and scattering for each
         respective species of phytoplankton. 
+    N : Float, default is 30
+        The number of layers in the logarithmic grid. 
+    pt1_perc_zbot : Boolean, default is True
+        True refers to using the .1% light level as the zbot so long as that the magnitude 
+        of the .1% light level is smaller than the magnitude of hbot. False refers
+        to just using given hbot as zbot. 
 
     Returns
     -------
@@ -196,10 +202,14 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30):
                 b = b + phy_prof[:,k] * b_phy[k]
 
     
-    ##zbot for water coefficients
-    zbot_pt1perc = zbot_func(Ed0, a_wat, b_wat, v_d)
-    ## choosing the smaller zbot and making negative
-    zbot = -min(abs(hbot), abs(zbot_pt1perc))
+    ## If pt1_perc_zbot is True
+    if pt1_perc_zbot == True :
+        ## Finding the zbot at the .1% light level. 
+        zbot_pt1perc = zbot_func(Ed0, a_wat, b_wat, v_d)
+        ## choosing the smaller zbot and making negative
+        zbot = -min(abs(hbot), abs(zbot_pt1perc))
+    elif pt1_perc_zbot == False: 
+        zbot = hbot 
     ## log transformed z grid.
     z = Log_Trans(zbot, N) 
     

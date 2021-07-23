@@ -159,16 +159,13 @@ def ocean_color_sol(Eu_sol_dict, E_d_0, E_s_0):
     return OCx_sol
 
 
-def Eu_at_surface(wavelength, mask, ab_wat, ab_diat, ab_syn, 
-                  diatom, nanophyt, z_w, z_r, E_d_0, E_s_0, E_u_h,
-                  Chl2NL, Chl2NS):
+def Eu_at_surface(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt, 
+                  z_r, E_d_0, E_s_0, E_u_h, N=30, pt1_perc_zbot = True):
     """
     
 
     Parameters
     ----------
-    wavelength : Float
-        Wavelength
     mask : 2-D Array
         Land is taken to be zero, water is one. 
     ab_wat : Tuple, (a,b)
@@ -177,12 +174,10 @@ def Eu_at_surface(wavelength, mask, ab_wat, ab_diat, ab_syn,
         The absorbtion and scattering coefficients for diatoms
     ab_syn : Tuple, (a,b)
         The absorbtion and scattering coefficients for syn. 
-    diatom : 3-D Array
-        Diatom concentrations from ROMS
-    nanophyt : 3-D Array
-        Nanophytoplankton concentrations from ROMS
-    z_w : 3-D Array
-        The ROMS grid velocity points located at cell edges. 
+    chl_diatom : 3-D Array
+        Diatom concentrations from ROMS in chlorophyll.
+    chl_nanophyt : 3-D Array
+        Nanophytoplankton concentrations from ROMS in chlorophyll.
     z_r : 3-D Array
         The ROMS grid rho point located at cell centers. 
     E_d_0 : Float
@@ -191,15 +186,18 @@ def Eu_at_surface(wavelength, mask, ab_wat, ab_diat, ab_syn,
         Initial value for downward diffuse irradiance. 
     E_u_h : FLoat
         Bottom boundary condition on upwelling irradiance. 
-    Chl2NL : Float
-        Conversion rate of Chl to NL
-    Chl2NS : Float 
-        Conversion rate of Chl to NS
+    N : Float, default is 30
+        The number of layers in the logarithmic grid. 
+    pt1_perc_zbot : Boolean, default is True
+        True refers to using the .1% light level as the zbot so long as that the magnitude 
+        of the .1% light level is smaller than the magnitude of hbot. False refers
+        to just using given hbot as zbot. 
 
     Returns
     -------
     Eu_arr : 2-D Array
         The array of surface values of upwelling irradiance. 
+
         
 
     """
@@ -221,7 +219,7 @@ def Eu_at_surface(wavelength, mask, ab_wat, ab_diat, ab_syn,
                 
                 ## ROMS vertical grid for this index 
                 z_r0 = z_r[:,j,i] 
-                z_w0 = z_w[:,j,i] 
+                # z_w0 = z_w[:,j,i] 
                 zbot = z_r0[0]
                 assert len(chl_diatom) == len(z_r0)
                 
@@ -233,9 +231,13 @@ def Eu_at_surface(wavelength, mask, ab_wat, ab_diat, ab_syn,
                 b = np.array([ab_diat[1], ab_syn[1]])
                 
                 phy = Ocean_Irradiance.Phy(z_r0, phy_profs, a, b)    
+                
+                ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(zbot,E_d_0,E_s_0,E_u_h,
+                                                                ab_wat,phy, N=N, 
+                                                                pt1_perc_zbot = pt1_perc_zbot)
+                
+                Eu_arr[j,i] = ocean_irr_sol[2][-1]
 
-                Eu_arr[j,i] = Ocean_Irradiance.ocean_irradiance(zbot,E_d_0,E_s_0,E_u_h,
-                                                                ab_wat,phy)[2][-1]
                 
     return Eu_arr
 
