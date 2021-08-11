@@ -253,7 +253,9 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30, pt1_perc_z
 
         Edmid = np.zeros(Nm1)
         ## integrate Es down the water column
-        for k in range(Nm1 -1, -1, -1) :
+        ## The range does not actually go to k=-1, only to k=0. 
+        ## i.e. does not include stop point of range. 
+        for k in range(Nm1-1 , -1, -1) :
          # carry out a RK4 algorithm
     
          # z is +ve upward, opposite to that in Dutkiewicz
@@ -330,10 +332,7 @@ def Demo():
 
     phy_prof = artificial_phy_prof(z, -70, 40)
     
-    ## for reference only, coefficients for phy and wat are for this wavelength
-    wavelength = 486  
-    
-    ab_wat = (.02,.003)
+    ab_wat = (.01,.004)
     a_phy = .01
     b_phy =  .0039
     

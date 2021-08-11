@@ -9,49 +9,15 @@ ROMS wrapper for Ocean_Irradiance
 """
 
 import numpy as np
-import Ocean_Irradiance
 from netCDF4 import Dataset 
-import os
+## can not import seapy at this point
+# import os
 ## weird thing added because I am missing this value for some reason
-os.environ["PROJ_LIB"] = "C:/Users/Miles Miller/anaconda3/envs/pybasemap36/Library/share"
-import seapy 
-from absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
+# os.environ["PROJ_LIB"] = "C:/Users/Miles Miller/anaconda3/envs/pybasemap36/Library/share"
+# import seapy 
+from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
+from ocean_irradiance_module import Ocean_Irradiance
 import pickle
-
-def make_roms_grid_from_netcdf(file):
-    """
-    Retreives the ROMS grid from file. 
-    
-
-    Parameters
-    ----------
-    file : string 
-        The netcdf file output from roms. 
-
-    Returns
-    -------
-    z_r : Array
-        The rho grid. The cell centers 
-    z_w : Array 
-        The w grid. The cell edges. 
-
-    """
-        
-    roms_data = Dataset(file, 'r')
-    
-    h = roms_data.variables['h'][:]
-    hc = roms_data.variables['hc'][:]
-    s_rho = roms_data.variables['s_rho'][:]
-    s_w = roms_data.variables['s_w'][:]
-    Cs_r = roms_data.variables['Cs_r'][:]
-    Cs_w = roms_data.variables['Cs_w'][:]
-    zeta = roms_data.variables['zeta'][0,:]
-    vtransform = roms_data.variables['Vtransform'][:]
-    
-    z_r = seapy.roms.depth(vtransform, h, hc, s_rho, Cs_r,zeta)[:,:,:] ##the rho grid 
-    z_w = seapy.roms.depth(vtransform, h, hc, s_w, Cs_w,zeta)[:,:,:]  ##the w-grid at eddges 
-    
-    return z_r, z_w
 
 
 def OCx_alg(R_rs_b, R_rs_g, lam_b, lam_g) :
@@ -213,26 +179,23 @@ def Eu_at_surface(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt,
             if mask[j,i] == 1: 
                 print("{} out of {}".format(count, (nyi*nxi)))
                 count += 1
-                ##from Nitogen to Chl
-                chl_diatom = (diatom[:,j,i]*Chl2NL)
-                chl_nanophyt = (nanophyt[:,j,i]*Chl2NS)
-                
+
                 ## ROMS vertical grid for this index 
                 z_r0 = z_r[:,j,i] 
                 # z_w0 = z_w[:,j,i] 
-                zbot = z_r0[0]
+                hbot = z_r0[0]
                 assert len(chl_diatom) == len(z_r0)
                 
                 phy_profs = np.zeros((len(z_r0),2))
-                phy_profs[:,0] = chl_diatom
-                phy_profs[:,1] = chl_nanophyt
+                phy_profs[:,0] = chl_diatom[:,j,i]
+                phy_profs[:,1] = chl_nanophyt[:,j,i]
                 
                 a = np.array([ab_diat[0], ab_syn[0]])
                 b = np.array([ab_diat[1], ab_syn[1]])
                 
                 phy = Ocean_Irradiance.Phy(z_r0, phy_profs, a, b)    
                 
-                ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(zbot,E_d_0,E_s_0,E_u_h,
+                ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
                                                                 ab_wat,phy, N=N, 
                                                                 pt1_perc_zbot = pt1_perc_zbot)
                 
@@ -242,9 +205,25 @@ def Eu_at_surface(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt,
     return Eu_arr
 
 
+def plot_ocean_color():
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    
+    plt.figure()
+    plt.pcolormesh(lon_rho, lat_rho, ocean_color, cmap="nipy_spectral", norm = mpl.colors.LogNorm(), vmin=.01, vmax=66)#, cmap='nipy_spectral')
+    plt.colorbar(label='Chl-a')
+    plt.ylabel('Degrees Lattitude')
+    plt.xlabel('Degress Longitude')
+    plt.title('Ocean Color')
+    plt.show()
+    
+    
 if __name__ == '__main__':
     
     import argparse
+    ## User Modules
+    from ocean_irradiance_module.Read_ROMS_Out import ROMS_netcdf 
+    from ocean_irradiance_module.PARAMS import Param_Init 
     
     parser = argparse.ArgumentParser(description='Ocean Irradiance ROMS Wrapper')
     parser.add_argument('file', help = "Complete Path to ROMS nc file" )
@@ -254,78 +233,42 @@ if __name__ == '__main__':
     
     file = args.file
     
-    ###################################PARAMS##################################
-    # file = '/Users/Miles Miller/da_fwd_002.nc'
+    PI = Param_Init(file)
+    R_nc = ROMS_netcdf(file)
 
-    Ed0 = .7
-    Es0 = 1 - Ed0
-    Euh = 0 
+    ## updating default to wavelengths necessary for the OCx_algorithim
+    PI.wavelengths = [443,551]
+
+    ## settting time step index
+    time_step_index = 0
     
-    # wavelengths = [410,443,486,551,638,671] 
-    ## wavelengths necessary for the OCx_algorithim
-    wavelengths = [443,551]
-    
-    Chl2NL = 1.59
-    Chl2NS = .7950
-    
-    time_step_index = 0 
-    ###################################PARAMS END##############################
-    
-    ## ROMS
-    #-------------------------------------------------------------------------
-    roms_nc = Dataset(file, 'r')
-    roms_date = seapy.roms.num2date(nc = roms_nc)[0]
-    
-    lon_rho = roms_nc.variables['lon_rho'][:]
-    lat_rho = roms_nc.variables['lat_rho'][:]
-     
-    z_r,z_w = make_roms_grid_from_netcdf(file) ##get the roms grid from the roms_grid module
-    
-    ocean_time = roms_nc.variables['ocean_time'][:] ##times in seconds since 1999, 01/01, 00:00:003
-    
-    nti,nzi,nyi,nxi = roms_nc.variables["diatom"].shape ## shaped of the diatom output 
-    
-    maskr = roms_nc.variables['mask_rho'][:] ##land or not 
-    
-    roms_date = seapy.roms.num2date(nc = roms_nc)
-    
-    diatom = roms_nc.variables['diatom'][time_step_index,:,:,:] 
-    nanophyt = roms_nc.variables['nanophytoplankton'][time_step_index,:,:,:]
-    
-    nti,nzi,nyi,nxi = roms_nc.variables["diatom"].shape ##shaped of the diatom output
+    ## Getting the 
+    lon_rho = R_nc.roms_nc.variables['lon_rho'][:]
+    lat_rho = R_nc.roms_nc.variables['lat_rho'][:]
 
     ## Calculating Eu at Surface dictionary. 
     #--------------------------------------------------------------------------
     Eu_surface_dict = {}
-    for lam in wavelengths: 
+    for lam in PI.wavelengths: 
         
         ##eyeballed absorbtion and scattering from Dut. 2015
         ab_wat = abscat(lam, 'water')
         ab_diat = abscat(lam, 'Diat') 
         ab_syn = abscat(lam, 'Syn')
         
-        Eu_surface_dict[lam] = Eu_at_surface(lam, maskr, ab_wat, ab_diat, ab_syn, 
-                                             diatom, nanophyt, z_w, z_r, Ed0, Es0, Euh,
-                                             Chl2NL, Chl2NS)
+        Eu_surface_dict[lam] = Eu_at_surface(lam, R_nc.maskr, ab_wat, ab_diat, ab_syn, 
+                                             R_nc.diatom, R_nc.nanophyt, R_nc.z_w, 
+                                             R_nc.z_r, PI.Ed0, PI.Es0, PI.Euh,
+                                             PI.Chl2NL, PI.Chl2NS)
     
     ## Ocean Color Calculation
     #--------------------------------------------------------------------------
-    ocean_color = ocean_color_sol(Eu_surface_dict, Ed0, Es0)
+    ocean_color = ocean_color_sol(Eu_surface_dict, PI.Ed0, PI.Es0)
     pickle.dump(ocean_color, open("ocean_color.p", "wb"))
     
     ## Plotting
     #--------------------------------------------------------------------------
     if args.plot:
-        def plot_ocean_color():
-            import matplotlib.pyplot as plt
-            import matplotlib as mpl
-            
-            plt.figure()
-            plt.pcolormesh(lon_rho, lat_rho, ocean_color, cmap="nipy_spectral", norm = mpl.colors.LogNorm(), vmin=.01, vmax=66)#, cmap='nipy_spectral')
-            plt.colorbar(label='Chl-a')
-            plt.ylabel('Degrees Lattitude')
-            plt.xlabel('Degress Longitude')
-            plt.title('Ocean Color')
-            plt.show()
+
         plot_ocean_color()
     
