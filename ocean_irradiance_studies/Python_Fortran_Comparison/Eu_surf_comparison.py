@@ -114,9 +114,11 @@ def Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS):
     
     return rel_diff
 
+    
 
 if __name__ == '__main__':
     
+
     file = 'C:/Users/miles/RESEARCH/Current_Work/Ocean_Irradiance/ocean_irradiance_studies/Python_Fortran_Comparison/roms_his_phy.nc'
     R_nc = ROMS_netcdf(file,Init_ROMS_Irr_Params=(True))
     ## The time step 
@@ -140,8 +142,12 @@ if __name__ == '__main__':
     
     fig,ax = plt.subplots()
     im = ax.pcolormesh(rel_diff)
-    fig.colorbar(im, ax = ax)
+    fig.colorbar(im, ax = ax, label=r'$\frac{\mathrm{Eupy - EuROMS}}{Eupy}$')
     ax.set_title('Relative Difference in Python and Fortran \n Implementation of Irradaince Code')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    
+
     
     
     
