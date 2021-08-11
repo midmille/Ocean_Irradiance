@@ -16,6 +16,11 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import os
 import pickle
+import sys
+
+## appending ocean _irradiance module to path
+ocean_irradiance_module_path = os.path.abspath('../..')
+sys.path.append(ocean_irradiance_module_path)
 
 ##User mods
 from ocean_irradiance_module.Read_ROMS_Out import ROMS_netcdf 
@@ -45,11 +50,13 @@ def Eu_Surface_py_ROMS(R_nc, nstp):
     
     ## The name of the file that the python Eu dict will be saved to as pickle.
     save_file = f'Eu_surf_dict_nstp_{nstp}.p'
+    save_dir = 'Eu_surf_out'
+    save_path = f'{save_dir}/{save_file}'
     ## Python calculated Eu at surface 
     ##---------------------------------
     ## Checking if save file exists
     ## if it doesn't exist then redo calculation
-    if os.path.exists(save_file) == False:
+    if os.path.exists(save_path) == False:
         print('Python Eu at surface calculation save file does not exist.')
         print('Redoing calculation... ')
         mask = np.ones((R_nc.nyi, R_nc.nxi))
@@ -66,13 +73,13 @@ def Eu_Surface_py_ROMS(R_nc, nstp):
                                               R_nc.Es0, 
                                               R_nc.Euh)
         
-        pickle.dump(Eu_surf_py, open(save_file, "wb"))
+        pickle.dump(Eu_surf_py, open(save_path, "wb"))
         print('Python calculation complete and saved')
         
-    ## if the save file does exist then just load it. 
-    elif os.path.exists(save_file) == True:
+    ## if the save file does exist then just load it. gity 
+    elif os.path.exists(save_path) == True:
         print(f'Eu save file exists! Loading python calculated Eu from file "{save_file}"...')
-        Eu_surf_py = pickle.load(open(save_file,'rb'))
+        Eu_surf_py = pickle.load(open(save_path,'rb'))
         print('Yay, file loaded :)')
         
         
@@ -122,30 +129,34 @@ if __name__ == '__main__':
     file = 'C:/Users/miles/RESEARCH/Current_Work/Ocean_Irradiance/ocean_irradiance_studies/Python_Fortran_Comparison/roms_his_phy.nc'
     R_nc = ROMS_netcdf(file,Init_ROMS_Irr_Params=(True))
     ## The time step 
-    nstp = 1
+    # nstp = 1
+    nstps = np.shape(R_nc.Ed1)[0]
     
-    ## Calculating respective Eu at surfaces for both code frameworks
-    Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
+    ##Looping over the time steps
+    for nstp in range(nstps):
+        ## Calculating respective Eu at surfaces for both code frameworks
+        ## saves or loads from file.
+        Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
     
     ## Editing Eu_surf_py such that its boundary is also 0 like ROMS
-    for lam in R_nc.wavelengths:
-        Eu_surf_py[lam][0,:] = 0  
-        Eu_surf_py[lam][-1,:] = 0  
-        Eu_surf_py[lam][:,0] = 0  
-        Eu_surf_py[lam][:,-1] = 0         
+    # for lam in R_nc.wavelengths:
+    #     Eu_surf_py[lam][0,:] = 0  
+    #     Eu_surf_py[lam][-1,:] = 0  
+    #     Eu_surf_py[lam][:,0] = 0  
+    #     Eu_surf_py[lam][:,-1] = 0         
         
-    ## Finding the relative error for given wavelength 
-    lam = R_nc.wavelengths[0]
-    rel_diff = Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS)
+    # ## Finding the relative error for given wavelength 
+    # lam = R_nc.wavelengths[0]
+    # rel_diff = Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS)
     
-    ##  Plotting the relative difference
+    # ##  Plotting the relative difference
     
-    fig,ax = plt.subplots()
-    im = ax.pcolormesh(rel_diff)
-    fig.colorbar(im, ax = ax, label=r'$\frac{\mathrm{Eupy - EuROMS}}{Eupy}$')
-    ax.set_title('Relative Difference in Python and Fortran \n Implementation of Irradaince Code')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
+    # fig,ax = plt.subplots()
+    # im = ax.pcolormesh(rel_diff)
+    # fig.colorbar(im, ax = ax, label=r'$\frac{\mathrm{Eupy - EuROMS}}{Eupy}$')
+    # ax.set_title('Relative Difference in Python and Fortran \n Implementation of Irradaince Code')
+    # ax.set_xlabel('X')
+    # ax.set_ylabel('Y')
     
 
     
