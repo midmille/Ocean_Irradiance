@@ -126,7 +126,9 @@ def Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS):
 if __name__ == '__main__':
     
 
-    file = 'C:/Users/miles/RESEARCH/Current_Work/Ocean_Irradiance/ocean_irradiance_studies/Python_Fortran_Comparison/roms_his_phy.nc'
+#    file = 'C:/Users/miles/RESEARCH/Current_Work/Ocean_Irradiance/ocean_irradiance_studies/Python_Fortran_Comparison/roms_his_phy.nc'
+    file_path = os.getcwd()
+    file = f"{file_path}/roms_his_phy.nc"
     R_nc = ROMS_netcdf(file,Init_ROMS_Irr_Params=(True))
     ## The time step 
     # nstp = 1
