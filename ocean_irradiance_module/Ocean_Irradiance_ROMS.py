@@ -125,7 +125,7 @@ def ocean_color_sol(Eu_sol_dict, E_d_0, E_s_0):
     return OCx_sol
 
 
-def Eu_at_surface(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt, 
+def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt, 
                   z_r, E_d_0, E_s_0, E_u_h, N=30, pt1_perc_zbot = True):
     """
     
@@ -171,13 +171,15 @@ def Eu_at_surface(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt,
     nyi,nxi = np.shape(mask)
     
     ##Not a Number array so the land is Nan, not 0, helps make land white in pcolormesh
-    Eu_arr = np.zeros((nyi,nxi)) * np.nan 
+    ## The size four fourth dimension is for the irradiance field
+    ## Ed, Es, Eu, z in that order.
+    irr_arr = np.zeros((N,nyi,nxi,4)) * np.nan 
     count = 0
     for j in range(nyi): 
         for i in range(nxi):
             ##land is a zero, only computes it for water
             if mask[j,i] == 1: 
-                print("{} out of {}".format(count, (nyi*nxi)))
+                # print("{} out of {}".format(count, (nyi*nxi)))
                 count += 1
 
                 ## ROMS vertical grid for this index 
@@ -198,11 +200,17 @@ def Eu_at_surface(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt,
                 ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
                                                                 ab_wat,phy, N=N, 
                                                                 pt1_perc_zbot = pt1_perc_zbot)
-                
-                Eu_arr[j,i] = ocean_irr_sol[2][-1]
+                ## Ed
+                irr_arr[:,j,i,0] = ocean_irr_sol[0]
+                ## Es
+                irr_arr[:,j,i,1] = ocean_irr_sol[1]
+                ## Eu
+                irr_arr[:,j,i,2] = ocean_irr_sol[2]
+                ## z_irr
+                irr_arr[:,j,i,3] = ocean_irr_sol[3]
 
                 
-    return Eu_arr
+    return irr_arr
 
 
 def plot_ocean_color():

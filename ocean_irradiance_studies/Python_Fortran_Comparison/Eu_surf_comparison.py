@@ -24,7 +24,8 @@ sys.path.append(ocean_irradiance_module_path)
 
 ##User mods
 from ocean_irradiance_module.Read_ROMS_Out import ROMS_netcdf 
-from ocean_irradiance_module.Ocean_Irradiance_ROMS import Eu_at_surface 
+from ocean_irradiance_module.Ocean_Irradiance_ROMS import Ocean_Irradiance_Field 
+from ocean_irradiance_module.Ocean_Irradiance_ROMS import ocean_color_sol
 
 
 def Eu_Surface_py_ROMS(R_nc, nstp):
@@ -62,7 +63,7 @@ def Eu_Surface_py_ROMS(R_nc, nstp):
         mask = np.ones((R_nc.nyi, R_nc.nxi))
         Eu_surf_py = {}
         for lam in R_nc.wavelengths:
-            Eu_surf_py[lam] = Eu_at_surface(mask, 
+            Eu_surf_py[lam] = Ocean_Irradiance_Field(mask, 
                                               R_nc.ab_wat[lam], 
                                               R_nc.ab_diat[lam], 
                                               R_nc.ab_syn[lam], 
@@ -71,7 +72,8 @@ def Eu_Surface_py_ROMS(R_nc, nstp):
                                               R_nc.z_r[nstp,:,:,:], 
                                               R_nc.Ed0, 
                                               R_nc.Es0, 
-                                              R_nc.Euh)
+                                              R_nc.Euh,
+                                              N= R_nc.N_irr)[-1,:,:,2]
         
         pickle.dump(Eu_surf_py, open(save_path, "wb"))
         print('Python calculation complete and saved')
@@ -122,45 +124,79 @@ def Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS):
     return rel_diff
 
     
+def Eu_Surf_py_ROMS_comparison(nstp, R_nc): 
+        
+        """
+        Main file that performs comparison of Eu at surface for python code an dFortran code.
+
+        Parameters
+        ----------
+        nstp : Int
+            Time step index for calculation.
+        R_nc : ROMS_netcdf Object.
+            Contains parameters and ROMS output. 
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        ## Calculating respective Eu at surfaces for both code frameworks
+        ## saves or loads from file.
+        
+        Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
+        
+        ## Editing Eu_surf_py such that its boundary is also 0 like ROMS
+        for lam in R_nc.wavelengths:
+            Eu_surf_py[lam][0,:] = 0  
+            Eu_surf_py[lam][-1,:] = 0  
+            Eu_surf_py[lam][:,0] = 0  
+            Eu_surf_py[lam][:,-1] = 0         
+            
+        ## Finding the relative error for given wavelength 
+        lam = R_nc.wavelengths[0]
+        rel_diff = Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS)
+        
+        ##  Plotting the relative difference
+        
+        fig,ax = plt.subplots()
+        im = ax.pcolormesh(rel_diff)
+        fig.colorbar(im, ax = ax, label=r'$\frac{\mathrm{Eupy - EuROMS}}{Eupy}$')
+        ax.set_title('Relative Difference in Python and Fortran \n Implementation of Irradiance Code')
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        
+        ## Ocean _Color 
+        ##--------------
+        ocean_color_py = ocean_color_sol(Eu_surf_py, R_nc.Ed0, R_nc.Es0)
+        ocean_color_ROMS = ocean_color_sol(Eu_surf_ROMS, R_nc.Ed0, R_nc.Es0)
+        
+        fig,ax = plt.subplots()
+        im = ax.pcolormesh(ocean_color_py)
+        
+        fig.colorbar(im, ax = ax, label=r'chl_a')
+        ax.set_title('Ocean Color Python')
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        
+        return 
+
 
 if __name__ == '__main__':
     
-
-#    file = 'C:/Users/miles/RESEARCH/Current_Work/Ocean_Irradiance/ocean_irradiance_studies/Python_Fortran_Comparison/roms_his_phy.nc'
     file_path = os.getcwd()
     file = f"{file_path}/roms_his_phy.nc"
     R_nc = ROMS_netcdf(file,Init_ROMS_Irr_Params=(True))
     ## The time step 
-    # nstp = 1
-    nstps = np.shape(R_nc.Ed1)[0]
+    nstp = 1
     
+    # nstps = np.shape(R_nc.Ed1)[0]
     ##Looping over the time steps
-    for nstp in range(nstps):
-        ## Calculating respective Eu at surfaces for both code frameworks
-        ## saves or loads from file.
-        Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
-    
-    ## Editing Eu_surf_py such that its boundary is also 0 like ROMS
-    # for lam in R_nc.wavelengths:
-    #     Eu_surf_py[lam][0,:] = 0  
-    #     Eu_surf_py[lam][-1,:] = 0  
-    #     Eu_surf_py[lam][:,0] = 0  
-    #     Eu_surf_py[lam][:,-1] = 0         
+    # for nstp in range(nstps):
+    Eu_Surf_py_ROMS_comparison(nstp, R_nc)
         
-    # ## Finding the relative error for given wavelength 
-    # lam = R_nc.wavelengths[0]
-    # rel_diff = Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS)
     
-    # ##  Plotting the relative difference
-    
-    # fig,ax = plt.subplots()
-    # im = ax.pcolormesh(rel_diff)
-    # fig.colorbar(im, ax = ax, label=r'$\frac{\mathrm{Eupy - EuROMS}}{Eupy}$')
-    # ax.set_title('Relative Difference in Python and Fortran \n Implementation of Irradaince Code')
-    # ax.set_xlabel('X')
-    # ax.set_ylabel('Y')
-    
-
     
     
     
