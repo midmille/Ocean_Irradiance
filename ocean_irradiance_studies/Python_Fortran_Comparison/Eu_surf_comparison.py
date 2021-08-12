@@ -63,6 +63,7 @@ def Eu_Surface_py_ROMS(R_nc, nstp):
         mask = np.ones((R_nc.nyi, R_nc.nxi))
         Eu_surf_py = {}
         for lam in R_nc.wavelengths:
+            print('Wavelength', lam)
             Eu_surf_py[lam] = Ocean_Irradiance_Field(mask, 
                                               R_nc.ab_wat[lam], 
                                               R_nc.ab_diat[lam], 
@@ -189,12 +190,13 @@ if __name__ == '__main__':
     file = f"{file_path}/roms_his_phy.nc"
     R_nc = ROMS_netcdf(file,Init_ROMS_Irr_Params=(True))
     ## The time step 
-    nstp = 1
+#    nstp = 1
     
-    # nstps = np.shape(R_nc.Ed1)[0]
+    nstps = np.shape(R_nc.Ed1)[0]
     ##Looping over the time steps
-    # for nstp in range(nstps):
-    Eu_Surf_py_ROMS_comparison(nstp, R_nc)
+    for nstp in range(nstps):
+        Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
+#    Eu_Surf_py_ROMS_comparison(nstp, R_nc)
         
     
     

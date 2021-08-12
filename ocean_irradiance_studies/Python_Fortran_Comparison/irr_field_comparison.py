@@ -90,11 +90,26 @@ def Irradiance_Field_py_ROMS(R_nc, nstp):
     ## ROMS calculated surface Eu
     ##---------------------------
     irr_field_ROMS = {}
-    
-    Eu_surf_ROMS[R_nc.wavelengths[0]] = R_nc.Eu1[nstp,:,:,:]
-    Eu_surf_ROMS[R_nc.wavelengths[1]] = R_nc.Eu2[nstp,:,:,:]
-    
-    return Eu_surf_py, Eu_surf_ROMS
+
+    ## The first wavelength, will need to edit so as to loop over them. 
+    irr_field_arr = np.zeros((4,R_nc.N_irr, R_nc.nyi, R_nc.nxi))      
+    irr_field_arr[0,:,:,:] = R_nc.Ed1[nstp,:,:,:]
+    irr_field_arr[1,:,:,:] = R_nc.Es1[nstp,:,:,:] 
+    irr_field_arr[2,:,:,:] = R_nc.Eu1[nstp,:,:,:]
+    irr_field_arr[3,:,:,:] = R_nc.z_irr1[nstp,:,:,:]
+    irr_field_roms[R_nc.wavelengths[0]] = irr_field_arr 
+
+    ## The second wavelength. 
+    irr_field_arr = np.zeros((4,R_nc.N_irr, R_nc.nyi, R_nc.nxi))      
+    irr_field_arr[0,:,:,:] = R_nc.Ed2[nstp,:,:,:]
+    irr_field_arr[1,:,:,:] = R_nc.Es2[nstp,:,:,:] 
+    irr_field_arr[2,:,:,:] = R_nc.Eu2[nstp,:,:,:]
+    irr_field_arr[3,:,:,:] = R_nc.z_irr2[nstp,:,:,:]
+    irr_field_roms[R_nc.wavelengths[0]] = irr_field_arr 
+
+
+
+    return irr_field_py, irr_field_ROMS
 
 
 

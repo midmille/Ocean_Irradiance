@@ -110,6 +110,7 @@ class ROMS_netcdf:
             self.Es0 = self.roms_nc.variables['Es0'][:]
             self.Euh = self.roms_nc.variables['Euh'][:]
             self.wavelengths = self.roms_nc.variables['wavelengths'][:]
+            self.N_irr = self.roms_nc.variables['N_irr'][:]
             
             ## Getting coefficients and putting them into a form more readble by python verion of irradiance
             a_wat_lam = self.roms_nc.variables['a_wat_lam']
