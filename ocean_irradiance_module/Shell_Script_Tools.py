@@ -34,7 +34,9 @@ def Edit_ROMS_In_File(file, old_inst, new_inst ):
     with open(file, 'r+') as f:
         txt = f.read()
         txt = re.sub(old_inst, new_inst, txt)
+        f.seek(0)
         f.write(txt)
+        f.truncate()
         
     return 
     
