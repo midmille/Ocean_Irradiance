@@ -66,18 +66,18 @@ class ROMS_netcdf:
         PI = Param_Init(self.file)
         ##NOTE: this takes a little while to compute, save object as pickle for recurring problem. 
         ## The ROMS data as a data set object
-        self.roms_nc = Dataset(self.file, 'r')
+        roms_nc = Dataset(self.file, 'r')
         
         ## The ROMS grid as defined by coordinates at rho or velcoties(w).
         # self.z_r,self.z_w = make_roms_grid_from_netcdf(self.file) 
         ## Time in seconds since 1999, 01/01, 00:00:003.
-        self.ocean_time = self.roms_nc.variables['ocean_time'][:]
+        self.ocean_time = roms_nc.variables['ocean_time'][:]
         ## The shape of the phytoplankton concentration arrays.
-        self.nti,self.nzi,self.nyi,self.nxi = self.roms_nc.variables["diatom"].shape 
+        self.nti,self.nzi,self.nyi,self.nxi = roms_nc.variables["diatom"].shape 
         ## Getting diatom array.
-        self.diatom =  self.roms_nc.variables["diatom"][:]
+        self.diatom =  roms_nc.variables["diatom"][:]
         ## Getting nanophytoplankton array.
-        self.nanophyt =  self.roms_nc.variables["nanophytoplankton"][:]
+        self.nanophyt =  roms_nc.variables["nanophytoplankton"][:]
         ## Changing to chl
         self.chl_diatom = PI.Chl2NL * self.diatom
         ## Changing to chl
@@ -86,20 +86,20 @@ class ROMS_netcdf:
         # self.maskr = self.roms_data.variables['mask_rho'][:] 
         
         ## ROMS grids 
-        self.z_r = self.roms_nc.variables['z_rho'][:]
-        self.z_w = self.roms_nc.variables['z_w'][:]      
+        self.z_r = roms_nc.variables['z_rho'][:]
+        self.z_w = roms_nc.variables['z_w'][:]      
         ## Irradiance Arrays
-        self.Ed1 = self.roms_nc.variables['Ed_1'][:]
-        self.Ed2 = self.roms_nc.variables['Ed_2'][:]
-        self.Es1 = self.roms_nc.variables['Es_1'][:]
-        self.Es2 = self.roms_nc.variables['Es_2'][:]
-        self.Eu1 = self.roms_nc.variables['Eu_1'][:]
-        self.Eu2 = self.roms_nc.variables['Eu_2'][:]
+        self.Ed1 = roms_nc.variables['Ed_1'][:]
+        self.Ed2 = roms_nc.variables['Ed_2'][:]
+        self.Es1 = roms_nc.variables['Es_1'][:]
+        self.Es2 = roms_nc.variables['Es_2'][:]
+        self.Eu1 = roms_nc.variables['Eu_1'][:]
+        self.Eu2 = roms_nc.variables['Eu_2'][:]
         ## Irradiance Grid
-        self.z_irr1 = self.roms_nc.variables['z_irr_1'][:]
-        self.z_irr2 = self.roms_nc.variables['z_irr_2'][:]
+        self.z_irr1 = roms_nc.variables['z_irr_1'][:]
+        self.z_irr2 = roms_nc.variables['z_irr_2'][:]
         ## Ocean Color output
-        self.OCx = self.roms_nc.variables['OCx'][:]
+        self.OCx = roms_nc.variables['OCx'][:]
         
         ## The date of the given ROMS output. 
         # self.roms_date = seapy.roms.num2date(nc = self.roms_data)
@@ -108,19 +108,19 @@ class ROMS_netcdf:
     
             ## This reads in irradiance params from ROMS nc out only if there are any...
             ## otherwise its best to use PARAMS class. 
-            self.Ed0 = self.roms_nc.variables['Ed0'][:]
-            self.Es0 = self.roms_nc.variables['Es0'][:]
-            self.Euh = self.roms_nc.variables['Euh'][:]
-            self.wavelengths = self.roms_nc.variables['wavelengths'][:]
-            self.N_irr = self.roms_nc.variables['N_irr'][:]
+            self.Ed0 = roms_nc.variables['Ed0'][:]
+            self.Es0 = roms_nc.variables['Es0'][:]
+            self.Euh = roms_nc.variables['Euh'][:]
+            self.wavelengths = roms_nc.variables['wavelengths'][:]
+            self.N_irr = roms_nc.variables['N_irr'][:]
             
             ## Getting coefficients and putting them into a form more readble by python verion of irradiance
-            a_wat_lam = self.roms_nc.variables['a_wat_lam']
-            b_wat_lam = self.roms_nc.variables['b_wat_lam']
-            a_diatom_lam = self.roms_nc.variables['a_diatom_lam']
-            b_diatom_lam = self.roms_nc.variables['b_diatom_lam']
-            a_nanophyt_lam = self.roms_nc.variables['a_nanophyt_lam']
-            b_nanophyt_lam = self.roms_nc.variables['b_nanophyt_lam']
+            a_wat_lam = roms_nc.variables['a_wat_lam']
+            b_wat_lam = roms_nc.variables['b_wat_lam']
+            a_diatom_lam = roms_nc.variables['a_diatom_lam']
+            b_diatom_lam = roms_nc.variables['b_diatom_lam']
+            a_nanophyt_lam = roms_nc.variables['a_nanophyt_lam']
+            b_nanophyt_lam = roms_nc.variables['b_nanophyt_lam']
             
             self.ab_wat = {}
             self.ab_diat = {}
