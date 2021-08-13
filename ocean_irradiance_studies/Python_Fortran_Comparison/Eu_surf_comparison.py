@@ -125,7 +125,7 @@ def Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS):
     return rel_diff
 
     
-def Eu_Surf_py_ROMS_comparison(nstp, R_nc): 
+def Eu_Surf_py_ROMS_comparison(nstp, R_nc, plot=False): 
         
         """
         Main file that performs comparison of Eu at surface for python code an dFortran code.
@@ -139,7 +139,12 @@ def Eu_Surf_py_ROMS_comparison(nstp, R_nc):
 
         Returns
         -------
-        None.
+        Eu_surf_py : Dictionary
+            The keys for this dictionary are the wavelengths and the values are the 
+            Eu surface value arrays for the python code. 
+        Eu_surf_ROMS: Dictionary
+            The keys for this dictionary are the wavelengths and the values are the 
+            Eu surface value arrays for the python code. 
 
         """
         
@@ -160,29 +165,44 @@ def Eu_Surf_py_ROMS_comparison(nstp, R_nc):
         rel_diff = Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS)
         
         ##  Plotting the relative difference
+        if plot:
+            fig,ax = plt.subplots()
+            im = ax.pcolormesh(rel_diff)
+            fig.colorbar(im, ax = ax, label=r'$\frac{\mathrm{Eupy - EuROMS}}{Eupy}$')
+            ax.set_title('Relative Difference in Python and Fortran \n Implementation of Irradiance Code \n Using Eu at Surface Metric')
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
         
-        fig,ax = plt.subplots()
-        im = ax.pcolormesh(rel_diff)
-        fig.colorbar(im, ax = ax, label=r'$\frac{\mathrm{Eupy - EuROMS}}{Eupy}$')
-        ax.set_title('Relative Difference in Python and Fortran \n Implementation of Irradiance Code')
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
         
-        ## Ocean _Color 
-        ##--------------
-        ocean_color_py = ocean_color_sol(Eu_surf_py, R_nc.Ed0, R_nc.Es0)
-        ocean_color_ROMS = ocean_color_sol(Eu_surf_ROMS, R_nc.Ed0, R_nc.Es0)
-        
-        fig,ax = plt.subplots()
-        im = ax.pcolormesh(ocean_color_py)
-        
-        fig.colorbar(im, ax = ax, label=r'chl_a')
-        ax.set_title('Ocean Color Python')
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        
-        return 
+        return Eu_surf_py, Eu_surf_ROMS 
 
+
+def Compare_OCx(nstp, R_nc, plot=False):
+    
+    ## Ocean_Color 
+    ##--------------
+    ocean_color_py = ocean_color_sol(Eu_surf_py, R_nc.Ed0, R_nc.Es0)
+    # ocean_color_ROMS = ocean_color_sol(Eu_surf_ROMS, R_nc.Ed0, R_nc.Es0)
+    ocean_color_ROMS = R_nc.OCx[nstp,:,:]
+    
+    fig,(ax1,ax2) = plt.subplots(1,2,sharey=True)
+    vmax = max(np.max(ocean_color_py), np.max(ocean_color_ROMS))
+    vmin = 0 #min(np.min(ocean_color_py), np.min(ocean_color_ROMS))
+         
+    im1 = ax1.pcolormesh(ocean_color_py,vmin=vmin, vmax=vmax)
+    im2 = ax2.pcolormesh(ocean_color_ROMS,vmin=vmin, vmax=vmax)
+    
+    fig.colorbar(im1, ax = ax1, label=r'chl_a')
+    fig.colorbar(im2, ax = ax2, label=r'chl_a')
+    
+    ax1.set_title('Ocean Color Python')
+    ax1.set_xlabel('X')
+    ax1.set_ylabel('Y')
+    ax2.set_title('Ocean Color ROMS')
+    ax2.set_xlabel('X')
+    ax2.set_ylabel('Y')
+    
+    return ocean_color_py, ocean_color_ROMS
 
 if __name__ == '__main__':
     
@@ -190,16 +210,19 @@ if __name__ == '__main__':
     file = f"{file_path}/roms_his_phy.nc"
     R_nc = ROMS_netcdf(file,Init_ROMS_Irr_Params=(True))
     ## The time step 
-#    nstp = 1
+    nstp = 3
     
-    nstps = np.shape(R_nc.Ed1)[0]
+    ## Ucomment this little section to run over all time steps, each step will be saved
+    ## as a seperate pickle file. 
+    # nstps = np.shape(R_nc.Ed1)[0]
     ##Looping over the time steps
-    for nstp in range(nstps):
-        Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
-#    Eu_Surf_py_ROMS_comparison(nstp, R_nc)
-        
+    # for nstp in range(nstps):
+    #     Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
     
+    Eu_surf_py, Eu_surf_ROMS = Eu_Surf_py_ROMS_comparison(nstp, R_nc, plot=True)
     
+    ocean_color_py, ocean_color_ROMS = Compare_OCx(nstp, R_nc, plot=True)
+
     
     
     

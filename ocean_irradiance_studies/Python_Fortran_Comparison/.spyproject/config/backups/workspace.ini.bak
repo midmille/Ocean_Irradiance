@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = empty-project-type
-recent_files = ['Eu_surf_comparison.py', 'irr_field_comparison.py', '..\\..\\ocean_irradiance_module\\Ocean_Irradiance_ROMS.py', '..\\..\\ocean_irradiance_module\\Ocean_Irradiance.py']
+recent_files = ['Eu_surf_comparison.py', 'irr_field_comparison.py', '..\\..\\ocean_irradiance_module\\Ocean_Irradiance_ROMS.py', '..\\..\\ocean_irradiance_module\\Ocean_Irradiance.py', '..\\..\\ocean_irradiance_module\\Read_ROMS_Out.py']
 
 [main]
 version = 0.2.0

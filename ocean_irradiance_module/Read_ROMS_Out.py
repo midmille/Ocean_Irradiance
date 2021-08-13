@@ -98,6 +98,8 @@ class ROMS_netcdf:
         ## Irradiance Grid
         self.z_irr1 = self.roms_nc.variables['z_irr_1'][:]
         self.z_irr2 = self.roms_nc.variables['z_irr_2'][:]
+        ## Ocean Color output
+        self.OCx = self.roms_nc.variables['OCx'][:]
         
         ## The date of the given ROMS output. 
         # self.roms_date = seapy.roms.num2date(nc = self.roms_data)
