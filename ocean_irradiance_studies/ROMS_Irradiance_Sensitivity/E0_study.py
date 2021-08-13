@@ -33,7 +33,7 @@ def main(args):
     args.plot
     
     ## Two independent variable for this case, Ed0 and Es0, They are dependent of one another. 
-    Ed0s = np.linspace(.1,.9,20)
+    Ed0s = np.arange(.1,.9,.05)
     Es0s = 1 - Ed0s
     
     run_dirbin = '/home/midmille/runs/20210729_test_light'

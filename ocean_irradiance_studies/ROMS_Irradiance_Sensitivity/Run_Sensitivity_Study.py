@@ -65,7 +65,12 @@ def Run(run_dirbin, in_file_name, var_name, var_vals, var_val0, pick_outdir,
         ## Check for white spaces
         ## if list after split greater than one, concatinate values... 
         ## this will be important for initial value study 
-        pick_path = f'{pick_outdir}/{pick_file_head}{var_val}.p'
+        if type(var_val) == str: 
+            var_val_list = var_val.split()
+            pick_path = f'{pick_outdir}/{pick_file_head}{var_val_list[0]}.p'
+        else:
+            pick_path = f'{pick_outdir}/{pick_file_head}{var_val}.p'
+
         pickle.dump(R_nc, open(pick_path, 'wb'))
         
         ## Finally setting current instance as old to be replaced in file with next instance.
