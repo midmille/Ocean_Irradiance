@@ -250,9 +250,10 @@ if __name__ == '__main__':
     ## settting time step index
     time_step_index = 0
     
-    ## Getting the 
-    lon_rho = R_nc.roms_nc.variables['lon_rho'][:]
-    lat_rho = R_nc.roms_nc.variables['lat_rho'][:]
+    ## THIS IS DEPRICATED!!! JUST ADD TO R_nc OBject.... R_nc does not inclued NetCDF object any more 
+    ## This is due to difficulty with pickling.
+    # lon_rho = R_nc.roms_nc.variables['lon_rho'][:]
+    # lat_rho = R_nc.roms_nc.variables['lat_rho'][:]
 
     ## Calculating Eu at Surface dictionary. 
     #--------------------------------------------------------------------------

@@ -52,72 +52,72 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 import sys
-import subprocess
 
 ## appending ocean _irradiance module to path
 ocean_irradiance_module_path = os.path.abspath('../..')
 sys.path.append(ocean_irradiance_module_path)
 
 ##User mods
-from ocean_irradiance_module.Read_ROMS_Out import ROMS_netcdf 
-from ocean_irradiance_module.Ocean_Irradiance_ROMS import Ocean_Irradiance_Field 
-from ocean_irradiance_module.Ocean_Irradiance_ROMS import ocean_color_sol
-import ocean_irradiance_module.Shell_Script_Tools as SST
+import Run_Sensitivity_Study as RSS
 
 
-def Run_N_irr_Study(N_irr0, roms_hisname0, N_irrs, nc_outdir, run_dirbin, pick_outdir, pick_file_head):
+def main(args):
+   
+    # file = args.file
+    args.run 
+    args.plot
+    
+    N_irrs = np.arange(5,40, 2)
+    run_dirbin = '/home/midmille/runs/20210729_test_light'
+    ## working directory, where the python file is run.
+    cwd = os.getcwd()
+    ## Where the pickle files will be
+    pick_outdir = f'{cwd}/N_irr_pick_out'
+    ## The begining of the name of the pickle file. The end will have the N_irr added for differentiation.
+    pick_file_head = 'N_irr_'
+    
+    ## This will be replaced through the replace instance function. Its what is currently written in file.
+    N_irr0 = 16
+    
+
+    if args.run:
         
+        print("Running Experiment")
+        ## RUN EXPERIMENT
+        ## --------------
+        RSS.Run(run_dirbin, 'nemuro.in', 'NIRR', N_irrs, N_irr0, pick_outdir, pick_file_head)
+ 
+    if args.plot: 
         
-        ## Checking for existing out directory and making new one
-        SST.Make_Out_Dir(nc_outdir)
-        SST.Make_Out_Dir(pick_outdir)
-        
-        
-        ## Big Loop over N_irr
-        ## --------------------
-        ## Setting the old string instance to the current instance.
-        old_N_irr_instr = N_irr0
-        old_roms_hisname = roms_hisname0
-        ## Looop
+        ## Use OCx as comparison metric to start.
+        max_rel_diff = np.zeros((len(N_irrs)))
+        ## The highest resolution is taken as truth.
+        R_nc_true = pickle.load(open(f'{pick_outdir}/{pick_file_head}{N_irrs[-1]}.p','rb'))
+        OCx_true = R_nc_true.OCx
+        ## Looping over the independent variable.
+        nstp = 1
         for k,N_irr in enumerate(N_irrs): 
+            ## Loading from corresponding pickle file.
+            R_nc = pickle.load(open(f'{pick_outdir}/{pick_file_head}{N_irr}.p','rb'))
+            print(N_irr)
+            print('k',k)
+            ## Calculating relative difference from truth. 
+            max_rel_diff[k] = np.max(abs(OCx_true[nstp,:,:] - R_nc.OCx[nstp,:,:]) / OCx_true[nstp,:,:])
+            print(np.max(abs(OCx_true[nstp,:,:] - R_nc.OCx[nstp,:,:]) / OCx_true[nstp,:,:]))
             
-            ## The new instance will include the current N_irr
-            new_N_irr_instr = f'NIRR == {N_irr}'
-            new_roms_hisname = f'HISNAME == {nc_outdir}/roms_his_N_irr_{N_irr}.nc'
-            
-            
-            ## First step of the loop is to edit the '.in' files. 
-            SST.Edit_ROMS_In_File(f'{run_dirbin}/nemuro.in', old_N_irr_instr, new_N_irr_instr)
-            SST.Edit_ROMS_In_File(f'{run_dirbin}/roms_upwelling.in', old_roms_hisname, new_roms_hisname)
-            ## RUN ROMS
-            ## --------
-            ## changing working dir to run_dirbin to run ROMS... maybe dir change should be out of loop.
-            cwd = os.getcwd()
-            os.chdir(run_dirbin)
-            out = subprocess.run(['mpirun', '-np', '9', 'romsM', 'roms_upwelling.in'])
-            ## Check for completion.
-            if out.returncode != 0:
-                sys.exit('Non-Zero Retun Code... Exiting ROMS RUN.')
-            os.chdir(cwd)
-                
-            ## netcdf object and pickle save 
-            ## Splitting string by white space and grabbing last index.
-            nc_file = new_roms_hisname.split()[-1]
-            ## Making ROMS_netcdf object
-            R_nc = ROMS_netcdf(nc_file,Init_ROMS_Irr_Params=(True))
-            ## Saving Object
-            pick_path = f'{pick_outdir}/{pick_file_head}{N_irr}.p'
-            pickle.dump(R_nc, open(pick_path, 'wb'))
-            
-            ## Finally setting current instance as old to be replaced in file with next instance.
-            old_N_irr_instr = f'NIRR == {N_irr}'
-            old_roms_hisname = f'HISNAME == {nc_outdir}/roms_his_N_irr_{N_irr}.nc'
-                
         
-        ## After the RUN loop change the file back to its originaal state
-        ## replace the last used instance in file with the original instance, ie first in list.
-        SST.Edit_ROMS_In_File(f'{run_dirbin}/nemuro.in', old_N_irr_instr, N_irr0 )
-        SST.Edit_ROMS_In_File(f'{run_dirbin}/roms_upwelling.in', old_roms_hisname, roms_hisname0 )
+        ## PLOT
+        ## ----
+        
+        fig,ax = plt.subplots()
+        
+        ax.plot(N_irrs, max_rel_diff)
+        ax.grid()
+        ax.set_title('N_irr Sensitivity Study')
+        ax.set_xlabel('N_irr [Number of Edges in Irradiance Grid]')
+        ax.set_ylabel('Relative Error [Highest Resolution == Truth]')
+        
+        fig.show()
         
         return 
 
@@ -131,33 +131,9 @@ if __name__ == '__main__':
     parser.add_argument('--plot', action='store_true', help="Plot Option")
     args = parser.parse_args()
     
-    # file = args.file
-    run = args.run 
-    plot = args.plot
-    
-    N_irrs = np.arange(5,40, 2)
-    run_dirbin = '/home/midmille/runs/20210729_test_light'
-    out_dir = run_dirbin+'/N_irr_output'
-    ## working directory, where the python file is run.
-    cwd = os.getcwd()
-    ## Where the pickle files will be
-    pick_outdir = f'{cwd}/N_irr_pick_out'
-    ## The begining of the name of the pickle file. The end will have the N_irr added for differentiation.
-    pick_file_head = 'N_irr_'
-    
-    ## This will be replaced through the replace instance function. Its what is currently written in file.
-    N_irr0 = 'NIRR == 16'
-    roms_hisname0 = 'HISNAME == output/roms_his.nc'
-    
-    
-    if run:
-        print("Running Experiment")
-        ## RUN EXPERIMENT
-        ## --------------
-        Run_N_irr_Study(N_irr0, roms_hisname0, N_irrs, out_dir, run_dirbin, pick_outdir, pick_file_head)
-    
-    
-
+    main(args)
+   
+                               
 
 
 
