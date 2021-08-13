@@ -91,10 +91,14 @@ def Run_N_irr_Study(N_irr0, roms_hisname0, N_irrs, nc_outdir, run_dirbin, pick_o
             SST.Edit_ROMS_In_File(f'{run_dirbin}/roms_upwelling.in', old_roms_hisname, new_roms_hisname)
             ## RUN ROMS
             ## --------
+            ## changing working dir to run_dirbin to run ROMS... maybe dir change should be out of loop.
+            cwd = os.getcwd()
+            os.chdir(run_dirbin)
             out = subprocess.run(['mpirun', '-np', '9', 'romsM', 'roms_upwelling.in'])
             ## Check for completion.
             if out.returncode != 0:
                 sys.exit('Non-Zero Retun Code... Exiting ROMS RUN.')
+            os.chdir(cwd)
                 
             ## netcdf object and pickle save 
             ## Splitting string by white space and grabbing last index.
@@ -124,7 +128,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Runs ROMS irradiance N_irr sensitivity study.')
     # parser.add_argument('file', help = "Complete Path to ROMS nc file" )
     parser.add_argument('--run', action='store_true', help="Run Option")
-    parser.add_argument('--vis', action='store_true', help="Plot Option")
+    parser.add_argument('--plot', action='store_true', help="Plot Option")
     args = parser.parse_args()
     
     # file = args.file
@@ -132,7 +136,7 @@ if __name__ == '__main__':
     plot = args.plot
     
     N_irrs = np.arange(5,40, 2)
-    run_dirbin = '~/runs/20210729_test_light'
+    run_dirbin = '/home/midmille/runs/20210729_test_light'
     out_dir = run_dirbin+'/N_irr_output'
     ## working directory, where the python file is run.
     cwd = os.getcwd()
