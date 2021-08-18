@@ -83,7 +83,7 @@ class ROMS_netcdf:
         ## Changing to chl
         self.chl_nanophyt = PI.Chl2NS * self.nanophyt
         ## The mask that defines land or not. Land is taken as 0, while water = 1. 
-        # self.maskr = self.roms_data.variables['mask_rho'][:] 
+        self.maskr = roms_nc.variables['mask_rho'][:] 
         
         ## ROMS grids 
         self.z_r = roms_nc.variables['z_rho'][:]
