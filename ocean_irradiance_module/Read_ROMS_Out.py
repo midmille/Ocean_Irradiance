@@ -10,48 +10,7 @@ Created on Mon Aug  9 10:27:43 2021
 ## Python modules
 from netCDF4 import Dataset
 from ocean_irradiance_module.PARAMS import Param_Init 
-# import os
-## Weird dictionary edit necessary because my basemap module lacks the following key:value pair. 
-# os.environ["PROJ_LIB"] = "C:/Users/Miles Miller/anaconda3/envs/pybasemap36/Library/share" 
 
-## Having trouble importing seapy at the moment. 
-# import seapy 
-
-
-# def make_roms_grid_from_netcdf(file):
-#     """
-#     Retreives the ROMS grid from file. 
-    
-
-#     Parameters
-#     ----------
-#     file : string 
-#         The netcdf file output from roms. 
-
-#     Returns
-#     -------
-#     z_r : Array
-#         The rho grid. The cell centers 
-#     z_w : Array 
-#         The w grid. The cell edges. 
-
-#     """
-    
-#     roms_data = Dataset(file, 'r')
-    
-#     h = roms_data.variables['h'][:]
-#     hc = roms_data.variables['hc'][:]
-#     s_rho = roms_data.variables['s_rho'][:]
-#     s_w = roms_data.variables['s_w'][:]
-#     Cs_r = roms_data.variables['Cs_r'][:]
-#     Cs_w = roms_data.variables['Cs_w'][:]
-#     zeta = roms_data.variables['zeta'][0,:]
-#     vtransform = roms_data.variables['Vtransform'][:]
-    
-#     z_r = seapy.roms.depth(vtransform, h, hc, s_rho, Cs_r,zeta)[:,:,:] ##the rho grid 
-#     z_w = seapy.roms.depth(vtransform, h, hc, s_w, Cs_w,zeta)[:,:,:]  ##the w-grid at eddges 
-
-#     return z_r, z_w
 
 
 
@@ -132,6 +91,59 @@ class ROMS_netcdf:
                 self.ab_syn[lam] = (a_nanophyt_lam[k], b_nanophyt_lam[k])
                 
 
+
+
+
+
+
+
+
+
+
+##OLD STUFF 
+##--------------
+# import os
+## Weird dictionary edit necessary because my basemap module lacks the following key:value pair. 
+# os.environ["PROJ_LIB"] = "C:/Users/Miles Miller/anaconda3/envs/pybasemap36/Library/share" 
+
+## Having trouble importing seapy at the moment. 
+# import seapy 
+
+
+# def make_roms_grid_from_netcdf(file):
+#     """
+#     Retreives the ROMS grid from file. 
+    
+
+#     Parameters
+#     ----------
+#     file : string 
+#         The netcdf file output from roms. 
+
+#     Returns
+#     -------
+#     z_r : Array
+#         The rho grid. The cell centers 
+#     z_w : Array 
+#         The w grid. The cell edges. 
+
+#     """
+    
+#     roms_data = Dataset(file, 'r')
+    
+#     h = roms_data.variables['h'][:]
+#     hc = roms_data.variables['hc'][:]
+#     s_rho = roms_data.variables['s_rho'][:]
+#     s_w = roms_data.variables['s_w'][:]
+#     Cs_r = roms_data.variables['Cs_r'][:]
+#     Cs_w = roms_data.variables['Cs_w'][:]
+#     zeta = roms_data.variables['zeta'][0,:]
+#     vtransform = roms_data.variables['Vtransform'][:]
+    
+#     z_r = seapy.roms.depth(vtransform, h, hc, s_rho, Cs_r,zeta)[:,:,:] ##the rho grid 
+#     z_w = seapy.roms.depth(vtransform, h, hc, s_w, Cs_w,zeta)[:,:,:]  ##the w-grid at eddges 
+
+#     return z_r, z_w
 
         
    

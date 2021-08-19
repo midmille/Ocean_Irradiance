@@ -65,35 +65,35 @@ def main(args):
  
     if args.plot: 
         
-        # ## Use OCx as comparison metric to start.
-        # max_rel_diff = np.zeros((len(N_irrs)))
-        # ## The highest resolution is taken as truth.
-        # R_nc_true = pickle.load(open(f'{pick_outdir}/{pick_file_head}{N_irrs[-1]}.p','rb'))
-        # OCx_true = R_nc_true.OCx
-        # ## Looping over the independent variable.
-        # nstp = 1
-        # for k,N_irr in enumerate(N_irrs): 
-        #     ## Loading from corresponding pickle file.
-        #     R_nc = pickle.load(open(f'{pick_outdir}/{pick_file_head}{N_irr}.p','rb'))
-        #     print(N_irr)
-        #     print('k',k)
-        #     ## Calculating relative difference from truth. 
-        #     max_rel_diff[k] = np.max(abs(OCx_true[nstp,:,:] - R_nc.OCx[nstp,:,:]) / OCx_true[nstp,:,:])
-        #     print(np.max(abs(OCx_true[nstp,:,:] - R_nc.OCx[nstp,:,:]) / OCx_true[nstp,:,:]))
+        ## Use OCx as comparison metric to start.
+        max_rel_diff = np.zeros((len(N_irrs)))
+        ## The highest resolution is taken as truth.
+        R_nc_true = pickle.load(open(f'{pick_outdir}/{pick_file_head}{N_irrs[-1]}.p','rb'))
+        OCx_true = R_nc_true.OCx
+        ## Looping over the independent variable.
+        nstp = 1
+        for k,N_irr in enumerate(N_irrs): 
+            ## Loading from corresponding pickle file.
+            R_nc = pickle.load(open(f'{pick_outdir}/{pick_file_head}{N_irr}.p','rb'))
+            print(N_irr)
+            print('k',k)
+            ## Calculating relative difference from truth. 
+            max_rel_diff[k] = np.max(abs(OCx_true[nstp,:,:] - R_nc.OCx[nstp,:,:]) / OCx_true[nstp,:,:])
+            print(np.max(abs(OCx_true[nstp,:,:] - R_nc.OCx[nstp,:,:]) / OCx_true[nstp,:,:]))
             
         
-        # ## PLOT
-        # ## ----
+        ## PLOT
+        ## ----
         
-        # fig,ax = plt.subplots()
+        fig,ax = plt.subplots()
         
-        # ax.plot(N_irrs, max_rel_diff)
-        # ax.grid()
-        # ax.set_title('N_irr Sensitivity Study')
-        # ax.set_xlabel('N_irr [Number of Edges in Irradiance Grid]')
-        # ax.set_ylabel('Relative Error [Highest Resolution == Truth]')
+        ax.plot(N_irrs, max_rel_diff)
+        ax.grid()
+        ax.set_title('N_irr Sensitivity Study')
+        ax.set_xlabel('N_irr [Number of Edges in Irradiance Grid]')
+        ax.set_ylabel('Relative Error [Highest Resolution == Truth]')
         
-        # fig.show()
+        fig.show()
         
         return 
 
