@@ -49,7 +49,7 @@ def chlorphyll_concentration_comparison(irradiance_nc_file, mattern_nc_file, obs
     obs_Xgrid = obs_nc.variables['obs_Xgrid'][:]
     
     ## Plotting these different concentrations
-    Plot_Comparison()
+    Plot_Comparison(chl_mat, chl_irr, chl_obs, obs_Ygrid, obs_Xgrid)
     
     
     return 

@@ -19,7 +19,7 @@ class ROMS_netcdf:
     
     """
     
-    def __init__(self, file, Init_ROMS_Irr_Params=False):
+    def __init__(self, file, Init_ROMS_Irr_Params=True):
         
         self.file = file
         PI = Param_Init(self.file)
