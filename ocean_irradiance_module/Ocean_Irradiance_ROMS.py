@@ -179,7 +179,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
         for i in range(nxi):
             ##land is a zero, only computes it for water
             if mask[j,i] == 1: 
-                # print("{} out of {}".format(count, (nyi*nxi)))
+                print("{} out of {}".format(count, (nyi*nxi)))
                 count += 1
 
                 ## ROMS vertical grid for this index 

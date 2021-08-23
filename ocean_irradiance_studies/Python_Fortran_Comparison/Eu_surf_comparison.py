@@ -122,7 +122,7 @@ def Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS):
     rel_diff = diff / Eu_surf_py[lam]
 
     
-    return rel_diff
+    return diff
 
     
 def Eu_Surf_py_ROMS_comparison(nstp, R_nc, plot=False): 
@@ -153,15 +153,19 @@ def Eu_Surf_py_ROMS_comparison(nstp, R_nc, plot=False):
         
         Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
         
+        ## Chosen wavelength
+        lam = R_nc.wavelengths[1]
         ## Editing Eu_surf_py such that its boundary is also 0 like ROMS
         for lam in R_nc.wavelengths:
             Eu_surf_py[lam][0,:] = 0  
             Eu_surf_py[lam][-1,:] = 0  
             Eu_surf_py[lam][:,0] = 0  
             Eu_surf_py[lam][:,-1] = 0         
+        ## Accounting for mask
+        Eu_surf_py[lam][R_nc.maskr == 0] = np.NaN
+        Eu_surf_ROMS[lam][R_nc.maskr == 0] = np.NaN
             
         ## Finding the relative error for given wavelength 
-        lam = R_nc.wavelengths[0]
         rel_diff = Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS)
         
         ##  Plotting the relative difference
@@ -172,6 +176,8 @@ def Eu_Surf_py_ROMS_comparison(nstp, R_nc, plot=False):
             ax.set_title('Relative Difference in Python and Fortran \n Implementation of Irradiance Code \n Using Eu at Surface Metric')
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
+           
+            fig.show()
         
         
         return Eu_surf_py, Eu_surf_ROMS 
@@ -184,30 +190,43 @@ def Compare_OCx(nstp, R_nc, plot=False):
     ocean_color_py = ocean_color_sol(Eu_surf_py, R_nc.Ed0, R_nc.Es0)
     # ocean_color_ROMS = ocean_color_sol(Eu_surf_ROMS, R_nc.Ed0, R_nc.Es0)
     ocean_color_ROMS = R_nc.OCx[nstp,:,:]
+    ocean_color_ROMS[R_nc.maskr == 0] = np.NaN
     
-    fig,(ax1,ax2) = plt.subplots(1,2,sharey=True)
-    vmax = max(np.max(ocean_color_py), np.max(ocean_color_ROMS))
-    vmin = 0 #min(np.min(ocean_color_py), np.min(ocean_color_ROMS))
-         
-    im1 = ax1.pcolormesh(ocean_color_py,vmin=vmin, vmax=vmax)
-    im2 = ax2.pcolormesh(ocean_color_ROMS,vmin=vmin, vmax=vmax)
+    if plot: 
+
+        fig,(ax1,ax2) = plt.subplots(1,2,sharey=True)
+        vmax = max(np.max(ocean_color_py), np.max(ocean_color_ROMS))
+        vmin = 0 #min(np.min(ocean_color_py), np.min(ocean_color_ROMS))
+             
+        im1 = ax1.pcolormesh(ocean_color_py,vmin=vmin, vmax=vmax)
+        im2 = ax2.pcolormesh(ocean_color_ROMS,vmin=vmin, vmax=vmax)
+        
+        fig.colorbar(im1, ax = ax1, label=r'chl_a')
+        fig.colorbar(im2, ax = ax2, label=r'chl_a')
     
-    fig.colorbar(im1, ax = ax1, label=r'chl_a')
-    fig.colorbar(im2, ax = ax2, label=r'chl_a')
-    
-    ax1.set_title('Ocean Color Python')
-    ax1.set_xlabel('X')
-    ax1.set_ylabel('Y')
-    ax2.set_title('Ocean Color ROMS')
-    ax2.set_xlabel('X')
-    ax2.set_ylabel('Y')
+        ax1.set_title('Ocean Color Python')
+        ax1.set_xlabel('X')
+        ax1.set_ylabel('Y')
+        ax2.set_title('Ocean Color ROMS')
+        ax2.set_xlabel('X')
+        ax2.set_ylabel('Y')
+ 
+        fig.show()
     
     return ocean_color_py, ocean_color_ROMS
 
 if __name__ == '__main__':
     
-    file_path = os.getcwd()
-    file = f"{file_path}/roms_his_phy.nc"
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Ocean Irradiance ROMS Wrapper')
+    parser.add_argument('file', help = "Complete Path to ROMS nc file" )
+    # parser.add_argument('dest_file', help='Path to Destination Directory. Saved as pickle')
+    parser.add_argument('--plot', action='store_true', help="Visualization of Result")
+    args = parser.parse_args()
+    
+    file = args.file
+ 
     R_nc = ROMS_netcdf(file,Init_ROMS_Irr_Params=(True))
     ## The time step 
     nstp = 3
@@ -219,9 +238,9 @@ if __name__ == '__main__':
     # for nstp in range(nstps):
     #     Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
     
-    Eu_surf_py, Eu_surf_ROMS = Eu_Surf_py_ROMS_comparison(nstp, R_nc, plot=True)
+    Eu_surf_py, Eu_surf_ROMS = Eu_Surf_py_ROMS_comparison(nstp, R_nc, plot=args.plot)
     
-    ocean_color_py, ocean_color_ROMS = Compare_OCx(nstp, R_nc, plot=True)
+    ocean_color_py, ocean_color_ROMS = Compare_OCx(nstp, R_nc, plot=args.plot)
 
     
     

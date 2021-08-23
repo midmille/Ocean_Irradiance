@@ -178,6 +178,8 @@ def Irradiance_Field_Diff(nstp, R_nc, irr_index, lam, irr_field_py, irr_field_RO
             for i in range(R_nc.nxi):
                 irr_field_max_diff[j,i] = np.max(irr_field_diff[:, j, i, irr_index])
         
+        ## Taking the mask into accoutn to plot easier
+        irr_field_max_diff[R_nc.maskr==0] = np.NaN
         if plot: 
             
             fig,ax = plt.subplots()
@@ -189,14 +191,24 @@ def Irradiance_Field_Diff(nstp, R_nc, irr_index, lam, irr_field_py, irr_field_RO
                 ax.set_title('Absolute Difference in Python and Fortran \n Implementation of Irradiance Code \n Using Maximum Vertical Profile Deviation')
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
+            
+            fig.show()
         
         return irr_field_max_diff
 
 
 if __name__ == '__main__':
     
-    file_path = os.getcwd()
-    file = f"{file_path}/roms_his_phy.nc"
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Ocean Irradiance ROMS Wrapper')
+    parser.add_argument('file', help = "Complete Path to ROMS nc file" )
+    # parser.add_argument('dest_file', help='Path to Destination Directory. Saved as pickle')
+    parser.add_argument('--plot', action='store_true', help="Visualization of Result")
+    args = parser.parse_args()
+    
+    file = args.file
+
     R_nc = ROMS_netcdf(file,Init_ROMS_Irr_Params=(True))
     ## The time step 
     nstp = 1
