@@ -184,7 +184,7 @@ def Irradiance_Field_Diff(nstp, R_nc, irr_index, lam, irr_field_py, irr_field_RO
             
             fig,ax = plt.subplots()
             im = ax.pcolormesh(irr_field_max_diff)
-            fig.colorbar(im, ax = ax, label=r'max_z($\frac{\mathrm{irrpy - EuROMS}}{Eupy}$)')
+            fig.colorbar(im, ax = ax, label=r'max_z($\frac{\mathrm{Eupy - EuROMS}}{Eupy}$)')
             if abs_or_rel == 'rel':
                 ax.set_title('Relative Difference in Python and Fortran \n Implementation of Irradiance Code \n Using Maximum Vertical Profile Deviation')
             elif abs_or_rel == 'abs':

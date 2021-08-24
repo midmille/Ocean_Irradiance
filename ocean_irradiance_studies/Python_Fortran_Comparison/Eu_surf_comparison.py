@@ -194,15 +194,17 @@ def Compare_OCx(nstp, R_nc, plot=False):
     
     if plot: 
 
-        fig,(ax1,ax2) = plt.subplots(1,2,sharey=True)
-        vmax = max(np.max(ocean_color_py), np.max(ocean_color_ROMS))
-        vmin = 0 #min(np.min(ocean_color_py), np.min(ocean_color_ROMS))
+        fig,(ax1,ax2) = plt.subplots(1,2)
+        #vmax = max(np.max(ocean_color_py), np.max(ocean_color_ROMS))
+        #vmin = min(np.min(ocean_color_py), np.min(ocean_color_ROMS))
+        vmin,vmax = (0,.5)
+        cmap = 'nipy_spectral'
              
-        im1 = ax1.pcolormesh(ocean_color_py,vmin=vmin, vmax=vmax)
-        im2 = ax2.pcolormesh(ocean_color_ROMS,vmin=vmin, vmax=vmax)
+        im1 = ax1.pcolormesh(ocean_color_py,vmin=vmin, vmax=vmax, cmap=cmap)
+        im2 = ax2.pcolormesh(ocean_color_ROMS,vmin=vmin, vmax=vmax, cmap=cmap)
         
-        fig.colorbar(im1, ax = ax1, label=r'chl_a')
-        fig.colorbar(im2, ax = ax2, label=r'chl_a')
+        fig.colorbar(im1, ax = [ax1,ax2] , label=r'chl_a')
+        #fig.colorbar(im2, ax = ax2, label=r'chl_a')
     
         ax1.set_title('Ocean Color Python')
         ax1.set_xlabel('X')
