@@ -3,8 +3,10 @@ restore_data_on_startup = True
 save_data_on_exit = True
 save_history = True
 save_non_project_files = False
+project_type = empty-project-type
+recent_files = ['R_rs_sensitivity_study.py', '..\\..\\ocean_irradiance_module\\Ocean_Irradiance.py', '..\\..\\ocean_irradiance_module\\Ocean_Irradiance_ROMS.py', '..\\..\\ocean_irradiance_module\\absorbtion_and_scattering_coefficients.py', 'zbot_pure_water_and_artificial_prof_study.py', '..\\..\\ocean_irradiance_module\\Wavelength_To_RGB.py', 'Pure_Water_Sensitivity_Studies.py']
 
 [main]
 version = 0.2.0
-recent_files = ['Integrate_and_Bin_Representative_ROMS_Points.py', 'PARAMS.py', 'zbot_Dependence_Study.py']
+recent_files = []
 

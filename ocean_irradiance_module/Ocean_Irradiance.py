@@ -4,6 +4,10 @@ Created on Thu Dec 10 08:52:28 2020
 @author: Miles Miller
 """
 import numpy as np
+import scipy as sp 
+from scipy import integrate
+
+
 
 class Phy:
     """
@@ -32,6 +36,7 @@ class Phy:
         assert np.shape(phy)[0] == self.Nz
         
         return 
+
 
 def analytical_Ed(zarr,c, Ed0): 
     """
@@ -105,7 +110,176 @@ def Log_Trans(zbot,Nlayers):
     return zarr
 
 
-def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30, pt1_perc_zbot = True):
+def ocean_irradiance_scipy(zarr, Ed0, Es0, Euh, a, b, coefficients): 
+    """
+    This fucntion uses the scipy.integrate.solve_bvp function to solve the ocean 
+    irradiance boundary value problem. This is normally taken to be the truth in 
+    sensitivity studies. 
+
+    Parameters
+    ----------
+    zarr : 1-D Array [N]
+        The vertical z coordinates. 
+    Ed0 : Scalar
+        Surface boundary value of Ed. 
+    Es0 : Scalar 
+        Surface boundary value of Es. 
+    Euh : Scalar 
+        Bottom boundary value of Eu.
+    a : 1-D Array [N]
+        The total absorbtion coefficient array. 
+    b : 1-D Array[N]
+        The total scattering coefficient array. 
+    coefficients : Tuple [5]
+        The coefficients taken from Dutkiewicz 2015. Averaging of cosines and such.
+
+    Returns
+    -------
+    Ed, Es, Eu : 1-D Arrays [N]
+        Solution to ocean irradiance. 
+
+    """
+
+    
+    def derivEdz(z,E):
+        
+        E_d = E[0,:]
+        E_s = E[1,:]
+        E_u = E[2,:]
+        
+        a_r = np.interp(z,zarr,a)
+        b_r = np.interp(z,zarr,b)
+        
+        b_b = .551*b_r 
+        b_f = b_r - b_b 
+        
+        ## PARAMS FROM DUTKIEWICZ 2015 
+        r_s, r_u, v_d, v_s, v_u = coefficients
+        
+        dEddz = (a_r+b_r)/v_d*E_d
+        dEsdz = -b_f/v_d*E_d +(a_r+r_s*b_b)/v_s*E_s    - r_u*b_b/v_u*E_u
+        dEudz =  b_b/v_d*E_d    + r_s*b_b/v_s*E_s - (a_r+r_u*b_b)/v_u*E_u
+        
+        dEdz = np.array([dEddz, dEsdz, dEudz])
+        
+        return dEdz
+        
+    def Ebcs(E_at_h, E_at_0):
+
+        
+        return np.array([E_at_0[0] - Ed0, E_at_0[1] - Es0, E_at_h[2] - Euh])
+    
+    N = len(zarr)
+    
+    Eguess = np.full((3, N), 1.0)
+
+    res = integrate.solve_bvp(derivEdz, Ebcs, zarr, Eguess)
+
+    y = res.y
+
+    Ed = y[0]
+    Es = y[1]
+    Eu = y[2]
+    
+    return Ed, Es, Eu 
+
+
+def Irradiance_RK4(Nm1, Ed, Es, Eu, z, a, b, c_d, b_b, b_f, r_s, r_u, v_d, v_s, v_u):
+    
+    
+    """
+    The RK4 algorithim that will compute iterate down from the surface of the water r
+    column given an initial value. The initial value should be the very last index in the array.
+
+    """
+    
+    for k in range(Nm1-1 , -1, -1) :
+
+        dz = z[k] - z[k+1]
+        dzo2 = dz / 2
+        dzo2o2 = dzo2 / 2;
+          
+        dEddz1 = c_d[k]*Ed[k+1]
+        dEddz2 = c_d[k]*(Ed[k+1]+(dEddz1*dzo2))
+        dEddz3 = c_d[k]*(Ed[k+1]+(dEddz2*dzo2))
+        dEddz4 = c_d[k]*(Ed[k+1]+(dEddz3*dz))
+        Ed[k] = Ed[k+1] + (( (dEddz1/6)+(dEddz2/3)+(dEddz3/3)+(dEddz4/6) )*dz)
+          
+        ## to get Edmid, integrate Ed eq only down to mid-point
+        dEddz2 = c_d[k]*(Ed[k+1]+(dEddz1*dzo2o2))
+        dEddz3 = c_d[k]*(Ed[k+1]+(dEddz2*dzo2o2))
+        dEddz4 = c_d[k]*(Ed[k+1]+(dEddz3*dzo2))
+        Edmid = Ed[k+1] + (( (dEddz1/6)+(dEddz2/3)+(dEddz3/3)+(dEddz4/6) )*dzo2)
+          
+        dEsdz1 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*Es[k+1] - (r_u*b_b[k]/v_u)*Eu[k+1]
+           
+        dEudz1 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*Es[k+1] - ((a[k]+r_u*b_b[k])/v_u)*Eu[k+1]
+          
+        dEsdz2 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*((Es[k+1])+(dEsdz1*dzo2)) \
+        - (r_u*b_b[k]/v_u)*(Eu[k+1]+(dEudz1*dzo2))
+          
+        dEudz2 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*(Es[k+1]+(dEsdz1*dzo2)) \
+        - ((a[k]+r_u*b_b[k])/v_u)*(Eu[k+1]+(dEudz1*dzo2))
+          
+        dEsdz3 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*(Es[k+1]+(dEsdz2*dzo2)) \
+        - (r_u*b_b[k]/v_u)*(Eu[k+1]+(dEudz2*dzo2))
+          
+        dEudz3 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*(Es[k+1]+(dEsdz2*dzo2)) \
+        - ((a[k]+r_u*b_b[k])/v_u)*(Eu[k+1]+(dEudz2*dzo2))
+          
+        dEsdz4 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*(Es[k+1]+(dEsdz3*dz)) \
+        - (r_u*b_b[k]/v_u)*(Eu[k+1]+(dEudz3*dz))
+          
+        dEudz4 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*(Es[k+1]+(dEsdz3*dz)) \
+        - ((a[k]+r_u*b_b[k])/v_u)*(Eu[k+1]+(dEudz3*dz))
+          
+          ## RK4
+        Es[k] = Es[k+1] + (( (dEsdz1/6)+(dEsdz2/3)+(dEsdz3/3)+(dEsdz4/6))*dz)
+        Eu[k] = Eu[k+1] + (( (dEudz1/6)+(dEudz2/3)+(dEudz3/3)+(dEudz4/6))*dz)
+    
+    return Ed, Es, Eu
+
+
+def Scipy_RK4(Nm1, Ed, Es, Eu, zarr, a, b, c_d, b_b, b_f, r_s, r_u, v_d, v_s, v_u): 
+    
+    """
+    This follows a similiar format of the Irradiance_RK4 routine but computes the 
+    initial value problem using the scipy RK45 algorithim. 
+    """
+    
+    
+    def derivEdz(z, E):
+    
+        E_d, E_s, E_u = E
+        
+        a_r = np.interp(z,zarr,a)
+        b_r = np.interp(z,zarr,b)
+        
+        
+        b_b = .551*b_r 
+        b_f = b_r - b_b 
+        
+        dEddz = (a_r+b_r)/v_d*E_d
+        dEsdz = -b_f/v_d*E_d +(a_r+r_s*b_b)/v_s*E_s    - r_u*b_b/v_u*E_u
+        dEudz =  b_b/v_d*E_d    + r_s*b_b/v_s*E_s - (a_r+r_u*b_b)/v_u*E_u
+        
+        dEdz = np.array([dEddz, dEsdz, dEudz])
+        
+        return dEdz
+    
+    res = integrate.solve_ivp(derivEdz, [zarr[Nm1], zarr[0]], [Ed[Nm1], Es[Nm1], Eu[Nm1]], 'RK45', t_eval = np.flip(zarr))
+    
+    Ed = np.flip(res.y[0])
+    Es = np.flip(res.y[1])
+    Eu = np.flip(res.y[2])
+    
+    return Ed, Es, Eu 
+
+
+def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 30, 
+                     pt1_perc_zbot = True, use_bvp_solver = False):
+    
+    
     """
     The main ocean_irradiance function that calculates the three stream model solution 
     following the equations and coefficients of Dutkiewicz (2015) and solved as a boundary 
@@ -123,6 +297,8 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30, pt1_perc_z
         Boundary Condition on upwelling irradiance at h. 
     ab_wat : Tuple, length==2, (a_wat,b_wat).  
         Absorbtion and scattering coefficients for water. 
+    coeffcients : Tuple, length == 5. 
+        Coefficients taken from Dutkiewicz such as the average of cosines and sines. 
     phy : optional, default is None, else Phy object. 
         Gives information as according to Phy class on phytoplankton profile(s), 
         corresponding z-grid, and coefficients of absorbtion and scattering for each
@@ -147,18 +323,14 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30, pt1_perc_z
 
     """
     ## PARAMS FROM DUTKIEWICZ 2015 
-    r_s = 1.5 
-    r_u = 3.0 
-    
-    v_d = .9 
-    v_s = .83 
-    v_u = .4 
+    r_s, r_u, v_d, v_s, v_u = coefficients
     
     ##N centers
     Nm1 = N - 1  
     
     ##initial guess... doesn't matter too much
     init_guess = .2 
+    # init_guess = 0
     
     Ed1 = np.full(N, init_guess)
     Es1 = np.full(N, init_guess)
@@ -179,6 +351,7 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30, pt1_perc_z
     
     ## If phytoplankton, otherwise just water in column.
     if phy: 
+        
         ## unpacking the phytoplankton object
         z_phy = phy.z
         Nphy = phy.Nphy
@@ -211,12 +384,20 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30, pt1_perc_z
     elif pt1_perc_zbot == False: 
         zbot = hbot 
     ## log transformed z grid.
-    z = Log_Trans(zbot, N) 
+    # z = Log_Trans(zbot, N) 
+    ## linear z 
+    z = np.linspace(zbot, 0, N)
+    
+    
     
     ## Interpolating a,b vectors from z_phy to z.
     ## Should I create another z_grid that denotes the centers for the a,b below
-    a = np.interp(z,z_phy,a)
-    b = np.interp(z,z_phy,b)
+    if phy: 
+        a = np.interp(z,z_phy,a)
+        b = np.interp(z,z_phy,b)
+    else: 
+        a = np.full(N, a)
+        b = np.full(N, b)
         
     # if N != len(Ed1) or N !=len(a)+1 or N !=len(b)+1 :
     #     print('lengths of z and Ed must be the same, and a&b should be 1 less.')
@@ -225,94 +406,407 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, phy = None, N = 30, pt1_perc_z
     b_b = .551*b 
     b_f = b - b_b 
     
-    ##coefficient of downward direct irradiance 
-    c_d = (a+b)/v_d 
+    ## Scipy solver. 
+    if use_bvp_solver:
+        Ed,Es,Eu = ocean_irradiance_scipy(z, Ed0, Es0, Euh, a, b, coefficients)
     
-    Ed=np.copy(Ed1)
-    Es=np.copy(Es1)
-    Eu=np.copy(Eu1)
+    ## Our solver.
+    else :
+        ##coefficient of downward direct irradiance 
+        c_d = (a+b)/v_d 
+        
+        Ed=np.copy(Ed1)
+        Es=np.copy(Es1)
+        Eu=np.copy(Eu1)
+    
+        Eu0_tried = []
+        Fmetric = []
+        
+        for jsh in range(shots) :
+       # Integrate down from the top to ensure Ed(1) and Es(1) are good.
+    
+            if jsh == 0:
+                dEu = 0 #-Eu[Nm1]
+            elif jsh == 1:
+            # for the first case, need some adjustment to get gradient.
+                dEu = max(0.01,0.03*Es[Nm1])
+                # dEu = .2
+            else: 
+                Jslope = (Fmetric[jsh-2]-Fmetric[jsh-1]) / (Eu0_tried[jsh-2]-Eu0_tried[jsh-1]) 
+                dEu = -Fmetric[jsh-1]/Jslope
+    
+                
+            Eu[Nm1] = Eu[Nm1] + dEu
+            Eu0_tried.append(Eu[Nm1])
+    
+            Edmid = np.zeros(Nm1)
+            ## integrate Es down the water column
+            ## The range does not actually go to k=-1, only to k=0. 
+            ## i.e. does not include stop point of range. 
+            # for k in range(Nm1-1 , -1, -1) :
+            Ed, Es, Eu = Irradiance_RK4(Nm1, Ed, Es, Eu, z, a, b, c_d, b_b, b_f, 
+                                        r_s, r_u, v_d, v_s, v_u)
+            # Ed, Es, Eu = Scipy_RK4(Nm1, Ed, Es, Eu, z, a, b, c_d, b_b, b_f, 
+            #                             r_s, r_u, v_d, v_s, v_u)
+             # carry out a RK4 algorithm
+        
+             # z is +ve upward, opposite to that in Dutkiewicz
 
-    Eu0_tried = []
-    Fmetric = []
+             # steping DOWNWARD through water column means dz should be less than 0
+              #   dz = z[k] - z[k+1]
+              #   dzo2 = dz / 2
+              #   dzo2o2 = dzo2 / 2;
+        
+              #   dEddz1 = c_d[k]*Ed[k+1]
+              #   dEddz2 = c_d[k]*(Ed[k+1]+(dEddz1*dzo2))
+              #   dEddz3 = c_d[k]*(Ed[k+1]+(dEddz2*dzo2))
+              #   dEddz4 = c_d[k]*(Ed[k+1]+(dEddz3*dz))
+              #   Ed[k] = Ed[k+1] + (( (dEddz1/6)+(dEddz2/3)+(dEddz3/3)+(dEddz4/6) )*dz)
+        
+              # ## to get Edmid, integrate Ed eq only down to mid-point
+              #   dEddz2 = c_d[k]*(Ed[k+1]+(dEddz1*dzo2o2))
+              #   dEddz3 = c_d[k]*(Ed[k+1]+(dEddz2*dzo2o2))
+              #   dEddz4 = c_d[k]*(Ed[k+1]+(dEddz3*dzo2))
+              #   Edmid = Ed[k+1] + (( (dEddz1/6)+(dEddz2/3)+(dEddz3/3)+(dEddz4/6) )*dzo2)
     
-    for jsh in range(shots) :
-   # Integrate down from the top to ensure Ed(1) and Es(1) are good.
-
-        if jsh == 0:
-            dEu = 0
-        elif jsh == 1:
-        # for the first case, need some adjustment to get gradient.
-            dEu = max(0.01,0.03*Es[Nm1])
-        else: 
-            Jslope = (Fmetric[jsh-2]-Fmetric[jsh-1]) / (Eu0_tried[jsh-2]-Eu0_tried[jsh-1]) 
-            dEu = -Fmetric[jsh-1]/Jslope
-
-            
-        Eu[Nm1] = Eu[Nm1] + dEu
-        Eu0_tried.append(Eu[Nm1])
-
-        Edmid = np.zeros(Nm1)
-        ## integrate Es down the water column
-        ## The range does not actually go to k=-1, only to k=0. 
-        ## i.e. does not include stop point of range. 
-        for k in range(Nm1-1 , -1, -1) :
-         # carry out a RK4 algorithm
-    
-         # z is +ve upward, opposite to that in Dutkiewicz
-         # steping DOWNWARD through water column means dz should be less than 0
-            dz = z[k] - z[k+1]
-            dzo2 = dz / 2
-            dzo2o2 = dzo2 / 2;
-    
-            dEddz1 = c_d[k]*Ed[k+1]
-            dEddz2 = c_d[k]*(Ed[k+1]+(dEddz1*dzo2))
-            dEddz3 = c_d[k]*(Ed[k+1]+(dEddz2*dzo2))
-            dEddz4 = c_d[k]*(Ed[k+1]+(dEddz3*dz))
-            Ed[k] = Ed[k+1] + (( (dEddz1/6)+(dEddz2/3)+(dEddz3/3)+(dEddz4/6) )*dz)
-    
-          ## to get Edmid, integrate Ed eq only down to mid-point
-            dEddz2 = c_d[k]*(Ed[k+1]+(dEddz1*dzo2o2))
-            dEddz3 = c_d[k]*(Ed[k+1]+(dEddz2*dzo2o2))
-            dEddz4 = c_d[k]*(Ed[k+1]+(dEddz3*dzo2))
-            Edmid = Ed[k+1] + (( (dEddz1/6)+(dEddz2/3)+(dEddz3/3)+(dEddz4/6) )*dzo2)
-
-            dEsdz1 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*Es[k+1] - (r_u*b_b[k]/v_u)*Eu[k+1]
-         
-            dEudz1 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*Es[k+1] - ((a[k]+r_u*b_b[k])/v_u)*Eu[k+1]
-    
-            dEsdz2 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*((Es[k+1])+(dEsdz1*dzo2)) \
-            - (r_u*b_b[k]/v_u)*(Eu[k+1]+(dEudz1*dzo2))
-            
-            dEudz2 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*(Es[k+1]+(dEsdz1*dzo2)) \
-            - ((a[k]+r_u*b_b[k])/v_u)*(Eu[k+1]+(dEudz1*dzo2))
-    
-            dEsdz3 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*(Es[k+1]+(dEsdz2*dzo2)) \
-            - (r_u*b_b[k]/v_u)*(Eu[k+1]+(dEudz2*dzo2))
-            
-            dEudz3 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*(Es[k+1]+(dEsdz2*dzo2)) \
-            - ((a[k]+r_u*b_b[k])/v_u)*(Eu[k+1]+(dEudz2*dzo2))
-    
-            dEsdz4 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*(Es[k+1]+(dEsdz3*dz)) \
-            - (r_u*b_b[k]/v_u)*(Eu[k+1]+(dEudz3*dz))
-            
-            dEudz4 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*(Es[k+1]+(dEsdz3*dz)) \
-            - ((a[k]+r_u*b_b[k])/v_u)*(Eu[k+1]+(dEudz3*dz))
-    
-            ## RK4
-            Es[k] = Es[k+1] + (( (dEsdz1/6)+(dEsdz2/3)+(dEsdz3/3)+(dEsdz4/6))*dz)
-            Eu[k] = Eu[k+1] + (( (dEudz1/6)+(dEudz2/3)+(dEudz3/3)+(dEudz4/6))*dz)
-            
-            ## calculate a metric that indicates goodness of our shot.
-            ## since Eu(bot) = 0, our metric of fit is just the bottom value for Eu.
-        Fmetric.append(Eu[0])
+              #   dEsdz1 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*Es[k+1] - (r_u*b_b[k]/v_u)*Eu[k+1]
+             
+              #   dEudz1 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*Es[k+1] - ((a[k]+r_u*b_b[k])/v_u)*Eu[k+1]
+        
+              #   dEsdz2 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*((Es[k+1])+(dEsdz1*dzo2)) \
+              #   - (r_u*b_b[k]/v_u)*(Eu[k+1]+(dEudz1*dzo2))
+                
+              #   dEudz2 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*(Es[k+1]+(dEsdz1*dzo2)) \
+              #   - ((a[k]+r_u*b_b[k])/v_u)*(Eu[k+1]+(dEudz1*dzo2))
+        
+              #   dEsdz3 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*(Es[k+1]+(dEsdz2*dzo2)) \
+              #   - (r_u*b_b[k]/v_u)*(Eu[k+1]+(dEudz2*dzo2))
+                
+              #   dEudz3 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*(Es[k+1]+(dEsdz2*dzo2)) \
+              #   - ((a[k]+r_u*b_b[k])/v_u)*(Eu[k+1]+(dEudz2*dzo2))
+        
+              #   dEsdz4 = - (b_f[k]/v_d)*Edmid + ((a[k]+r_s*b_b[k])/v_s)*(Es[k+1]+(dEsdz3*dz)) \
+              #   - (r_u*b_b[k]/v_u)*(Eu[k+1]+(dEudz3*dz))
+                
+              #   dEudz4 =  (b_b[k]/v_d)*Edmid + (r_s*b_b[k]/v_s)*(Es[k+1]+(dEsdz3*dz)) \
+              #   - ((a[k]+r_u*b_b[k])/v_u)*(Eu[k+1]+(dEudz3*dz))
+        
+              #   ## RK4
+              #   Es[k] = Es[k+1] + (( (dEsdz1/6)+(dEsdz2/3)+(dEsdz3/3)+(dEsdz4/6))*dz)
+              #   Eu[k] = Eu[k+1] + (( (dEudz1/6)+(dEudz2/3)+(dEudz3/3)+(dEudz4/6))*dz)
+                
+                ## calculate a metric that indicates goodness of our shot.
+                ## since Eu(bot) = 0, our metric of fit is just the bottom value for Eu.
+            Fmetric.append(Eu[0])
+        # Eu[-1] = Eu[-1] - .0001
+        # Ed, Es, Eu = Irradiance_RK4(Nm1, Ed, Es, Eu, z, a, b, c_d, b_b, b_f, 
+        #                             r_s, r_u, v_d, v_s, v_u)
 
 
     return Ed, Es, Eu, z
 
 
-def artificial_phy_prof(z,loc,width):
+def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 30, 
+                     pt1_perc_zbot = True):
+    
+    
+    """
+    The main ocean_irradiance function that calculates the three stream model solution 
+    following the equations and coefficients of Dutkiewicz (2015) and solved as a boundary 
+    value problem using the shooting method. 
 
-    prof = .5*(1 + np.tanh((z-loc)/width))
+    Parameters
+    ----------
+    hbot : Float  
+        True bottom depth of water column. 
+    E_d_0 : Float
+        Initial value of downward direct irradiance. 
+    E_s_0 : Float
+        Initial value of downward diffuse irradiance. 
+    E_u_h : Float
+        Boundary Condition on upwelling irradiance at h. 
+    ab_wat : Tuple, length==2, (a_wat,b_wat).  
+        Absorbtion and scattering coefficients for water. 
+    coeffcients : Tuple, length == 5. 
+        Coefficients taken from Dutkiewicz such as the average of cosines and sines. 
+    phy : optional, default is None, else Phy object. 
+        Gives information as according to Phy class on phytoplankton profile(s), 
+        corresponding z-grid, and coefficients of absorbtion and scattering for each
+        respective species of phytoplankton. 
+    N : Float, default is 30
+        The number of layers in the logarithmic grid. 
+    pt1_perc_zbot : Boolean, default is True
+        True refers to using the .1% light level as the zbot so long as that the magnitude 
+        of the .1% light level is smaller than the magnitude of hbot. False refers
+        to just using given hbot as zbot. 
+
+    Returns
+    -------
+    Ed : 1-D Array
+        Downward direct irradiance. 
+    Es : 1-D Array
+        Downward diffuse irradiance. 
+    Eu : 1-D Array
+        Downward diffuse irradiance. 
+    z : 1-D Array
+        The grid that the irradiances are calculated on. 
+
+    """
+    
+    def E_s_z(z,zarr,c_p, c_m):
+        """
+    
+        Parameters
+        ----------
+        z : 1-D array of length N-1
+            This is the z that is chosen to represent z at in place in the column.
+            It is chosen for now to be the midpoint of the layer. 
+            Later could be chosen as any point but must know what layer the point exists in 
+        zarr : 1-D array of length N
+            The array that I have used for all the coefficients in this program 
+        c_p : 1-D array of length N
+            The values of c^+ that I found through Gaussian Elimination of tridiagonal
+        c_m : 1-D array of length N
+            The values of c^+ that I found through Gaussian Elimination of tridiagonal
+    
+        Returns
+        -------
+        E_s : 1-D array of length N-1
+            The Downward diffuse irradiance solution. 
+    
+        """
+        ##midpoint z values in general solution. 
+        E_d_z = analytical_Ed(z, c_Ed_z, Ed0) ##the downward direct irradiance at midpoints z 
+        E_s = np.zeros(N-1)
+        for k in range(N-1):
+            E_s[k] = (c_p[k])*(np.exp((-kap_p[k])*(-(z[k] - zarr[k])))) + (c_m[k])*(r_m[k])*((np.exp((kap_m[k])*(-(z[k] - zarr[k+1]))))) + (x[k])*(E_d_z[k])
+        return E_s 
+    
+    def E_u_z(z,zarr,c_p, c_m):
+        """
+    
+        Parameters
+        ----------
+        z : 1-D array of length N-1
+            This is the z that is chosen to represent z at in place in the column.
+            It is chosen for now to be the midpoint of the layer. 
+            Later could be chosen as any point but must know what layer the point exists in 
+        zarr : 1-D array of length N
+            The array that I have used for all the coefficients in this program 
+        c_p : 1-D array of length N
+            The values of c^+ that I found through Gaussian Elimination of tridiagonal
+        c_m : 1-D array of length N
+            The values of c^+ that I found through Gaussian Elimination of tridiagonal
+    
+        Returns
+        -------
+        E_u : 1-D array of length N-1
+            The upwelling irradiance solution. 
+    
+        """
+        ##midpoint z values in general solution. 
+        E_d_z = analytical_Ed(z, c_Ed_z, Ed0) ##the downward direct irradiance at midpoints z 
+        E_u = np.zeros(N-1)
+        for k in range(N-1):
+            E_u[k] = (c_p[k])*(r_p[k])*(np.exp((-kap_p[k])*(-(z[k] - zarr[k])))) + (c_m[k])*(r_m[k])*((np.exp((kap_m[k])*(-(z[k] - zarr[k+1]))))) + (y[k])*(E_d_z[k])
+        return E_u 
+    
+    
+    
+    ## PARAMS FROM DUTKIEWICZ 2015 
+    r_s, r_u, v_d, v_s, v_u = coefficients
+    
+    ##N centers
+    Nm1 = N - 1  
+    
+    ##unpacking the ab_wat_tuple 
+    a_wat,b_wat = ab_wat 
+    a = a_wat
+    b = b_wat 
+    
+    ## If phytoplankton, otherwise just water in column.
+    if phy: 
+        
+        ## unpacking the phytoplankton object
+        z_phy = phy.z
+        Nphy = phy.Nphy
+        
+        ## array for different phy
+        phy_prof = phy.phy
+        
+        ## coefficients
+        a_phy = phy.a
+        b_phy = phy.b
+        
+        ## Just one phytoplankton species
+        if Nphy == 1 : 
+            a = a + phy_prof * a_phy
+            b = b + phy_prof * b_phy
+            
+        ## More than one species
+        elif Nphy > 1 : 
+            for k in range(Nphy):
+                a = a + phy_prof[:,k] * a_phy[k]  
+                b = b + phy_prof[:,k] * b_phy[k]
+
+    
+    ## If pt1_perc_zbot is True
+    if pt1_perc_zbot == True :
+        ## Finding the zbot at the .1% light level. 
+        zbot_pt1perc = zbot_func(Ed0, a_wat, b_wat, v_d)
+        ## choosing the smaller zbot and making negative
+        zbot = -min(abs(hbot), abs(zbot_pt1perc))
+    elif pt1_perc_zbot == False: 
+        zbot = hbot 
+    ## log transformed z grid.
+    # z = Log_Trans(zbot, N) 
+    ## linear z 
+    z = np.flip(np.linspace(zbot, 0, N))
+    
+    
+    
+    ## Interpolating a,b vectors from z_phy to z.
+    ## Should I create another z_grid that denotes the centers for the a,b below
+    if phy: 
+        a = np.interp(z,z_phy,a)
+        b = np.interp(z,z_phy,b)
+    else: 
+        a = np.full(N, a)
+        b = np.full(N, b)
+
+    b_b = .551*b 
+    b_f = b - b_b 
+
+     ## Don't know much about this const/variable 
+    c = (a+b)/v_d ##used for analytical 
+    c_d = c
+    a2 = a[1:]
+    b2 = b[1:]
+    c_Ed_z = (a2+b2)/v_d ##used in functions below for midpoint 
+    
+    ##maybe it is the downward direct coefficient?
+    
+    ##Making the matching constant of Dutkiewicz 
+    C_s = (a + r_s*b_b)/ v_s ##Cs 
+    C_u = (a + r_u*b_b)/ v_u ## Cu 
+    
+    B_u = (r_u*b_b)/v_u 
+    B_s = (r_s*b_b)/v_s 
+    
+    F_d = b_f / v_d  ##NOTE : Here I don't use what Dutkiewicz uses for F_d, B_d
+    B_d = b_b/ v_d  ##I use the coefficient of E_d from eq. 1,2,3 of Dutkiewicz 
+    
+    ##Inhomogeneous solution following Dutikiewicz, Eqaution B9 
+    ##first the det of M 
+    det_M = 1/((c_d - C_s)*(c_d + C_u) + B_s*B_u)
+    x = det_M*(-F_d*(c_d + C_u) - B_u*B_d)
+    y = det_M*(-F_d*B_s + B_d*(c_d - C_s))
+    
+    ##now definining some stuff for the homogeneous solution 
+    D = .5*(C_s + C_u + np.sqrt((C_s + C_u)**2 - 4*B_s*B_u))
+    
+    ##eigen values 
+    kap_m = D - C_s ##kappa minus 
+    kap_p = -(C_u - D )##kappa plus 
+    
+    ##eigen vectors 
+    r_p = B_s / D ## r plus 
+    r_m = B_u / D ## r minus 
+    
+    ##defining the exponential decays in each layer 
+    ##note that because our grid has a uniform spacing 
+    ##we can just let z_k+1 - z_k = dz = const. 
+    ##in ROMS this might not be the case, but it is a valid choice rn 
+    dz = abs(z[1] - z[0])
+    e_p = np.exp(-kap_p*dz) ##dz = const 
+    e_m = np.exp(-kap_m*dz) ##dz = xonst  
+    
+    ##Now for making the coefficient matrix 
+    ##For this problem instead of stacking the state vectors
+    ##I will be interweaving them by alternating c^plus and c^minus. 
+    ##This should give a tri-diagonal matrix 
+    ##Which can be solved throuhg Gaussian elimination 
+    
+    ## A zero 2N by 2N matrix 
+    A = np.zeros((2*N,2*N))
+    
+    for k in range(0, N-1): ##this leaves space for boudnaries at top/ bottom 
+        ##since there is only k and k+1 it is ok to start at k =0
+        c1 = (e_p[k])*(1 - (r_p[k])*(r_m[k+1]))
+        c2 = (r_m[k]) - (r_m[k+1])
+        c3 = (1 - (r_p[k+1])*(r_m[k+1]))
+        #cxy = x[k+1] - x[k]- (y[k+1] - y[k])*(r_m[k+1]) ##needed for E_d vector
+        
+        c4 = (1 - (r_m[k])*(r_p[k]))
+        c5 = ((r_p[k+1]) - (r_p[k]))
+        c6 = (e_m[k+1])*(1- (r_m[k+1])*(r_p[k])) 
+        #cyx = y[k+1] - y[k] - (x[k+1] - x[k])*(r_p[k]) ##needed for E_d vector
+        
+        #if (k % 2) == 0: ##if odd, c1,c2,c3 will be first top of the weaved stack 
+        m = 2*k + 1 ##odd numbers, k starting at zero 
+        A[m,(m - 1)] = c1 
+        A[m,m] = c2 
+        A[m,(m+1)] = -c3
+        
+        n = 2*k + 2 ##even numbers k starting at zero 
+        A[n,(n - 1)] = c4 
+        A[n,n] = -c5 
+        A[n,(n+1)] = -c6
+    
+    ##now some boundary conditions
+    ## c_kbot^+ = 0 at bottom thus, 
+    A[-1,-1] = 1
+    
+    
+    ##at top we use Dutkiewicz et al.(2015) setting E_s0 - xE_d0 = somthing 
+    A[0,0] = 1
+    A[0,1] = (r_m[0])*np.exp(-(kap_m[0])*(z[1])) ## = E_s0 - x[0] * E_d0
+
+    E_d = analytical_Ed(z, c, Ed0)
+    
+    E_d2 = np.zeros(2*N)
+    
+    for k in range(N-1):
+        cxy = x[k+1] - x[k]- (y[k+1] - y[k])*(r_m[k+1]) ##needed for E_d vector
+        cyx = y[k+1] - y[k] - (x[k+1] - x[k])*(r_p[k]) ##needed for E_d vector
+        E_d2[2*k+1] = cxy*E_d[k] ##technically this is E_d at k+1
+        E_d2[2*k+2] = cyx*E_d[k] ##techinically this is also
+    
+    ##now for setting the boundaries 
+    E_d2[0] = Es0 - (x[0])*Ed0
+    E_d2[-1] = 0
+    
+    ##solving by LU-decomp. 
+    B= E_d2 
+    
+    lu, piv = sp.linalg.lu_factor(A)
+    x_lu = sp.linalg.lu_solve((lu, piv), B)
+    c_p = np.zeros(N)
+    c_m = np.zeros(N)
+    for i in range(2*N): 
+        if (i%2) == 0: 
+            c_p[int(i/2)] = x_lu[i]
+        else: 
+            c_m[int((i-1)/2)] = x_lu[i]
+    
+      
+    z_out = np.linspace(z[0] - dz/2,z[-1] + dz/2, N-1) ##z array for E_s_z and E_u_z 
+
+    Es = E_s_z(z_out, z, c_p, c_m)
+    Eu = E_u_z(z_out, z, c_p, c_m)
+    Ed = analytical_Ed(z_out, c_Ed_z, Ed0)
+    
+    #Es = x_lu[:N]
+    #Eu = x_lu[N:] 
+    #Ed = analytical_Ed(zarr, c)
+    
+    return Ed, Es, Eu, z_out
+    
+
+
+def artificial_phy_prof(z,loc,width,conc):
+
+    prof = conc*(1 + np.tanh((z-loc)/width))
     
     return prof
 
@@ -324,28 +818,42 @@ def Demo():
     ## Absorbtion and scattering coefficients are taken from Dutkiwicz 2015 
     ## for the Diatom species. 
     import matplotlib.pyplot as plt
+    from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
+    from ocean_irradiance_module.PARAMS import Param_Init 
     
-    N = 301
+    PI = Param_Init()
+    
+    N = 300
     Nm1 = N-1 
+    lam =443
     
     z = np.linspace(-300,0,N)
 
-    phy_prof = artificial_phy_prof(z, -70, 40)
+    phy_prof = artificial_phy_prof(z, -70, 40,.5)
+    # phy_prof = np.full(len(z), 1)
     
-    ab_wat = (.01,.004)
-    a_phy = .01
-    b_phy =  .0039
+    ab_wat = abscat(lam, 'water')
+    
+    a_phy, b_phy = abscat(lam, 'Diat')
+    
+    # a_phy = .01
+    # b_phy =  .0039 
     
     ## Define the Phytoplankton class.
     phy = Phy(z, phy_prof, a_phy, b_phy)
 
-    Ed0 = .7
-    Es0 = 1 - Ed0
-    Euh = 0 
+    # Ed0 = .7
+    # Es0 = 1 - Ed0
+    # Euh = 0 
 
     zbot = z[0]
 
-    Ed, Es, Eu, zarr = ocean_irradiance(zbot,Ed0,Es0,Euh,ab_wat,phy, N=N)
+    # Ed, Es, Eu, zarr = ocean_irradiance_dutkiewicz(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
+    #                                                 phy=phy, N=N, pt1_perc_zbot = False)
+                                        
+    Ed, Es, Eu, zarr = ocean_irradiance(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
+                                        phy=phy, N=N, pt1_perc_zbot = False,
+                                        use_bvp_solver = True)
 
     ## Plotting the Results
     #-------------------------------------------------------------------------
@@ -362,13 +870,14 @@ def Demo():
     ax2.plot(Ed, zarr, label='Ed')
     ax2.plot(Es, zarr, label='Es')
     ax2.plot(Eu, zarr, label='Eu')
+    ax2.set_xlim(-0.1,1)
     ax2.set_xlabel('Irradiance')
     ax2.set_title('Resulting Irradiance Profiles')
     ax2.legend()
     ax2.grid()
     
     plt.show()
-    return 
+    return zarr
 
 
 #-------------------------------------MAIN-------------------------------------
@@ -384,8 +893,8 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
-    if args.demo: 
-        Demo()
+    # if args.demo: 
+    zarr = Demo()
 
 
 

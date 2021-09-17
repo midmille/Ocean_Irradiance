@@ -20,7 +20,7 @@ from ocean_irradiance_module import Ocean_Irradiance
 import pickle
 
 
-def OCx_alg(R_rs_b, R_rs_g, lam_b, lam_g) :
+def OCx_alg(R_rs_b, R_rs_g) :
     """
     
 
@@ -81,7 +81,7 @@ def R_RS(E_d_0, E_s_0, E_u_surface ) :
     R = (E_u_surface) / (E_d_0 + E_s_0) ## This is Equation 5 
     
     ##We are assuming that Q =about 4 (Dut. 2015 Eqn. 6)
-    Q = 4 
+    Q = 4
     R_rs = R / Q
     
     return R_rs 
@@ -119,14 +119,14 @@ def ocean_color_sol(Eu_sol_dict, E_d_0, E_s_0):
     # R_rs_r = R_RS(E_d_0, E_s_0, Eu_sol_dict[lam_r]) ##red 
     
     
-    OCx_sol = OCx_alg(R_rs_b, R_rs_g, lam_b, lam_g)
+    OCx_sol = OCx_alg(R_rs_b, R_rs_g)
     # CI_alg_sol = ocean_color.CI_alg(R_rs_r, R_rs_g, R_rs_b, lam_r, lam_g, lam_b)
     
     return OCx_sol
 
 
 def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt, 
-                  z_r, E_d_0, E_s_0, E_u_h, N=30, pt1_perc_zbot = True):
+                  z_r, E_d_0, E_s_0, E_u_h, coefficients, N=30, pt1_perc_zbot = True):
     """
     
 
@@ -152,6 +152,8 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
         Initial value for downward diffuse irradiance. 
     E_u_h : FLoat
         Bottom boundary condition on upwelling irradiance. 
+    coeffcients : Tuple, length == 5. 
+        Coefficients taken from Dutkiewicz such as the average of cosines and sines. 
     N : Float, default is 30
         The number of layers in the logarithmic grid. 
     pt1_perc_zbot : Boolean, default is True
@@ -198,7 +200,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                 phy = Ocean_Irradiance.Phy(z_r0, phy_profs, a, b)    
                 
                 ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
-                                                                ab_wat,phy, N=N, 
+                                                                ab_wat, coefficients, phy, N=N, 
                                                                 pt1_perc_zbot = pt1_perc_zbot)
                 ## Ed
                 irr_arr[:,j,i,0] = ocean_irr_sol[0]
@@ -218,7 +220,7 @@ def plot_ocean_color():
     import matplotlib as mpl
     
     plt.figure()
-    plt.pcolormesh(lon_rho, lat_rho, ocean_color, cmap="nipy_spectral", norm = mpl.colors.LogNorm(), vmin=.01, vmax=66)#, cmap='nipy_spectral')
+    plt.pcolormesh( ocean_color, cmap="nipy_spectral", norm = mpl.colors.LogNorm(), vmin=.01, vmax=66)#, cmap='nipy_spectral')
     plt.colorbar(label='Chl-a')
     plt.ylabel('Degrees Lattitude')
     plt.xlabel('Degress Longitude')
@@ -241,7 +243,7 @@ if __name__ == '__main__':
     
     file = args.file
     
-    PI = Param_Init(file)
+    PI = Param_Init()
     R_nc = ROMS_netcdf(file)
 
     ## updating default to wavelengths necessary for the OCx_algorithim
@@ -265,10 +267,10 @@ if __name__ == '__main__':
         ab_diat = abscat(lam, 'Diat') 
         ab_syn = abscat(lam, 'Syn')
         
-        Eu_surface_dict[lam] = Eu_at_surface(lam, R_nc.maskr, ab_wat, ab_diat, ab_syn, 
+        Eu_surface_dict[lam] = Ocean_Irradiance_Field(lam, R_nc.maskr, ab_wat, ab_diat, ab_syn, 
                                              R_nc.diatom, R_nc.nanophyt, R_nc.z_w, 
                                              R_nc.z_r, PI.Ed0, PI.Es0, PI.Euh,
-                                             PI.Chl2NL, PI.Chl2NS)
+                                             PI.coefficients, PI.Chl2NL, PI.Chl2NS)[-1, :,:, 2]
     
     ## Ocean Color Calculation
     #--------------------------------------------------------------------------

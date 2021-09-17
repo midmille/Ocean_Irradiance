@@ -42,6 +42,17 @@ def absorbtion_scattering(wavelength, constituent):
 
     """
     
+    ## Necessary unit change 
+    ## ----------------------
+    ## unit change for back scattering coefficients
+    ## from units of Carbon to units of chl-a
+    ## Large phytoplankton ie diatoms 
+    LC2chla = 50
+    ## Small phytoplankton ie nanophytoplankton
+    SC2chla = 100
+    
+    
+    
     water = {}
 
     water[410] = (0.001,.007)
@@ -72,12 +83,12 @@ def absorbtion_scattering(wavelength, constituent):
     
     Diat = {}
     
-    Diat[410] = (.015,.0038)
-    Diat[443] = (.014,.0038)
-    Diat[486] = (.01,.0039)
-    Diat[551] = (.005,.004)
-    Diat[638] = (.005,.0039)
-    Diat[671] = (.012,.0038)
+    Diat[410] = (.015,.0038*LC2chla)
+    Diat[443] = (.014,.0038*LC2chla)
+    Diat[486] = (.01,.0039*LC2chla)
+    Diat[551] = (.005,.004*LC2chla)
+    Diat[638] = (.005,.0039*LC2chla)
+    Diat[671] = (.012,.0038*LC2chla)
     
     Generic = {}
     
@@ -90,12 +101,12 @@ def absorbtion_scattering(wavelength, constituent):
     
     Syn = {}
     
-    Syn[410] = (.036,.0078)
-    Syn[443] = (.043,.007)
-    Syn[486] = (.031,.0065)
-    Syn[551] = (.031,.0051)
-    Syn[638] = (.008,.004)
-    Syn[671] = (.017,.0035)
+    Syn[410] = (.036,.0078*SC2chla)
+    Syn[443] = (.043,.007*SC2chla)
+    Syn[486] = (.031,.0065*SC2chla)
+    Syn[551] = (.031,.0051*SC2chla)
+    Syn[638] = (.008,.004*SC2chla)
+    Syn[671] = (.017,.0035*SC2chla)
     
 
     if constituent == 'water':
