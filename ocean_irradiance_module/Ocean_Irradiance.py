@@ -39,6 +39,8 @@ class Phy:
 
 
 def analytical_Ed(zarr,c, Ed0): 
+    
+    
     """
     Parameters
     ----------
@@ -56,7 +58,29 @@ def analytical_Ed(zarr,c, Ed0):
     return Ed 
 
 
-def zbot_func(E_d_0, a_wat, b_wat, v_d):
+def numerical_Ed(z, c_d, Ed0):
+    
+    N = len(z)
+    Nm1 = N - 1
+    
+    Ed = np.zeros(N)
+    Ed[Nm1] = Ed0
+
+    for k in range(Nm1-1, -1, -1) :
+        
+        dz = z[k] - z[k+1]
+        dzo2 = dz / 2
+        
+        dEddz1 = c_d[k]*Ed[k+1]
+        dEddz2 = c_d[k]*(Ed[k+1]+(dEddz1*dzo2))
+        dEddz3 = c_d[k]*(Ed[k+1]+(dEddz2*dzo2))
+        dEddz4 = c_d[k]*(Ed[k+1]+(dEddz3*dz))
+        Ed[k] = Ed[k+1] + (( (dEddz1/6)+(dEddz2/3)+(dEddz3/3)+(dEddz4/6) )*dz)
+        
+    return Ed
+
+
+def zbot_func(E_d_0, c, z):
     """
     Finds the zbot for at which light ha attenuated to .1% of its surface value 
     for water only coeffients
@@ -76,14 +100,16 @@ def zbot_func(E_d_0, a_wat, b_wat, v_d):
         .01% light level zbot. 
 
     """
-    zbots = np.linspace(0, -1000, 2001) 
-    c = (a_wat + b_wat) / v_d
-    Ed = analytical_Ed(zbots, c, E_d_0)
-
-    for k, Ed in enumerate(Ed) :
-        EdoE_d_0 = Ed / E_d_0
-        if EdoE_d_0 < .001 :
-            zbot = zbots[k]
+    # zbots = np.linspace(0, -1000, 2001) 
+    # c = (a_wat + b_wat) / v_d
+    c = np.flip(c)
+    z = np.flip(z)
+    Ed = analytical_Ed(z, c, E_d_0)
+    for k, Ed_i in enumerate(Ed) :
+        EdoE_d_0 = Ed_i / E_d_0
+        if EdoE_d_0 < .01 :
+            print(EdoE_d_0)
+            zbot = z[k] 
             return zbot
    
         
@@ -342,7 +368,7 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 
     Eu1[0] = Euh ##bottom
     
     ## Default number of shots for BVP shoot method solution
-    shots = 3
+    shots = 3 
     
     ##unpacking the ab_wat_tuple 
     a_wat,b_wat = ab_wat 
@@ -374,11 +400,14 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
 
+    ##coefficient of downward direct irradiance 
+    c_d = (a+b)/v_d 
     
     ## If pt1_perc_zbot is True
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
-        zbot_pt1perc = zbot_func(Ed0, a_wat, b_wat, v_d)
+        zbot_pt1perc = zbot_func(Ed0, c_d, z_phy)
+        print(zbot_pt1perc)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
     elif pt1_perc_zbot == False: 
@@ -412,8 +441,7 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 
     
     ## Our solver.
     else :
-        ##coefficient of downward direct irradiance 
-        c_d = (a+b)/v_d 
+
         
         Ed=np.copy(Ed1)
         Es=np.copy(Es1)
@@ -501,6 +529,8 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 
         # Eu[-1] = Eu[-1] - .0001
         # Ed, Es, Eu = Irradiance_RK4(Nm1, Ed, Es, Eu, z, a, b, c_d, b_b, b_f, 
         #                             r_s, r_u, v_d, v_s, v_u)
+        
+        Ed = analytical_Ed(z, c_d, Ed0)
 
 
     return Ed, Es, Eu, z
@@ -553,7 +583,7 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
 
     """
     
-    def E_s_z(z,zarr,c_p, c_m):
+    def E_s_z(z,zarr,c_p, c_m, E_d_z):
         """
     
         Parameters
@@ -576,13 +606,13 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
     
         """
         ##midpoint z values in general solution. 
-        E_d_z = analytical_Ed(z, c_Ed_z, Ed0) ##the downward direct irradiance at midpoints z 
+        # E_d_z = analytical_Ed(z, c_Ed_z, Ed0) ##the downward direct irradiance at midpoints z 
         E_s = np.zeros(N-1)
         for k in range(N-1):
             E_s[k] = (c_p[k])*(np.exp((-kap_p[k])*(-(z[k] - zarr[k])))) + (c_m[k])*(r_m[k])*((np.exp((kap_m[k])*(-(z[k] - zarr[k+1]))))) + (x[k])*(E_d_z[k])
         return E_s 
     
-    def E_u_z(z,zarr,c_p, c_m):
+    def E_u_z(z,zarr,c_p, c_m, E_d_z):
         """
     
         Parameters
@@ -605,7 +635,7 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
     
         """
         ##midpoint z values in general solution. 
-        E_d_z = analytical_Ed(z, c_Ed_z, Ed0) ##the downward direct irradiance at midpoints z 
+        # E_d_z = analytical_Ed(z, c_Ed_z, Ed0) ##the downward direct irradiance at midpoints z 
         E_u = np.zeros(N-1)
         for k in range(N-1):
             E_u[k] = (c_p[k])*(r_p[k])*(np.exp((-kap_p[k])*(-(z[k] - zarr[k])))) + (c_m[k])*(r_m[k])*((np.exp((kap_m[k])*(-(z[k] - zarr[k+1]))))) + (y[k])*(E_d_z[k])
@@ -628,7 +658,9 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
     if phy: 
         
         ## unpacking the phytoplankton object
+
         z_phy = phy.z
+
         Nphy = phy.Nphy
         
         ## array for different phy
@@ -648,12 +680,14 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
             for k in range(Nphy):
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
-
-    
+                
+    c_wat = (a_wat+b_wat)/v_d ##used for analytical 
+    c_d = (a+b)/v_d
     ## If pt1_perc_zbot is True
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
-        zbot_pt1perc = zbot_func(Ed0, a_wat, b_wat, v_d)
+        # zbot_pt1perc = zbot_func(Ed0, a_wat, b_wat, v_d)
+        zbot_pt1perc = zbot_func(Ed0, c_wat, z_phy)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
     elif pt1_perc_zbot == False: 
@@ -661,15 +695,19 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
     ## log transformed z grid.
     # z = Log_Trans(zbot, N) 
     ## linear z 
-    z = np.flip(np.linspace(zbot, 0, N))
+    z = np.linspace(zbot, 0, N)
     
     
     
     ## Interpolating a,b vectors from z_phy to z.
     ## Should I create another z_grid that denotes the centers for the a,b below
     if phy: 
-        a = np.interp(z,z_phy,a)
-        b = np.interp(z,z_phy,b)
+        # print(z_phy)
+        # print(z)
+        ## FLipping the coordinates because the interpolation requires 'monotonically increasing'
+        a = np.flip(np.interp(z,z_phy,a))
+        b = np.flip(np.interp(z,z_phy,b))
+        z = np.flip(z)
     else: 
         a = np.full(N, a)
         b = np.full(N, b)
@@ -680,8 +718,8 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
      ## Don't know much about this const/variable 
     c = (a+b)/v_d ##used for analytical 
     c_d = c
-    a2 = a[1:]
-    b2 = b[1:]
+    a2 = a[:-1]
+    b2 = b[:-1]
     c_Ed_z = (a2+b2)/v_d ##used in functions below for midpoint 
     
     ##maybe it is the downward direct coefficient?
@@ -762,7 +800,8 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
     A[0,0] = 1
     A[0,1] = (r_m[0])*np.exp(-(kap_m[0])*(z[1])) ## = E_s0 - x[0] * E_d0
 
-    E_d = analytical_Ed(z, c, Ed0)
+    # E_d = analytical_Ed(z, c, Ed0)
+    E_d =  np.flip(numerical_Ed(np.flip(z), np.flip(c_Ed_z), Ed0))
     
     E_d2 = np.zeros(2*N)
     
@@ -790,23 +829,29 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
             c_m[int((i-1)/2)] = x_lu[i]
     
       
-    z_out = np.linspace(z[0] - dz/2,z[-1] + dz/2, N-1) ##z array for E_s_z and E_u_z 
+    # z_out = np.linspace(z[0] - dz/2,z[-1] + dz/2, N-1) ##z array for E_s_z and E_u_z 
+    z_out = np.linspace(0,z[-1] + dz/2, N-1)
+    print("z_out:", z_out)
 
-    Es = E_s_z(z_out, z, c_p, c_m)
-    Eu = E_u_z(z_out, z, c_p, c_m)
-    Ed = analytical_Ed(z_out, c_Ed_z, Ed0)
+    Ed = np.flip(numerical_Ed(np.flip(z_out), np.flip(c_Ed_z), Ed0))
+    Es = E_s_z(z_out, z, c_p, c_m, Ed)
+    Eu = E_u_z(z_out, z, c_p, c_m, Ed)
+
+    print(c_Ed_z)
     
+    # print(c_Ed_z)
     #Es = x_lu[:N]
     #Eu = x_lu[N:] 
     #Ed = analytical_Ed(zarr, c)
     
-    return Ed, Es, Eu, z_out
+    return Ed, Es, Eu, z_out, c_Ed_z
     
-
 
 def artificial_phy_prof(z,loc,width,conc):
 
-    prof = conc*(1 + np.tanh((z-loc)/width))
+    # prof = conc*(1 + np.tanh((z-loc)/width)) 
+    
+    prof = conc* np.exp(-((z-loc)**2)/(2*width**2))
     
     return prof
 
@@ -827,14 +872,18 @@ def Demo():
     Nm1 = N-1 
     lam =443
     
-    z = np.linspace(-300,0,N)
+    # z = np.linspace(-600,0,N)
 
-    phy_prof = artificial_phy_prof(z, -70, 40,.5)
+    # phy_prof = artificial_phy_prof(z, -90, 1,1.5)
+    ROMS_point = np.genfromtxt('C:/Users/miles/Downloads/ChrisData_good_point.csv', delimiter=',')
+    phy_prof = ROMS_point[1:,2]
+    print(phy_prof)
+    z = ROMS_point[1:,0]
     # phy_prof = np.full(len(z), 1)
     
     ab_wat = abscat(lam, 'water')
     
-    a_phy, b_phy = abscat(lam, 'Diat')
+    a_phy, b_phy = abscat(lam, 'Syn')
     
     # a_phy = .01
     # b_phy =  .0039 
@@ -848,12 +897,18 @@ def Demo():
 
     zbot = z[0]
 
-    # Ed, Es, Eu, zarr = ocean_irradiance_dutkiewicz(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
-    #                                                 phy=phy, N=N, pt1_perc_zbot = False)
+    Ed, Es, Eu, zarr, c_Ed_z = ocean_irradiance_dutkiewicz(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
+                                                    phy=phy, N=N, pt1_perc_zbot = False)
+    
+    # dev = .001
+    # zbot = zarr[Es > dev][-1]
+    
+    # Ed, Es, Eu, zarr, c_Ed_z = ocean_irradiance_dutkiewicz(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
+    #                                             phy=phy, N=N, pt1_perc_zbot = False)
                                         
-    Ed, Es, Eu, zarr = ocean_irradiance(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
-                                        phy=phy, N=N, pt1_perc_zbot = False,
-                                        use_bvp_solver = True)
+    # Ed, Es, Eu, zarr = ocean_irradiance(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
+    #                                     phy=phy, N=N, pt1_perc_zbot = False,
+    #                                     use_bvp_solver = True)
 
     ## Plotting the Results
     #-------------------------------------------------------------------------
@@ -877,7 +932,7 @@ def Demo():
     ax2.grid()
     
     plt.show()
-    return zarr
+    return zarr, Ed
 
 
 #-------------------------------------MAIN-------------------------------------
@@ -894,7 +949,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # if args.demo: 
-    zarr = Demo()
+    zarr, Ed, c_Ed_z = Demo()
+    
+    Ed_redo = np.flip(numerical_Ed(np.flip(zarr), np.flip(c_Ed_z), .7))
 
 
 

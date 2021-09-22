@@ -48,9 +48,10 @@ def absorbtion_scattering(wavelength, constituent):
     ## from units of Carbon to units of chl-a
     ## Large phytoplankton ie diatoms 
     LC2chla = 50
+    # LC2chla = 1
     ## Small phytoplankton ie nanophytoplankton
     SC2chla = 100
-    
+    # SC2chla = 1
     
     
     water = {}
