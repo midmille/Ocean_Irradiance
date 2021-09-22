@@ -17,6 +17,8 @@ from netCDF4 import Dataset
 # import seapy 
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module import Ocean_Irradiance
+import os
+import sys
 import pickle
 
 
@@ -126,7 +128,8 @@ def ocean_color_sol(Eu_sol_dict, E_d_0, E_s_0):
 
 
 def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt, 
-                  z_r, E_d_0, E_s_0, E_u_h, coefficients, N=30, pt1_perc_zbot = True):
+                  z_r, E_d_0, E_s_0, E_u_h, coefficients, N=30, pt1_perc_zbot = True,
+                  method='bvp'):
     """
     
 
@@ -199,9 +202,15 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                 
                 phy = Ocean_Irradiance.Phy(z_r0, phy_profs, a, b)    
                 
-                ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
-                                                                ab_wat, coefficients, phy, N=N, 
-                                                                pt1_perc_zbot = pt1_perc_zbot)
+                if method == 'bvp':
+                    
+                    ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
+                                                                      ab_wat, coefficients, phy, N=N, 
+                                                                      pt1_perc_zbot = pt1_perc_zbot)
+                elif method == 'Dut':
+                    ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_dutkiewicz(hbot,E_d_0,E_s_0,E_u_h,
+                                                                      ab_wat, coefficients, phy, N=N, 
+                                                                      pt1_perc_zbot = pt1_perc_zbot)
                 ## Ed
                 irr_arr[:,j,i,0] = ocean_irr_sol[0]
                 ## Es
@@ -215,17 +224,63 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     return irr_arr
 
 
-def plot_ocean_color():
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
+def Irradiance_Run(R_nc, nstp, save_dir, save_file): 
     
-    plt.figure()
-    plt.pcolormesh( ocean_color, cmap="nipy_spectral", norm = mpl.colors.LogNorm(), vmin=.01, vmax=66)#, cmap='nipy_spectral')
-    plt.colorbar(label='Chl-a')
-    plt.ylabel('Degrees Lattitude')
-    plt.xlabel('Degress Longitude')
-    plt.title('Ocean Color')
-    plt.show()
+    
+    ## The name of the file that the python Eu dict will be saved to as pickle.
+    # save_file = f'irr_dict_nstp_{nstp}.p'
+    # save_dir = 'Irr_Field_Out'
+    save_path = f'{save_dir}/{save_file}'
+    ## Python calculated Eu at surface 
+    ##---------------------------------
+    ## Checking if save file exists
+    ## if it doesn't exist then redo calculation
+    if os.path.exists(save_path) == False:
+        ## User input required so not to overwrite or redo unnecessarily... 
+        y_or_n = input('File does not exist, continue with calculation? [y/n] ')
+        if y_or_n == 'n': 
+            sys.exit('Stopping...')
+        elif y_or_n == 'y':
+            print('ok, statrting calculations...')
+            
+        mask = np.ones((R_nc.nyi, R_nc.nxi))
+        irr_field_py = {}
+        for lam in R_nc.wavelengths:
+            print('Current Wavelength:', lam)
+            irr_field_py[lam] = Ocean_Irradiance_Field(mask, 
+                                              R_nc.ab_wat[lam], 
+                                              R_nc.ab_diat[lam], 
+                                              R_nc.ab_syn[lam], 
+                                              R_nc.chl_diatom[nstp,:,:,:], 
+                                              R_nc.chl_nanophyt[nstp,:,:,:], 
+                                              R_nc.z_r[nstp,:,:,:], 
+                                              R_nc.Ed0, 
+                                              R_nc.Es0, 
+                                              R_nc.Euh,
+                                              N= R_nc.N_irr, 
+                                              method = 'Dut')
+        
+        pickle.dump(irr_field_py, open(save_path, "wb"))
+        print('Python calculation complete and saved')
+        
+    ## if the save file does exist then just load it. gity 
+    elif os.path.exists(save_path) == True:
+        print(f'Irradiance save file exists! Loading python calculated irradiance field from file "{save_file}"...')
+        irr_field_py = pickle.load(open(save_path,'rb'))
+        print('Yay, file loaded :)')
+
+
+# def plot_ocean_color():
+#     import matplotlib.pyplot as plt
+#     import matplotlib as mpl
+    
+#     plt.figure()
+#     plt.pcolormesh( ocean_color, cmap="nipy_spectral", norm = mpl.colors.LogNorm(), vmin=.01, vmax=66)#, cmap='nipy_spectral')
+#     plt.colorbar(label='Chl-a')
+#     plt.ylabel('Degrees Lattitude')
+#     plt.xlabel('Degress Longitude')
+#     plt.title('Ocean Color')
+#     plt.show()
     
     
 if __name__ == '__main__':
@@ -237,6 +292,8 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Ocean Irradiance ROMS Wrapper')
     parser.add_argument('file', help = "Complete Path to ROMS nc file" )
+    parser.add_argument('save_file_name', help = "The name of the pickle file in which the result will be stored" )
+    parser.add_argument('save_dir', help = "The name and path of the direcotry in which the result will be stored" )
     # parser.add_argument('dest_file', help='Path to Destination Directory. Saved as pickle')
     parser.add_argument('--plot', action='store_true', help="Visualization of Result")
     args = parser.parse_args()
@@ -252,34 +309,41 @@ if __name__ == '__main__':
     ## settting time step index
     time_step_index = 0
     
+    Irradiance_Run(R_nc, time_step_index, args.save_dir, args.save_file_name)
+    
+    
+    
+    
+    
+    
     ## THIS IS DEPRICATED!!! JUST ADD TO R_nc OBject.... R_nc does not inclued NetCDF object any more 
     ## This is due to difficulty with pickling.
     # lon_rho = R_nc.roms_nc.variables['lon_rho'][:]
     # lat_rho = R_nc.roms_nc.variables['lat_rho'][:]
 
-    ## Calculating Eu at Surface dictionary. 
-    #--------------------------------------------------------------------------
-    Eu_surface_dict = {}
-    for lam in PI.wavelengths: 
+    # ## Calculating Eu at Surface dictionary. 
+    # #--------------------------------------------------------------------------
+    # Eu_surface_dict = {}
+    # for lam in PI.wavelengths: 
         
-        ##eyeballed absorbtion and scattering from Dut. 2015
-        ab_wat = abscat(lam, 'water')
-        ab_diat = abscat(lam, 'Diat') 
-        ab_syn = abscat(lam, 'Syn')
+    #     ##eyeballed absorbtion and scattering from Dut. 2015
+    #     ab_wat = abscat(lam, 'water')
+    #     ab_diat = abscat(lam, 'Diat') 
+    #     ab_syn = abscat(lam, 'Syn')
         
-        Eu_surface_dict[lam] = Ocean_Irradiance_Field(lam, R_nc.maskr, ab_wat, ab_diat, ab_syn, 
-                                             R_nc.diatom, R_nc.nanophyt, R_nc.z_w, 
-                                             R_nc.z_r, PI.Ed0, PI.Es0, PI.Euh,
-                                             PI.coefficients, PI.Chl2NL, PI.Chl2NS)[-1, :,:, 2]
+    #     Eu_surface_dict[lam] = Ocean_Irradiance_Field(lam, R_nc.maskr, ab_wat, ab_diat, ab_syn, 
+    #                                          R_nc.diatom, R_nc.nanophyt, R_nc.z_w, 
+    #                                          R_nc.z_r, PI.Ed0, PI.Es0, PI.Euh,
+    #                                          PI.coefficients, PI.Chl2NL, PI.Chl2NS)[-1, :,:, 2]
     
-    ## Ocean Color Calculation
-    #--------------------------------------------------------------------------
-    ocean_color = ocean_color_sol(Eu_surface_dict, PI.Ed0, PI.Es0)
-    pickle.dump(ocean_color, open("ocean_color.p", "wb"))
+    # ## Ocean Color Calculation
+    # #--------------------------------------------------------------------------
+    # ocean_color = ocean_color_sol(Eu_surface_dict, PI.Ed0, PI.Es0)
+    # pickle.dump(ocean_color, open("ocean_color.p", "wb"))
     
-    ## Plotting
-    #--------------------------------------------------------------------------
-    if args.plot:
+    # ## Plotting
+    # #--------------------------------------------------------------------------
+    # if args.plot:
 
-        plot_ocean_color()
+    #     plot_ocean_color()
     

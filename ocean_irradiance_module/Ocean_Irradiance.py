@@ -80,6 +80,39 @@ def numerical_Ed(z, c_d, Ed0):
     return Ed
 
 
+def numerical_Ed_2(z, c, Ed0):
+    
+    N = len(z)
+    Nm1 = N-1
+    Nm2 = N-2
+    #assert N == len(c)
+    A = np.zeros((N,N))
+    dz = abs(zarr[0] - zarr[1])
+    m = 1/(2*dz)
+    row_index = [i for i in range(Nm2,0,-1)]
+    j = -1
+    for i in row_index: 
+        A[i,j] = m
+        A[i,j-1] = -c[i]
+        A[i,j-2] = -m
+        j -= 1 
+    A[-1, -1] = 1
+    A[0,0] = -(c[0]+2*m)
+    A[0,1] = 2*m 
+    B = np.zeros(N) #must have same number of rows as A 
+    B[-1] = Ed0 ##setting the first number to the amplitude at surface
+    lu, piv = sp.linalg.lu_factor(A)
+    Ed = sp.linalg.lu_solve((lu, piv), B)
+    """
+    At = np.transpose(A)
+    AtA = At @ A
+    AtA_inverse = np.linalg.inv(AtA)
+    AtB = At @ B
+    x = (AtA_inverse @ AtB)
+    """
+    return Ed
+
+
 def zbot_func(E_d_0, c, z):
     """
     Finds the zbot for at which light ha attenuated to .1% of its surface value 
@@ -107,7 +140,7 @@ def zbot_func(E_d_0, c, z):
     Ed = analytical_Ed(z, c, E_d_0)
     for k, Ed_i in enumerate(Ed) :
         EdoE_d_0 = Ed_i / E_d_0
-        if EdoE_d_0 < .01 :
+        if EdoE_d_0 < .001 :
             print(EdoE_d_0)
             zbot = z[k] 
             return zbot
@@ -845,6 +878,268 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
     #Ed = analytical_Ed(zarr, c)
     
     return Ed, Es, Eu, z_out, c_Ed_z
+
+
+def ocean_irradiance_dutkiewicz_ROMS(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 30, 
+                     pt1_perc_zbot = True):
+    
+    def E_s_z(Nm1, E_d_z, z, zarr, c_p, c_m):
+        """
+        
+        Parameters
+        ----------
+        z : 1-D array of length N-1
+            This is the z that is chosen to represent z at in place in the column.
+            It is chosen for now to be the midpoint of the layer. 
+            Later could be chosen as any point but must know what layer the point exists in 
+        zarr : 1-D array of length N
+            The array that I have used for all the coefficients in this program 
+        c_p : 1-D array of length N
+            The values of c^+ that I found through Gaussian Elimination of tridiagonal
+        c_m : 1-D array of length N
+            The values of c^+ that I found through Gaussian Elimination of tridiagonal
+        
+        Returns
+        -------
+        E_s : 1-D array of length N-1
+            The Downward diffuse irradiance solution. 
+        
+        """
+        ##midpoint z values in general solution. 
+        # E_d_z = numerical_Ed(c) ##the downward direct irradiance at edges z 
+        E_s = np.zeros(Nm1)
+        for k in range(Nm1,0,-1):
+            E_s[k-1] = (c_p[k])*(np.exp((-kap_p[k])*(-(z[k-1] - zarr[k])))) + (c_m[k])*(r_m[k])*((np.exp((kap_m[k])*(-(z[k-1] - zarr[k-1]))))) + (x[k])*(E_d_z[k])
+        return E_s 
+
+
+    def E_u_z(Nm1, E_d_z, z, zarr, c_p, c_m):
+        """
+        
+        Parameters
+        ----------
+        z : 1-D array of length N-1
+            This is the z that is chosen to represent z at in place in the column.
+            It is chosen for now to be the midpoint of the layer. 
+            Later could be chosen as any point but must know what layer the point exists in 
+        zarr : 1-D array of length N
+            The array that I have used for all the coefficients in this program 
+        c_p : 1-D array of length N
+            The values of c^+ that I found through Gaussian Elimination of tridiagonal
+        c_m : 1-D array of length N
+            The values of c^+ that I found through Gaussian Elimination of tridiagonal
+        
+        Returns
+        -------
+        E_u : 1-D array of length N-1
+            The upwelling irradiance solution. 
+        
+        """
+        ##midpoint z values in general solution. 
+        # E_d_z = numerical_Ed(c) ##the downward direct irradiance at edges 
+        E_u = np.zeros(Nm1)
+        for k in range(Nm1,0,-1):
+            
+            E_u[k-1] = (c_p[k])*(r_p[k])*(np.exp((-kap_p[k])*(-(z[k-1] - zarr[k])))) + (c_m[k])*(r_m[k])*((np.exp((kap_m[k])*(-(z[k-1] - zarr[k-1]))))) + (y[k])*(E_d_z[k])
+        
+        return E_u 
+
+    ## PARAMS FROM DUTKIEWICZ 2015 
+    r_s, r_u, v_d, v_s, v_u = coefficients
+    
+    ##N centers
+    Nm1 = N - 1  
+    
+    ##unpacking the ab_wat_tuple 
+    a_wat,b_wat = ab_wat 
+    a = a_wat
+    b = b_wat 
+    
+    ## If phytoplankton, otherwise just water in column.
+    if phy: 
+        
+        ## unpacking the phytoplankton object
+
+        z_phy = phy.z
+
+        Nphy = phy.Nphy
+        
+        ## array for different phy
+        phy_prof = phy.phy
+        
+        ## coefficients
+        a_phy = phy.a
+        b_phy = phy.b
+        
+        ## Just one phytoplankton species
+        if Nphy == 1 : 
+            a = a + phy_prof * a_phy
+            b = b + phy_prof * b_phy
+            
+        ## More than one species
+        elif Nphy > 1 : 
+            for k in range(Nphy):
+                a = a + phy_prof[:,k] * a_phy[k]  
+                b = b + phy_prof[:,k] * b_phy[k]
+                
+    c_wat = (a_wat+b_wat)/v_d ##used for analytical 
+    c_d = (a+b)/v_d
+    ## If pt1_perc_zbot is True
+    if pt1_perc_zbot == True :
+        ## Finding the zbot at the .1% light level. 
+        # zbot_pt1perc = zbot_func(Ed0, a_wat, b_wat, v_d)
+        zbot_pt1perc = zbot_func(Ed0, c_wat, z_phy)
+        ## choosing the smaller zbot and making negative
+        zbot = -min(abs(hbot), abs(zbot_pt1perc))
+    elif pt1_perc_zbot == False: 
+        zbot = hbot 
+    ## log transformed z grid.
+    # z = Log_Trans(zbot, N) 
+    ## linear z 
+    zarr = np.linspace(zbot, 0, N)
+    
+    
+    
+    ## Interpolating a,b vectors from z_phy to z.
+    ## Should I create another z_grid that denotes the centers for the a,b below
+    if phy: 
+        # print(z_phy)
+        # print(z)
+        ## FLipping the coordinates because the interpolation requires 'monotonically increasing'
+        a = np.interp(zarr,z_phy,a)
+        b = np.interp(zarr,z_phy,b)
+    else: 
+        a = np.full(N, a)
+        b = np.full(N, b)
+
+    b_b = .551*b 
+    b_f = b - b_b 
+    c = (a+b)/v_d ##used for analytical 
+    c_d = c
+    
+    ##maybe it is the downward direct coefficient?
+    
+    ##Making the matching constant of Dutkiewicz 
+    C_s = (a + r_s*b_b)/ v_s ##Cs 
+    C_u = (a + r_u*b_b)/ v_u ## Cu 
+    
+    B_u = (r_u*b_b)/v_u 
+    B_s = (r_s*b_b)/v_s 
+    
+    F_d = b_f / v_d  ##NOTE : Here I don't use what Dutkiewicz uses for F_d, B_d
+    B_d = b_b/ v_d  ##I use the coefficient of E_d from eq. 1,2,3 of Dutkiewicz 
+    
+    ##Inhomogeneous solution following Dutikiewicz, Eqaution B9 
+    ##first the det of M 
+    det_M = 1/((c_d - C_s)*(c_d + C_u) + B_s*B_u)
+    x = det_M*(-F_d*(c_d + C_u) - B_u*B_d)
+    y = det_M*(-F_d*B_s + B_d*(c_d - C_s))
+    
+    ##now definining some stuff for the homogeneous solution 
+    D = .5*(C_s + C_u + np.sqrt((C_s + C_u)**2 - 4*B_s*B_u))
+    
+    ##eigen values 
+    kap_m = D - C_s ##kappa minus 
+    kap_p = -(C_u - D )##kappa plus 
+    
+    ##eigen vectors 
+    r_p = B_s / D ## r plus 
+    r_m = B_u / D ## r minus 
+    
+    ##defining the exponential decays in each layer 
+    ##note that because our grid has a uniform spacing 
+    ##we can just let z_k+1 - z_k = dz = const. 
+    ##in ROMS this might not be the case, but it is a valid choice rn 
+    dz = abs(zarr[1] - zarr[0])
+    e_p = np.exp(-kap_p*dz) ##dz = const 
+    e_m = np.exp(-kap_m*dz) ##dz = xonst  
+    
+    ## A zero 2N by 2N matrix 
+    A = np.zeros((2*N,2*N))
+    
+    for k in range(Nm1,0,-1): ##this leaves space for boudnaries at top/ bottom 
+        ##since there is only k and k+1 it is ok to start at k =0
+        c1 = (e_p[k])*(1 - (r_p[k])*(r_m[k-1]))
+        c2 = (r_m[k]) - (r_m[k-1])
+        c3 = (1 - (r_p[k-1])*(r_m[k-1]))
+        #cxy = x[k+1] - x[k]- (y[k+1] - y[k])*(r_m[k+1]) ##needed for E_d vector
+        
+        c4 = (1 - (r_m[k])*(r_p[k]))
+        c5 = ((r_p[k-1]) - (r_p[k]))
+        c6 = (e_m[k-1])*(1- (r_m[k-1])*(r_p[k])) 
+        #cyx = y[k+1] - y[k] - (x[k+1] - x[k])*(r_p[k]) ##needed for E_d vector
+        
+        #if (k % 2) == 0: ##if odd, c1,c2,c3 will be first top of the weaved stack 
+        m = 2*k  ##odd numbers, k starting at zero 
+        A[m,(m + 1)] = c1 
+        A[m,m] = c2 
+        A[m,(m - 1)] = -c3
+        
+        n = 2*k - 1 ##even numbers k starting at zero 
+        A[n,(n + 1)] = c4 
+        A[n,n] = -c5 
+        A[n,(n - 1)] = -c6
+    
+    ##now some boundary conditions
+    ## c_kbot^+ = 0 at bottom thus, 
+    A[0,0] = 1
+    
+    
+    ##at top we use Dutkiewicz et al.(2015) setting E_s0 - xE_d0 = somthing 
+    A[-1,-1] = 1
+    A[-1,-2] = (r_m[-1])*np.exp(-(kap_m[-1])*(zarr[-2])) ## = E_s0 - x[0] * E_d0
+    
+    
+    ##YAY A is done 
+    
+    ##no for E_d 
+    
+    E_d = numerical_Ed(zarr, c_d, Ed0)
+    
+    E_d2 = np.zeros(2*N)
+    
+    for k in range(Nm1,0,-1):
+        cxy = x[k-1] - x[k]- (y[k-1] - y[k])*(r_m[k-1]) ##needed for E_d vector
+        cyx = y[k-1] - y[k] - (x[k-1] - x[k])*(r_p[k]) ##needed for E_d vector
+        E_d2[2*k] = cxy*E_d[k] ##technically this is E_d at k+1
+        E_d2[2*k-1] = cyx*E_d[k] ##techinically this is also
+    
+    ##now for setting the boundaries 
+    E_d2[-1] = Es0 - (x[-1])*Ed0
+    E_d2[0] = 0
+    
+    
+    
+    ##solving by LU-decomp. 
+    B = E_d2 
+    
+    lu, piv = sp.linalg.lu_factor(A)
+    x_lu = sp.linalg.lu_solve((lu, piv), B)
+    
+    c_p = np.zeros(N)
+    c_m = np.zeros(N)
+    # for i in range(2*Nm1,0,-1): 
+    #     if (i%2) == 0: 
+    #         c_m[int(i/2)] = x_lu[i]
+    #     else: 
+    #         c_p[int((i+1)/2)] = x_lu[i]
+    for i in range(N,0,-1):
+          c_p[i-1] = x_lu[2*(i)-1]
+          c_m[i-1] = x_lu[2*(i-1)]
+    
+
+    
+ 
+    
+    z = np.linspace(zarr[Nm1], 0, Nm1) ##z array for E_s_z and E_u_z 
+    
+    Ed_zarr = numerical_Ed(zarr, c_d, Ed0)
+    Es = E_s_z(Nm1, Ed_zarr, z, zarr, c_p, c_m)
+    Eu = E_u_z(Nm1, Ed_zarr, z, zarr, c_p, c_m)
+    Ed = numerical_Ed(z, c_d, Ed0)
+    
+    
+    return Ed, Es, Eu, z
     
 
 def artificial_phy_prof(z,loc,width,conc):
@@ -897,7 +1192,7 @@ def Demo():
 
     zbot = z[0]
 
-    Ed, Es, Eu, zarr, c_Ed_z = ocean_irradiance_dutkiewicz(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
+    Ed, Es, Eu, zarr = ocean_irradiance_dutkiewicz_ROMS(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
                                                     phy=phy, N=N, pt1_perc_zbot = False)
     
     # dev = .001
