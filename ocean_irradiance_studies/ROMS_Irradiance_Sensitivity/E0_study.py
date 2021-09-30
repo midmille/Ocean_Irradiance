@@ -36,7 +36,7 @@ def main(args):
     Ed0s = np.arange(.1,.9,.05)
     Es0s = 1 - Ed0s
     
-    run_dirbin = '/home/midmille/runs/20210729_test_light'
+    run_dirbin = '/home/midmille/runs/20210812_wc12'
     ## working directory, where the python file is run.
     cwd = os.getcwd()
     ## Where the pickle files will be
@@ -61,21 +61,21 @@ def main(args):
         print("Running Experiment")
         ## RUN EXPERIMENT
         ## --------------
-        RSS.Run(run_dirbin, 'nemuro.in', E0_name, E0s, E0_0, pick_outdir, pick_file_head)
+        RSS.Run(run_dirbin, 'bio_43532.in', 'ocean_43532.in', E0_name, E0s, E0_0, pick_outdir, pick_file_head)
  
     if args.plot: 
         
         ## Use OCx as comparison metric to start.
-        max_rel_diff = np.zeros((len(N_irrs)))
+        max_rel_diff = np.zeros((len(E0s)))
         ## The highest resolution is taken as truth.
-        R_nc_true = pickle.load(open(f'{pick_outdir}/{pick_file_head}{N_irrs[-1]}.p','rb'))
+        R_nc_true = pickle.load(open(f'{pick_outdir}/{pick_file_head}{E0s[0].split()[0]}.p','rb'))
         OCx_true = R_nc_true.OCx
         ## Looping over the independent variable.
         nstp = 1
-        for k,N_irr in enumerate(N_irrs): 
+        for k,E0 in enumerate(E0s): 
             ## Loading from corresponding pickle file.
-            R_nc = pickle.load(open(f'{pick_outdir}/{pick_file_head}{N_irr}.p','rb'))
-            print(N_irr)
+            R_nc = pickle.load(open(f'{pick_outdir}/{pick_file_head}{E0.split()[0]}.p','rb'))
+            print(E0)
             print('k',k)
             ## Calculating relative difference from truth. 
             max_rel_diff[k] = np.max(abs(OCx_true[nstp,:,:] - R_nc.OCx[nstp,:,:]) / OCx_true[nstp,:,:])
@@ -87,7 +87,7 @@ def main(args):
         
         fig,ax = plt.subplots()
         
-        ax.plot(N_irrs, max_rel_diff)
+        ax.plot(Ed0s, max_rel_diff)
         ax.grid()
         ax.set_title('N_irr Sensitivity Study')
         ax.set_xlabel('N_irr [Number of Edges in Irradiance Grid]')

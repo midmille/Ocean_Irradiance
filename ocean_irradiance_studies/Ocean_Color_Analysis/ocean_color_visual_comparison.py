@@ -20,7 +20,7 @@ def Plot_Comparison(chl_mat, chl_irr, chl_obs, obs_Ygrid, obs_Xgrid):
     fig, axes = plt.subplots(1,3)
     (ax1,ax2,ax3) = axes 
     
-    vmin,vmax = (0,1)
+    vmin,vmax = (0,3)
     cmap='nipy_spectral'
     
     im1 = ax1.pcolormesh(chl_mat, vmin=vmin, vmax=vmax, cmap=cmap)

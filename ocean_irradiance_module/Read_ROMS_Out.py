@@ -21,8 +21,9 @@ class ROMS_netcdf:
     
     def __init__(self, file, Init_ROMS_Irr_Params=True):
         
+
         self.file = file
-        PI = Param_Init(self.file)
+        PI = Param_Init()
         ##NOTE: this takes a little while to compute, save object as pickle for recurring problem. 
         ## The ROMS data as a data set object
         roms_nc = Dataset(self.file, 'r')

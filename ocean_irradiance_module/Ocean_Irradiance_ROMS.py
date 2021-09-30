@@ -178,7 +178,10 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     ##Not a Number array so the land is Nan, not 0, helps make land white in pcolormesh
     ## The size four fourth dimension is for the irradiance field
     ## Ed, Es, Eu, z in that order.
-    irr_arr = np.zeros((N,nyi,nxi,4)) * np.nan 
+    if method == 'bvp':
+        irr_arr = np.zeros((N,nyi,nxi,4)) * np.nan 
+    if method == 'Dut':
+        irr_arr = np.zeros((N-1,nyi,nxi,4)) * np.nan 
     count = 0
     for j in range(nyi): 
         for i in range(nxi):
@@ -210,7 +213,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                 elif method == 'Dut':
                     ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_dutkiewicz(hbot,E_d_0,E_s_0,E_u_h,
                                                                       ab_wat, coefficients, phy, N=N, 
-                                                                      pt1_perc_zbot = pt1_perc_zbot)
+                                                                      pt1_perc_zbot = True)
                 ## Ed
                 irr_arr[:,j,i,0] = ocean_irr_sol[0]
                 ## Es
@@ -224,7 +227,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     return irr_arr
 
 
-def Irradiance_Run(R_nc, nstp, save_dir, save_file): 
+def Irradiance_Run(R_nc, PI, nstp, save_dir, save_file): 
     
     
     ## The name of the file that the python Eu dict will be saved to as pickle.
@@ -243,22 +246,24 @@ def Irradiance_Run(R_nc, nstp, save_dir, save_file):
         elif y_or_n == 'y':
             print('ok, statrting calculations...')
             
-        mask = np.ones((R_nc.nyi, R_nc.nxi))
+        #mask = np.ones((R_nc.nyi, R_nc.nxi))
         irr_field_py = {}
         for lam in R_nc.wavelengths:
             print('Current Wavelength:', lam)
-            irr_field_py[lam] = Ocean_Irradiance_Field(mask, 
-                                              R_nc.ab_wat[lam], 
-                                              R_nc.ab_diat[lam], 
-                                              R_nc.ab_syn[lam], 
+            irr_field_py[lam] = Ocean_Irradiance_Field(
+                                              R_nc.maskr, 
+                                              abscat(lam, 'water'), 
+                                              abscat(lam, 'Diat'), 
+                                              abscat(lam, 'Syn'), 
                                               R_nc.chl_diatom[nstp,:,:,:], 
                                               R_nc.chl_nanophyt[nstp,:,:,:], 
                                               R_nc.z_r[nstp,:,:,:], 
-                                              R_nc.Ed0, 
-                                              R_nc.Es0, 
-                                              R_nc.Euh,
-                                              N= R_nc.N_irr, 
-                                              method = 'Dut')
+                                              PI.Ed0, 
+                                              PI.Es0, 
+                                              PI.Euh,
+                                              PI.coefficients,
+                                              N= 100, 
+                                              method = 'bvp')
         
         pickle.dump(irr_field_py, open(save_path, "wb"))
         print('Python calculation complete and saved')
@@ -298,18 +303,18 @@ if __name__ == '__main__':
     parser.add_argument('--plot', action='store_true', help="Visualization of Result")
     args = parser.parse_args()
     
-    file = args.file
-    
+    print(args.file)
+
     PI = Param_Init()
-    R_nc = ROMS_netcdf(file)
+    R_nc = ROMS_netcdf(args.file)
 
     ## updating default to wavelengths necessary for the OCx_algorithim
-    PI.wavelengths = [443,551]
+    R_nc.wavelengths = [443,551]
 
     ## settting time step index
-    time_step_index = 0
+    time_step_index = 1
     
-    Irradiance_Run(R_nc, time_step_index, args.save_dir, args.save_file_name)
+    Irradiance_Run(R_nc, PI, time_step_index, args.save_dir, args.save_file_name)
     
     
     

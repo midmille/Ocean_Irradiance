@@ -22,7 +22,7 @@ import ocean_irradiance_module.Shell_Script_Tools as SST
 from ocean_irradiance_module.Read_ROMS_Out import ROMS_netcdf 
 
 
-def Run(run_dirbin, in_file_name, var_name, var_vals, var_val0, pick_outdir,
+def Run(run_dirbin, bio_in_file_name, roms_in_file, var_name, var_vals, var_val0, pick_outdir,
         pick_file_head):
          
     ## changing working dir to run_dirbin to run ROMS... maybe dir change should be out of loop.
@@ -36,7 +36,7 @@ def Run(run_dirbin, in_file_name, var_name, var_vals, var_val0, pick_outdir,
     ## Big Loop over N_irr
     ## --------------------
     ## Setting the old string instance to the current instance.
-    old_instr = var_val0
+    old_instr =f'{var_name} == {var_val0}'
 
     ## Looop
     for k,var_val in enumerate(var_vals): 
@@ -46,19 +46,19 @@ def Run(run_dirbin, in_file_name, var_name, var_vals, var_val0, pick_outdir,
         
         
         ## First step of the loop is to edit the '.in' files. 
-        SST.Edit_ROMS_In_File(in_file_name, old_instr, new_instr)
+        SST.Edit_ROMS_In_File(bio_in_file_name, old_instr, new_instr)
         
         ## RUN ROMS
         ## --------
 
-        out = subprocess.run(['mpirun', '-np', '9', 'romsM', 'roms_upwelling.in'])
+        out = subprocess.run(['mpirun', '-np', '10', 'romsM', roms_in_file])
         ## Check for completion.
         if out.returncode != 0:
             sys.exit('Non-Zero Retun Code... Exiting ROMS RUN.')
         
             
         ## netcdf object and pickle save 
-        nc_file = 'output/roms_his.nc'
+        nc_file = 'output/wc12_his_43532.nc'
         ## Making ROMS_netcdf object
         R_nc = ROMS_netcdf(nc_file,Init_ROMS_Irr_Params=(True))
         ## Saving Object
@@ -79,7 +79,7 @@ def Run(run_dirbin, in_file_name, var_name, var_vals, var_val0, pick_outdir,
     
     ## After the RUN loop change the file back to its originaal state
     ## replace the last used instance in file with the original instance, ie first in list.
-    SST.Edit_ROMS_In_File(f'{run_dirbin}/nemuro.in', old_instr, var_val0 )
+    SST.Edit_ROMS_In_File(f'{run_dirbin}/{bio_in_file_name}', old_instr, var_val0 )
     
     ## Change back to working directory.
     os.chdir(cwd)

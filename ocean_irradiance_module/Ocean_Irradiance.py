@@ -133,16 +133,15 @@ def zbot_func(E_d_0, c, z):
         .01% light level zbot. 
 
     """
-    # zbots = np.linspace(0, -1000, 2001) 
+    zbots = np.linspace(0, -1000, 2001) 
     # c = (a_wat + b_wat) / v_d
-    c = np.flip(c)
-    z = np.flip(z)
-    Ed = analytical_Ed(z, c, E_d_0)
+#    c = np.flip(c)
+#    z = np.flip(z)
+    Ed = analytical_Ed(zbots, c, E_d_0)
     for k, Ed_i in enumerate(Ed) :
         EdoE_d_0 = Ed_i / E_d_0
-        if EdoE_d_0 < .001 :
-            print(EdoE_d_0)
-            zbot = z[k] 
+        if EdoE_d_0 < .01 :
+            zbot = zbots[k] 
             return zbot
    
         
@@ -433,13 +432,12 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
 
-    ##coefficient of downward direct irradiance 
-    c_d = (a+b)/v_d 
     
     ## If pt1_perc_zbot is True
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
-        zbot_pt1perc = zbot_func(Ed0, c_d, z_phy)
+        c_wat = (a_wat + b_wat)/v_d
+        zbot_pt1perc = zbot_func(Ed0, c_wat, z_phy)
         print(zbot_pt1perc)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
@@ -461,6 +459,8 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 
         a = np.full(N, a)
         b = np.full(N, b)
         
+    ##coefficient of downward direct irradiance 
+    c_d = (a+b)/v_d 
     # if N != len(Ed1) or N !=len(a)+1 or N !=len(b)+1 :
     #     print('lengths of z and Ed must be the same, and a&b should be 1 less.')
         
@@ -726,9 +726,14 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
     elif pt1_perc_zbot == False: 
         zbot = hbot 
     ## log transformed z grid.
-    # z = Log_Trans(zbot, N) 
+    z = Log_Trans(zbot, N) 
+    z_out = np.zeros(Nm1)
+    for k in range(Nm1):   
+        dz = z[k+1] - z[k]  
+        z_out[k] = z[k] + dz/2 
+    z_out = np.flip(z_out)
     ## linear z 
-    z = np.linspace(zbot, 0, N)
+    #z = np.linspace(zbot, 0, N)
     
     
     
@@ -788,11 +793,7 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
     ##note that because our grid has a uniform spacing 
     ##we can just let z_k+1 - z_k = dz = const. 
     ##in ROMS this might not be the case, but it is a valid choice rn 
-    dz = abs(z[1] - z[0])
-    e_p = np.exp(-kap_p*dz) ##dz = const 
-    e_m = np.exp(-kap_m*dz) ##dz = xonst  
-    
-    ##Now for making the coefficient matrix 
+        ##Now for making the coefficient matrix 
     ##For this problem instead of stacking the state vectors
     ##I will be interweaving them by alternating c^plus and c^minus. 
     ##This should give a tri-diagonal matrix 
@@ -802,7 +803,11 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
     A = np.zeros((2*N,2*N))
     
     for k in range(0, N-1): ##this leaves space for boudnaries at top/ bottom 
-        ##since there is only k and k+1 it is ok to start at k =0
+        dz = abs(z[k+1] - z[k])
+        e_p = np.exp(-kap_p*dz) ##dz = const 
+        e_m = np.exp(-kap_m*dz) ##dz = xonst  
+    
+       ##since there is only k and k+1 it is ok to start at k =0
         c1 = (e_p[k])*(1 - (r_p[k])*(r_m[k+1]))
         c2 = (r_m[k]) - (r_m[k+1])
         c3 = (1 - (r_p[k+1])*(r_m[k+1]))
@@ -862,22 +867,20 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
             c_m[int((i-1)/2)] = x_lu[i]
     
       
-    # z_out = np.linspace(z[0] - dz/2,z[-1] + dz/2, N-1) ##z array for E_s_z and E_u_z 
-    z_out = np.linspace(0,z[-1] + dz/2, N-1)
-    print("z_out:", z_out)
+    #z_out = np.linspace(z[0] ,z[-1], N-1) ##z array for E_s_z and E_u_z 
+   # z_out = np.linspace(0,z[-1] + dz/2, N-1)
 
     Ed = np.flip(numerical_Ed(np.flip(z_out), np.flip(c_Ed_z), Ed0))
     Es = E_s_z(z_out, z, c_p, c_m, Ed)
     Eu = E_u_z(z_out, z, c_p, c_m, Ed)
 
-    print(c_Ed_z)
     
     # print(c_Ed_z)
     #Es = x_lu[:N]
     #Eu = x_lu[N:] 
     #Ed = analytical_Ed(zarr, c)
     
-    return Ed, Es, Eu, z_out, c_Ed_z
+    return Ed, Es, Eu, z_out
 
 
 def ocean_irradiance_dutkiewicz_ROMS(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 30, 
@@ -1167,10 +1170,10 @@ def Demo():
     Nm1 = N-1 
     lam =443
     
-    # z = np.linspace(-600,0,N)
+    z = np.linspace(-600,0,N)
 
-    # phy_prof = artificial_phy_prof(z, -90, 1,1.5)
-    ROMS_point = np.genfromtxt('C:/Users/miles/Downloads/ChrisData_good_point.csv', delimiter=',')
+    #phy_prof = artificial_phy_prof(z, -90, 40,1.5)
+    ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     phy_prof = ROMS_point[1:,2]
     print(phy_prof)
     z = ROMS_point[1:,0]
@@ -1192,7 +1195,7 @@ def Demo():
 
     zbot = z[0]
 
-    Ed, Es, Eu, zarr = ocean_irradiance_dutkiewicz_ROMS(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
+    Ed, Es, Eu, zarr = ocean_irradiance_dutkiewicz(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
                                                     phy=phy, N=N, pt1_perc_zbot = False)
     
     # dev = .001
@@ -1244,9 +1247,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # if args.demo: 
-    zarr, Ed, c_Ed_z = Demo()
+    zarr, Ed = Demo()
     
-    Ed_redo = np.flip(numerical_Ed(np.flip(zarr), np.flip(c_Ed_z), .7))
+    #Ed_redo = np.flip(numerical_Ed(np.flip(zarr), np.flip(c_Ed_z), .7))
 
 
 
