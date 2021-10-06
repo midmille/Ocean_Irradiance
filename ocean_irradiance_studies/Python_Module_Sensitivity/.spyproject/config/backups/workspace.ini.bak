@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = empty-project-type
-recent_files = ['R_rs_sensitivity_study.py', '..\\..\\ocean_irradiance_module\\Ocean_Irradiance.py', '..\\..\\ocean_irradiance_module\\Ocean_Irradiance_ROMS.py', '..\\..\\ocean_irradiance_module\\absorbtion_and_scattering_coefficients.py', 'zbot_pure_water_and_artificial_prof_study.py', '..\\..\\ocean_irradiance_module\\Wavelength_To_RGB.py', 'Pure_Water_Sensitivity_Studies.py']
+recent_files = ['..\\..\\ocean_irradiance_module\\Ocean_Irradiance.py', '..\\..\\ocean_irradiance_module\\Ocean_Irradiance_ROMS.py', '..\\Python_Fortran_Comparison\\irr_field_comparison.py', '..\\..\\ocean_irradiance_module\\absorbtion_and_scattering_coefficients.py', '..\\..\\..\\..\\Old_Work\\SUMMER WORK (old)\\Spectral Equations\\Dutkiewicz Appendix B soltion.py', '..\\..\\..\\..\\Old_Work\\SUMMER WORK (old)\\Spectral Equations\\OCEAN IRRADIANCE for ROMS.py']
 
 [main]
 version = 0.2.0
