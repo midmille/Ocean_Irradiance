@@ -700,7 +700,7 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
         c_wat = (a_wat + b_wat)/v_d
-        zbot_pt1perc = OI.zbot_func(Ed0, c_wat, z_phy)
+        zbot_pt1perc = zbot_func(Ed0, c_wat, z_phy)
         print(zbot_pt1perc)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
@@ -1377,13 +1377,14 @@ def Demo():
     Nm1 = N-1 
     lam =443
     
-    z = np.linspace(-600,0,N)
+   # z = np.linspace(-600,0,N)
+    z = Log_Trans(-600, N) 
 
     phy_prof = artificial_phy_prof(z, -90, 40,1.5)
-    # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
-    # phy_prof = ROMS_point[1:,2]
-    # print(phy_prof)
-    # z = ROMS_point[1:,0]
+   # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
+   # phy_prof = ROMS_point[1:,2]
+   # print(phy_prof)
+   # z = ROMS_point[1:,0]
     # phy_prof = np.full(len(z), 1)
     
     ab_wat = abscat(lam, 'water')
@@ -1411,9 +1412,8 @@ def Demo():
     # Ed, Es, Eu, zarr, c_Ed_z = ocean_irradiance_dutkiewicz(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
     #                                             phy=phy, N=N, pt1_perc_zbot = False)
                                         
-    Ed, Es, Eu, zarr = ocean_irradiance(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
-                                        phy=phy, N=N, pt1_perc_zbot = False,
-                                        use_bvp_solver = False)
+    Ed, Es, Eu, zarr = ocean_irradiance_shoot_up(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
+                                        phy=phy, N=N, pt1_perc_zbot = True)
 
     ## Plotting the Results
     #-------------------------------------------------------------------------

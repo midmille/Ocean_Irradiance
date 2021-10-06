@@ -178,7 +178,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     ##Not a Number array so the land is Nan, not 0, helps make land white in pcolormesh
     ## The size four fourth dimension is for the irradiance field
     ## Ed, Es, Eu, z in that order.
-    if method == 'bvp':
+    if method == 'bvp' or method == 'bvp_up':
         irr_arr = np.zeros((N,nyi,nxi,4)) * np.nan 
     if method == 'Dut':
         irr_arr = np.zeros((N-1,nyi,nxi,4)) * np.nan 
@@ -210,10 +210,15 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                     ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
                                                                       ab_wat, coefficients, phy, N=N, 
                                                                       pt1_perc_zbot = pt1_perc_zbot)
+                elif method == 'bvp_up':
+                    
+                    ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_shoot_up(hbot,E_d_0,E_s_0,E_u_h,
+                                                                      ab_wat, coefficients, phy, N=N, 
+                                                                      pt1_perc_zbot = pt1_perc_zbot)
                 elif method == 'Dut':
                     ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_dutkiewicz(hbot,E_d_0,E_s_0,E_u_h,
                                                                       ab_wat, coefficients, phy, N=N, 
-                                                                      pt1_perc_zbot = True)
+                                                                      pt1_perc_zbot = pt1_perc_zbot)
                 ## Ed
                 irr_arr[:,j,i,0] = ocean_irr_sol[0]
                 ## Es
@@ -263,7 +268,7 @@ def Irradiance_Run(R_nc, PI, nstp, save_dir, save_file):
                                               PI.Euh,
                                               PI.coefficients,
                                               N= 100, 
-                                              method = 'bvp')
+                                              method = 'bvp_up')
         
         pickle.dump(irr_field_py, open(save_path, "wb"))
         print('Python calculation complete and saved')

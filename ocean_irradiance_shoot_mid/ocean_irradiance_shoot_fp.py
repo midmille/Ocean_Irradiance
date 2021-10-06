@@ -339,13 +339,13 @@ def Demo(method='shoot_up'):
     
     PI = Param_Init()
     
-    N = 10000
+    N = 300
     Nm1 = N-1 
     lam =443
     
     z = np.linspace(-600,0,N)
 
-    phy_prof = OI.artificial_phy_prof(z, -90, 40,3.5)
+    phy_prof = OI.artificial_phy_prof(z, -90, 40,1.5)
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
     # print(phy_prof)
@@ -418,4 +418,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # if args.demo: 
-    zarr, Ed = Demo('shoot_down')
+    zarr, Ed = Demo('shoot_up')
