@@ -213,7 +213,7 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     Eu1[0] = Euh ##bottom
     
     ## Default number of shots for BVP shoot method solution
-    shots = 3
+    shots =3
     
     ##unpacking the ab_wat_tuple 
     a_wat,b_wat = ab_wat 
@@ -327,6 +327,213 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
 
 
 
+def ocean_irradiance_shoot_fp(hbot, fp, fpi, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 30, 
+                     pt1_perc_zbot = True):
+    
+    
+    """
+    The main ocean_irradiance function that calculates the three stream model solution 
+    following the equations and coefficients of Dutkiewicz (2015) and solved as a boundary 
+    value problem using the shooting method. This version shoots to a fixed point from both directions
+    and solves for continuity. 
+
+    Parameters
+    ----------
+    hbot : Float  
+        True bottom depth of water column. 
+    E_d_0 : Float
+        Initial value of downward direct irradiance. 
+    E_s_0 : Float
+        Initial value of downward diffuse irradiance. 
+    E_u_h : Float
+        Boundary Condition on upwelling irradiance at h. 
+    ab_wat : Tuple, length==2, (a_wat,b_wat).  
+        Absorbtion and scattering coefficients for water. 
+    coeffcients : Tuple, length == 5. 
+        Coefficients taken from Dutkiewicz such as the average of cosines and sines. 
+    phy : optional, default is None, else Phy object. 
+        Gives information as according to Phy class on phytoplankton profile(s), 
+        corresponding z-grid, and coefficients of absorbtion and scattering for each
+        respective species of phytoplankton. 
+    N : Float, default is 30
+        The number of layers in the logarithmic grid. 
+    pt1_perc_zbot : Boolean, default is True
+        True refers to using the .1% light level as the zbot so long as that the magnitude 
+        of the .1% light level is smaller than the magnitude of hbot. False refers
+        to just using given hbot as zbot. 
+
+    Returns
+    -------
+    Ed : 1-D Array
+        Downward direct irradiance. 
+    Es : 1-D Array
+        Downward diffuse irradiance. 
+    Eu : 1-D Array
+        Downward diffuse irradiance. 
+    z : 1-D Array
+        The grid that the irradiances are calculated on. 
+
+    """
+    ## PARAMS FROM DUTKIEWICZ 2015 
+    r_s, r_u, v_d, v_s, v_u = coefficients
+    
+    ##N centers
+    Nm1 = N - 1  
+    
+    ##initial guess... doesn't matter too much
+    init_guess = .001
+    # init_guess = 0
+    
+    Ed1 = np.full(N, init_guess)
+    Es1 = np.full(N, init_guess)
+    Eu1 = np.full(N, init_guess) 
+    
+    ## BCs included in the initial guess arrays
+    Ed1[Nm1] = Ed0 ##surface 
+    Es1[Nm1] = Es0 ##surface 
+    Eu1[0] = Euh ##bottom
+    
+    ## Default number of shots for BVP shoot method solution
+    shots = 20
+    
+    ##unpacking the ab_wat_tuple 
+    a_wat,b_wat = ab_wat 
+    a = a_wat
+    b = b_wat 
+    
+    ## If phytoplankton, otherwise just water in column.
+    if phy: 
+        
+        ## unpacking the phytoplankton object
+        z_phy = phy.z
+        Nphy = phy.Nphy
+        
+        ## array for different phy
+        phy_prof = phy.phy
+        
+        ## coefficients
+        a_phy = phy.a
+        b_phy = phy.b
+        
+        ## Just one phytoplankton species
+        if Nphy == 1 : 
+            a = a + phy_prof * a_phy
+            b = b + phy_prof * b_phy
+            
+        ## More than one species
+        elif Nphy > 1 : 
+            for k in range(Nphy):
+                a = a + phy_prof[:,k] * a_phy[k]  
+                b = b + phy_prof[:,k] * b_phy[k]
+
+    
+    ## If pt1_perc_zbot is True
+    if pt1_perc_zbot == True :
+        ## Finding the zbot at the .1% light level. 
+        c_wat = (a_wat + b_wat)/v_d
+        zbot_pt1perc = OI.zbot_func(Ed0, c_wat, z_phy)
+        print(zbot_pt1perc)
+        ## choosing the smaller zbot and making negative
+        zbot = -min(abs(hbot), abs(zbot_pt1perc))
+    elif pt1_perc_zbot == False: 
+        zbot = hbot 
+    ## log transformed z grid.
+    # z = Log_Trans(zbot, N) 
+    ## linear z 
+    z = np.linspace(zbot, 0, N)
+    ## The fpi is the 80% point, closer to surface
+    fpi = int(.99 * N)
+    fp = z[fpi]
+    
+    
+    
+    ## Interpolating a,b vectors from z_phy to z.
+    ## Should I create another z_grid that denotes the centers for the a,b below
+    if phy: 
+        a = np.interp(z,z_phy,a)
+        b = np.interp(z,z_phy,b)
+    else: 
+        a = np.full(N, a)
+        b = np.full(N, b)
+        
+    ##coefficient of downward direct irradiance 
+    c_d = (a+b)/v_d 
+    # if N != len(Ed1) or N !=len(a)+1 or N !=len(b)+1 :
+    #     print('lengths of z and Ed must be the same, and a&b should be 1 less.')
+        
+
+    b_b = .551*b
+    b_f = b - b_b 
+
+    
+    ## Irradiances Up
+    Edd=np.copy(Ed1)
+    Esd=np.copy(Es1)
+    Eud=np.copy(Eu1)
+    
+    ## Irradiances down
+    Edu=np.copy(Ed1)
+    Esu=np.copy(Es1)
+    Euu=np.copy(Eu1)
+ 
+    Es0_tried = []
+    Eu0_tried = []
+    
+    Fmetric_Es = []
+    Fmetric_Eu = []
+    Fmetric = []
+     
+    for jsh in range(shots) :
+    # Integrate down from the top to ensure Ed(1) and Es(1) are good.
+         if jsh == 0:
+             dEs = 0 #-Eu[Nm1]
+             dEu = 0
+         elif jsh == 1:
+         # for the first case, need some adjustment to get gradient.
+             dEu = .02 #max(0.01,0.03*Es[Nm1])
+             dEs = 0.01
+         else: 
+
+             Jslope_Es = (Fmetric_Es[jsh-2]-Fmetric_Es[jsh-1]) / (Es0_tried[jsh-2]-Es0_tried[jsh-1]) 
+             Jslope_Eu = (Fmetric_Eu[jsh-2]-Fmetric_Eu[jsh-1]) / (Eu0_tried[jsh-2]-Eu0_tried[jsh-1])
+             
+             dEs = -Fmetric_Es[jsh-1]/Jslope_Es
+             dEu = -Fmetric_Eu[jsh-1]/Jslope_Eu
+             # print(Jslope)
+         # dEs = max(-Es[0], dEs)  # make sure Es can't go below 0
+         # dEs = min(1-Es[0],dEs) # make sure Es can't go above 1
+         # print(dEs)
+         Esu[0] = Esu[0] + dEs
+         Es0_tried.append(Esu[0])
+         
+         Eud[Nm1] = Eud[Nm1] + dEu
+         Eu0_tried.append(Eud[Nm1])
+ 
+         # Edmid = np.zeros(Nm1)
+         ## integrate Es down the water column
+         ## The range does not actually go to k=-1, only to k=0. 
+         ## i.e. does not include stop point of range. 
+         # for k in range(Nm1-1 , -1, -1) :
+         Edu, Esu, Euu = Irradiance_RK4(Nm1, Edu, Esu, Euu, z, a, b, c_d, b_b, b_f, 
+                                     r_s, r_u, v_d, v_s, v_u, direction='up')
+         Edd, Esd, Eud = Irradiance_RK4(Nm1, Edd, Esd, Eud, z, a, b, c_d, b_b, b_f, 
+                                     r_s, r_u, v_d, v_s, v_u, direction='down')
+
+         # Fmetric.append(Es0 - Es[Nm1])
+         Fmetric_Es.append(Esu[fpi] - Esd[fpi])
+         Fmetric_Eu.append(Euu[fpi] - Eud[fpi])
+         # Fmetric.append(np.sqrt((Esu[fpi] - Esd[fpi])**2 + (Euu[fpi] - Eud[fpi])**2))
+
+     # Eu[-1] = Eu[-1] - .0001
+     # Ed, Es, Eu = Irradiance_RK4(Nm1, Ed, Es, Eu, z, a, b, c_d, b_b, b_f, 
+     #                             r_s, r_u, v_d, v_s, v_u)
+
+    Ed = np.append(Edu[:fpi], Edd[fpi:])
+    Es = np.append(Esu[:fpi], Esd[fpi:])
+    Eu = np.append(Euu[:fpi], Eud[fpi:])
+    return Ed, Es, Eu, z, fpi
+
+
 def Demo(method='shoot_up'): 
     ## Demonstration of finding the irradiance profiles for an artificial 
     ## phytoplankton concentration profile
@@ -345,7 +552,7 @@ def Demo(method='shoot_up'):
     
     z = np.linspace(-600,0,N)
 
-    phy_prof = OI.artificial_phy_prof(z, -90, 40,1.5)
+    phy_prof = OI.artificial_phy_prof(z, -5, 10,.5)
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
     # print(phy_prof)
@@ -361,6 +568,10 @@ def Demo(method='shoot_up'):
     phy = OI.Phy(z, phy_prof, a_phy, b_phy)
 
 
+    ## The fixed point position: 
+    fp = -50
+    fpi =0
+
     zbot = z[0]
     
     if method == 'shoot_up':
@@ -371,6 +582,11 @@ def Demo(method='shoot_up'):
     if method == 'shoot_down':
         Ed, Es, Eu, zarr = OI.ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,
                                                phy=phy, N=N, pt1_perc_zbot=True)
+        
+    if method == 'shoot_fp': 
+        Ed, Es, Eu, zarr, fpi = ocean_irradiance_shoot_fp(zbot, fp, fpi, PI.Ed0, PI.Es0, PI.Euh, 
+                                                     ab_wat, PI.coefficients, phy = phy, N = N, 
+                                                     pt1_perc_zbot = True)
         
     if method == 'scipy':
         Ed, Es, Eu, zarr = OI.ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,
@@ -386,6 +602,8 @@ def Demo(method='shoot_up'):
     ax2 = axes[1]
     
     ax1.plot(phy_prof, z)
+    if method == 'shoot_fp':
+        ax1.hlines( zarr[fpi], min(phy_prof),max(phy_prof), color='r')
     ax1.set_xlabel('Concentration')
     ax1.set_ylabel('Z [m]')
     ax1.set_title('Phytoplankton Concentration Profile')
@@ -401,7 +619,7 @@ def Demo(method='shoot_up'):
     ax2.grid()
     
     plt.show()
-    return zarr, Ed
+    return zarr, Ed, fpi
 
 
 
@@ -418,4 +636,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # if args.demo: 
-    zarr, Ed = Demo('shoot_up')
+    zarr, Ed, fpi = Demo('shoot_fp')
