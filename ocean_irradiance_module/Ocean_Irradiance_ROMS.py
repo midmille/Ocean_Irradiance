@@ -178,7 +178,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     ##Not a Number array so the land is Nan, not 0, helps make land white in pcolormesh
     ## The size four fourth dimension is for the irradiance field
     ## Ed, Es, Eu, z in that order.
-    if method == 'bvp' or method == 'bvp_up':
+    if method == 'shoot_down' or method == 'shoot_up' or method =='shoot_fp':
         irr_arr = np.zeros((N,nyi,nxi,4)) * np.nan 
     if method == 'Dut':
         irr_arr = np.zeros((N-1,nyi,nxi,4)) * np.nan 
@@ -205,14 +205,19 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                 
                 phy = Ocean_Irradiance.Phy(z_r0, phy_profs, a, b)    
                 
-                if method == 'bvp':
+                if method == 'shoot_down':
                     
                     ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
                                                                       ab_wat, coefficients, phy, N=N, 
                                                                       pt1_perc_zbot = pt1_perc_zbot)
-                elif method == 'bvp_up':
+                elif method == 'shoot_up':
                     
                     ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_shoot_up(hbot,E_d_0,E_s_0,E_u_h,
+                                                                      ab_wat, coefficients, phy, N=N, 
+                                                                      pt1_perc_zbot = pt1_perc_zbot)
+                elif method == 'shoot_fp':
+                    
+                    ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_shoot_fp(hbot,E_d_0,E_s_0,E_u_h,
                                                                       ab_wat, coefficients, phy, N=N, 
                                                                       pt1_perc_zbot = pt1_perc_zbot)
                 elif method == 'Dut':
@@ -232,7 +237,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     return irr_arr
 
 
-def Irradiance_Run(R_nc, PI, nstp, save_dir, save_file): 
+def Irradiance_Run(R_nc, PI, nstp, save_dir, save_file, method):
     
     
     ## The name of the file that the python Eu dict will be saved to as pickle.
@@ -268,7 +273,7 @@ def Irradiance_Run(R_nc, PI, nstp, save_dir, save_file):
                                               PI.Euh,
                                               PI.coefficients,
                                               N= 100, 
-                                              method = 'bvp_up')
+                                              method = method)
         
         pickle.dump(irr_field_py, open(save_path, "wb"))
         print('Python calculation complete and saved')
@@ -304,6 +309,7 @@ if __name__ == '__main__':
     parser.add_argument('file', help = "Complete Path to ROMS nc file" )
     parser.add_argument('save_file_name', help = "The name of the pickle file in which the result will be stored" )
     parser.add_argument('save_dir', help = "The name and path of the direcotry in which the result will be stored" )
+    parser.add_argument('method', help = "Methods are: Dut, shoot_down, shoot_up, shoot_fp." )
     # parser.add_argument('dest_file', help='Path to Destination Directory. Saved as pickle')
     parser.add_argument('--plot', action='store_true', help="Visualization of Result")
     args = parser.parse_args()
@@ -319,7 +325,7 @@ if __name__ == '__main__':
     ## settting time step index
     time_step_index = 1
     
-    Irradiance_Run(R_nc, PI, time_step_index, args.save_dir, args.save_file_name)
+    Irradiance_Run(R_nc, PI, time_step_index, args.save_dir, args.save_file_name, args.method)
     
     
     

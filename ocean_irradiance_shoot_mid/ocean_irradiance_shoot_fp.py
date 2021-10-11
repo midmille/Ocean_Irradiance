@@ -394,7 +394,7 @@ def ocean_irradiance_shoot_fp(hbot, fp, fpi, Ed0, Es0, Euh, ab_wat, coefficients
     Eu1[0] = Euh ##bottom
     
     ## Default number of shots for BVP shoot method solution
-    shots = 20
+    shots = 10
     
     ##unpacking the ab_wat_tuple 
     a_wat,b_wat = ab_wat 
@@ -438,11 +438,13 @@ def ocean_irradiance_shoot_fp(hbot, fp, fpi, Ed0, Es0, Euh, ab_wat, coefficients
     elif pt1_perc_zbot == False: 
         zbot = hbot 
     ## log transformed z grid.
-    # z = Log_Trans(zbot, N) 
+    z = OI.Log_Trans(zbot, N) 
     ## linear z 
-    z = np.linspace(zbot, 0, N)
+    # z = np.linspace(zbot, 0, N)
     ## The fpi is the 80% point, closer to surface
-    fpi = int(.99 * N)
+
+        
+    fpi = int(.60 * N)
     fp = z[fpi]
     
     
