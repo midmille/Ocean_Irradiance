@@ -31,7 +31,7 @@ def Plot_Field(field, lat, lon, title, cbar_label, vmin=None, vmax=None, fig=Non
     return 
 
 
-def Plot_Fields(sub_plot_loc, field, lat, lon, title, cbar_label, fig=None, vmin=None, vmax=None):
+def Plot_Fields(subplot_rows, subplot_cols, subplot_loc, field, lat, lon, title, cbar_label, fig=None, vmin=None, vmax=None):
 
     cbar_shrink = 1
 
@@ -39,8 +39,9 @@ def Plot_Fields(sub_plot_loc, field, lat, lon, title, cbar_label, fig=None, vmin
         fig = plt.figure() 
 
     ## The first value plot
-    ax = fig.add_subplot(sub_plot_loc, projection=ccrs.PlateCarree())
+    ax = fig.add_subplot(subplot_rows, subplot_cols, subplot_loc, projection=ccrs.PlateCarree())
     ax.add_feature(cfeature.COASTLINE)
+    ax.add_feature(cfeature.LAND, color='grey', alpha=.5)
     #ax.gridlines()
     im = ax.pcolormesh(lon, lat, field, cmap='nipy_spectral', 
                      transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin )
@@ -49,8 +50,6 @@ def Plot_Fields(sub_plot_loc, field, lat, lon, title, cbar_label, fig=None, vmin
     ylims = ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
     ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
  
-    fig.show()
-
     return fig
 
 
