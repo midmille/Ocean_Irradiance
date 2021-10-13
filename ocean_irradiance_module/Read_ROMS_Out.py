@@ -44,7 +44,9 @@ class ROMS_netcdf:
         self.chl_nanophyt = PI.Chl2NS * self.nanophyt
         ## The mask that defines land or not. Land is taken as 0, while water = 1. 
         self.maskr = roms_nc.variables['mask_rho'][:] 
-        
+        ## Lattitude and Logitude coordinates. 
+        self.lat_rho = roms_nc.variables['lat_rho'][:]
+        self.lon_rho = roms_nc.variables['lon_rho'][:] 
         ## ROMS grids 
         self.z_r = roms_nc.variables['z_rho'][:]
         self.z_w = roms_nc.variables['z_w'][:]      
