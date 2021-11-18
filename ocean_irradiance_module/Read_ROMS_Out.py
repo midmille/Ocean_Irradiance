@@ -39,9 +39,9 @@ class ROMS_netcdf:
         ## Getting nanophytoplankton array.
         self.nanophyt =  roms_nc.variables["nanophytoplankton"][:]
         ## Changing to chl
-        self.chl_diatom = PI.Chl2NL * self.diatom
+        self.chl_diatom = PI.NL2Chl * self.diatom
         ## Changing to chl
-        self.chl_nanophyt = PI.Chl2NS * self.nanophyt
+        self.chl_nanophyt = PI.NS2Chl * self.nanophyt
         ## The mask that defines land or not. Land is taken as 0, while water = 1. 
         self.maskr = roms_nc.variables['mask_rho'][:] 
         ## Lattitude and Logitude coordinates. 

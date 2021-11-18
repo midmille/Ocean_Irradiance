@@ -22,7 +22,9 @@ plankton as the key, and its wavelength dictionary as the value.
 ## {wavelength:(a,b)}
 ## HLPro 
 
-def absorbtion_scattering(wavelength, constituent):
+import numpy as np
+
+def absorbtion_scattering(wavelength, constituent, C2chla = 'default'):
     """
     
     
@@ -46,68 +48,73 @@ def absorbtion_scattering(wavelength, constituent):
     ## ----------------------
     ## unit change for back scattering coefficients
     ## from units of Carbon to units of chl-a
-    ## Large phytoplankton ie diatoms 
-    LC2chla = 50
-    # LC2chla = 1
-    ## Small phytoplankton ie nanophytoplankton
-    SC2chla = 100
-    # SC2chla = 1
+    ## if the unit change is default then
+    if C2chla == 'default':
+        ## Large phytoplankton ie diatoms 
+        LC2chla = 50
+        ## Small phytoplankton ie nanophytoplankton
+        SC2chla = 100
+        ## the rest of the species will be somewhere in between. 
+        C2chla = 75
+    else: 
+        LC2chla = C2chla
+        SC2chla = C2chla
     
     
     water = {}
 
-    water[410] = (0.001,.007)
-    water[443] = (0.01,.004)
-    water[486] = (.02,.003)
-    water[551] = (.07,.002)
-    water[638] = (.3,.0015)
-    water[671] = (.45,.001)
+    water[410] = np.array((0.001,.007))
+    water[443] = np.array((0.01,.004))
+    water[486] = np.array((.02,.003))
+    water[551] = np.array((.07,.002))
+    water[638] = np.array((.3,.0015))
+    water[671] = np.array((.45,.001))
     
     
     HLPro = {} 
     
-    HLPro[410] = (.03,.0038)
-    HLPro[443] = (.05,.004)
-    HLPro[486] = (.025,.004)
-    HLPro[551] = (.003,.0032)
-    HLPro[638] = (.005,.0017)
-    HLPro[671] = (.02,.0014)
+    HLPro[410] = np.array((.03,.0038*C2chla))
+    HLPro[443] = np.array((.05,.004*C2chla))
+    HLPro[486] = np.array((.025,.004*C2chla))
+    HLPro[551] = np.array((.003,.0032*C2chla))
+    HLPro[638] = np.array((.005,.0017*C2chla))
+    HLPro[671] = np.array((.02,.0014*C2chla))
     
     Cocco = {}
     
-    Cocco[410] = (.023,.007)
-    Cocco[443] = (.028,.006)
-    Cocco[486] = (.026,.0079)
-    Cocco[551] = (.009,.009)
-    Cocco[638] = (.005,.009)
-    Cocco[671] = (.02,.008)
+    Cocco[410] = np.array((.023,.007*C2chla))
+    Cocco[443] = np.array((.028,.006*C2chla))
+    Cocco[486] = np.array((.026,.0079*C2chla))
+    Cocco[551] = np.array((.009,.009*C2chla))
+    Cocco[638] = np.array((.005,.009*C2chla))
+    Cocco[671] = np.array((.02,.008*C2chla))
     
     Diat = {}
     
-    Diat[410] = (.015,.0038*LC2chla)
-    Diat[443] = (.014,.0038*LC2chla)
-    Diat[486] = (.01,.0039*LC2chla)
-    Diat[551] = (.005,.004*LC2chla)
-    Diat[638] = (.005,.0039*LC2chla)
-    Diat[671] = (.012,.0038*LC2chla)
+    Diat[410] = np.array((.015,.0038*LC2chla))
+    Diat[443] = np.array((.014,.0038*LC2chla))
+    Diat[486] = np.array((.01,.0039*LC2chla))
+    Diat[551] = np.array((.005,.004*LC2chla))
+    Diat[638] = np.array((.005,.0039*LC2chla))
+    Diat[671] = np.array((.012,.0038*LC2chla))
     
     Generic = {}
     
-    Generic[410] = (.03,.0062)
-    Generic[443] = (.036,.006)
-    Generic[486] = (.025,.006)
-    Generic[551] = (.014,.0059)
-    Generic[638] = (.008,.0046)
-    Generic[671] = (.017,.004)
+    Generic[410] = np.array((.03,.0062*C2chla))
+    Generic[443] = np.array((.036,.006*C2chla))
+    Generic[486] = np.array((.025,.006*C2chla))
+    Generic[551] = np.array((.014,.0059*C2chla))
+    Generic[638] = np.array((.008,.0046*C2chla))
+    Generic[671] = np.array((.017,.004*C2chla))
     
     Syn = {}
     
-    Syn[410] = (.036,.0078*SC2chla)
-    Syn[443] = (.043,.007*SC2chla)
-    Syn[486] = (.031,.0065*SC2chla)
-    Syn[551] = (.031,.0051*SC2chla)
-    Syn[638] = (.008,.004*SC2chla)
-    Syn[671] = (.017,.0035*SC2chla)
+    Syn[410] = np.array((.036,.0078*SC2chla))
+    Syn[443] = np.array((.043,.007*SC2chla))
+    Syn[486] = np.array((.031,.0065*SC2chla))
+    Syn[551] = np.array((.031,.0051*SC2chla))
+    Syn[638] = np.array((.008,.004*SC2chla))
+    Syn[671] = np.array((.017,.0035*SC2chla))
     
 
     if constituent == 'water':

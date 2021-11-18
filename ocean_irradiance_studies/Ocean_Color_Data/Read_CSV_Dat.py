@@ -10,7 +10,7 @@ Read and Play with Ocean Color data.
 import numpy as np
 
 
-def Make_Data_Dict(file, field_names, skip_header):
+def Make_Data_Dict(file, field_names, skip_header,encoding=None):
     """
     This reads in a CSV data file from the ocean color website and outputs a
     dictionary with keys ccorrespodinbg to the name of each field and values corresponding 
@@ -37,7 +37,10 @@ def Make_Data_Dict(file, field_names, skip_header):
 
     ## This makes a size 2278 numpy array. 
     ## Each index has a length 22 tuple  which contains each field.  
-    data = np.genfromtxt(file, dtype=None, skip_header = skip_header, delimiter=',')
+    if encoding=None:
+        data = np.genfromtxt(file, dtype=None, skip_header = skip_header, delimiter=',')
+    else: 
+        data = np.genfromtxt(file, dtype=None, skip_header = skip_header, delimiter=',', encoding=encoding)
     
     fields = field_names.split(',')
     

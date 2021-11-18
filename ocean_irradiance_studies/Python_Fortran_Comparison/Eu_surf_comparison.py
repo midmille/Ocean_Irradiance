@@ -24,11 +24,12 @@ sys.path.append(ocean_irradiance_module_path)
 
 ##User mods
 from ocean_irradiance_module.Read_ROMS_Out import ROMS_netcdf 
+from ocean_irradiance_module.PARAMS import Param_Init 
 from ocean_irradiance_module.Ocean_Irradiance_ROMS import Ocean_Irradiance_Field 
 from ocean_irradiance_module.Ocean_Irradiance_ROMS import ocean_color_sol
 
 
-def Eu_Surface_py_ROMS(R_nc, nstp):
+def Eu_Surface_py_ROMS(R_nc, PI, nstp):
     """
     
 
@@ -74,7 +75,9 @@ def Eu_Surface_py_ROMS(R_nc, nstp):
                                               R_nc.Ed0, 
                                               R_nc.Es0, 
                                               R_nc.Euh,
-                                              N= R_nc.N_irr)[-1,:,:,2]
+                                              PI.coefficients,
+                                              N= R_nc.N_irr,
+                                              method = 'shoot_up')[-1,:,:,2]
         
         pickle.dump(Eu_surf_py, open(save_path, "wb"))
         print('Python calculation complete and saved')
@@ -125,7 +128,7 @@ def Eu_Rel_Difference(lam, Eu_surf_py, Eu_surf_ROMS):
     return diff
 
     
-def Eu_Surf_py_ROMS_comparison(nstp, R_nc, plot=False): 
+def Eu_Surf_py_ROMS_comparison(nstp, R_nc, PI, plot=False): 
         
         """
         Main file that performs comparison of Eu at surface for python code an dFortran code.
@@ -151,7 +154,7 @@ def Eu_Surf_py_ROMS_comparison(nstp, R_nc, plot=False):
         ## Calculating respective Eu at surfaces for both code frameworks
         ## saves or loads from file.
         
-        Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
+        Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, PI, nstp)
         
         ## Chosen wavelength
         lam = R_nc.wavelengths[1]
@@ -230,8 +233,9 @@ if __name__ == '__main__':
     file = args.file
  
     R_nc = ROMS_netcdf(file,Init_ROMS_Irr_Params=(True))
+    PI = Param_Init()
     ## The time step 
-    nstp = 3
+    nstp = 1
     
     ## Ucomment this little section to run over all time steps, each step will be saved
     ## as a seperate pickle file. 
@@ -240,7 +244,7 @@ if __name__ == '__main__':
     # for nstp in range(nstps):
     #     Eu_surf_py, Eu_surf_ROMS = Eu_Surface_py_ROMS(R_nc, nstp)
     
-    Eu_surf_py, Eu_surf_ROMS = Eu_Surf_py_ROMS_comparison(nstp, R_nc, plot=args.plot)
+    Eu_surf_py, Eu_surf_ROMS = Eu_Surf_py_ROMS_comparison(nstp, R_nc, PI, plot=args.plot)
     
     ocean_color_py, ocean_color_ROMS = Compare_OCx(nstp, R_nc, plot=args.plot)
 

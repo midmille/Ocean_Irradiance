@@ -22,6 +22,28 @@ import sys
 import pickle
 
 
+def CI_alg(R_rs_b, R_rs_g, R_rs_r, lam_b, lam_g, lam_r): 
+    """
+    The CI algorithim from the NASA ocean color website.
+   
+    Parameters
+    ----------
+    R_rs_b : Float
+        R_rs in the blue wavelength
+    R_rs_g : Float 
+        R_rs in the green wavelength
+    R_rs_r : Float
+        R_rs in the red wavelength
+    lam_b : Float
+        The wavelength in nm of blue. 
+    lam_g : Float 
+        The wavelength in nm of green. 
+    lam_r : Float 
+        The wavelength in nm of red.
+    """
+
+    return 
+
 def OCx_alg(R_rs_b, R_rs_g) :
     """
     
@@ -32,10 +54,6 @@ def OCx_alg(R_rs_b, R_rs_g) :
         R_rs in the blue wavelength
     R_rs_g : Float 
         R_rs in the green wavelength
-    lam_b : Float
-        Wavelength of blue
-    lam_g : Float 
-        Wavelength of green 
 
     Returns
     -------
@@ -129,7 +147,7 @@ def ocean_color_sol(Eu_sol_dict, E_d_0, E_s_0):
 
 def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt, 
                   z_r, E_d_0, E_s_0, E_u_h, coefficients, N=30, pt1_perc_zbot = True,
-                  method='bvp'):
+                  method='shoot_down', zbot_arr = 'bathemetry'):
     """
     
 
@@ -178,7 +196,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     ##Not a Number array so the land is Nan, not 0, helps make land white in pcolormesh
     ## The size four fourth dimension is for the irradiance field
     ## Ed, Es, Eu, z in that order.
-    if method == 'shoot_down' or method == 'shoot_up' or method =='shoot_fp':
+    if method == 'shoot_down' or method == 'shoot_up' or method =='shoot_fp' or method == 'scipy':
         irr_arr = np.zeros((N,nyi,nxi,4)) * np.nan 
     if method == 'Dut':
         irr_arr = np.zeros((N-1,nyi,nxi,4)) * np.nan 
@@ -193,7 +211,11 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                 ## ROMS vertical grid for this index 
                 z_r0 = z_r[:,j,i] 
                 # z_w0 = z_w[:,j,i] 
-                hbot = z_r0[0]
+                if zbot_arr == 'bathemetry':
+                    hbot = z_r0[0]
+                else: 
+                    hbot = zbot_arr[j,i]
+
                 assert len(chl_diatom) == len(z_r0)
                 
                 phy_profs = np.zeros((len(z_r0),2))
@@ -224,6 +246,11 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                     ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_dutkiewicz(hbot,E_d_0,E_s_0,E_u_h,
                                                                       ab_wat, coefficients, phy, N=N, 
                                                                       pt1_perc_zbot = pt1_perc_zbot)
+                elif method == 'scipy':
+                    ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
+                                                                      ab_wat, coefficients, phy, N=N, 
+                                                                      pt1_perc_zbot = pt1_perc_zbot,
+                                                                      use_bvp_solver=True)
                 ## Ed
                 irr_arr[:,j,i,0] = ocean_irr_sol[0]
                 ## Es
@@ -237,7 +264,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     return irr_arr
 
 
-def Irradiance_Run(R_nc, PI, nstp, save_dir, save_file, method):
+def Irradiance_Run(R_nc, PI, nstp, N, save_dir, save_file, method):
     
     
     ## The name of the file that the python Eu dict will be saved to as pickle.
@@ -250,11 +277,11 @@ def Irradiance_Run(R_nc, PI, nstp, save_dir, save_file, method):
     ## if it doesn't exist then redo calculation
     if os.path.exists(save_path) == False:
         ## User input required so not to overwrite or redo unnecessarily... 
-        y_or_n = input('File does not exist, continue with calculation? [y/n] ')
-        if y_or_n == 'n': 
-            sys.exit('Stopping...')
-        elif y_or_n == 'y':
-            print('ok, statrting calculations...')
+        #y_or_n = input('File does not exist, continue with calculation? [y/n] ')
+        #if y_or_n == 'n': 
+        #    sys.exit('Stopping...')
+        #elif y_or_n == 'y':
+        #    print('ok, statrting calculations...')
             
         #mask = np.ones((R_nc.nyi, R_nc.nxi))
         irr_field_py = {}
@@ -272,7 +299,7 @@ def Irradiance_Run(R_nc, PI, nstp, save_dir, save_file, method):
                                               PI.Es0, 
                                               PI.Euh,
                                               PI.coefficients,
-                                              N= 100, 
+                                              N= N, 
                                               method = method)
         
         pickle.dump(irr_field_py, open(save_path, "wb"))
@@ -284,19 +311,9 @@ def Irradiance_Run(R_nc, PI, nstp, save_dir, save_file, method):
         irr_field_py = pickle.load(open(save_path,'rb'))
         print('Yay, file loaded :)')
 
+    return irr_field_py
 
-# def plot_ocean_color():
-#     import matplotlib.pyplot as plt
-#     import matplotlib as mpl
-    
-#     plt.figure()
-#     plt.pcolormesh( ocean_color, cmap="nipy_spectral", norm = mpl.colors.LogNorm(), vmin=.01, vmax=66)#, cmap='nipy_spectral')
-#     plt.colorbar(label='Chl-a')
-#     plt.ylabel('Degrees Lattitude')
-#     plt.xlabel('Degress Longitude')
-#     plt.title('Ocean Color')
-#     plt.show()
-    
+   
     
 if __name__ == '__main__':
     
@@ -320,12 +337,14 @@ if __name__ == '__main__':
     R_nc = ROMS_netcdf(args.file)
 
     ## updating default to wavelengths necessary for the OCx_algorithim
-    R_nc.wavelengths = [443,551]
+    R_nc.wavelengths = PI.wavelengths
 
     ## settting time step index
     time_step_index = 1
     
-    Irradiance_Run(R_nc, PI, time_step_index, args.save_dir, args.save_file_name, args.method)
+    N = 100
+    
+    Irradiance_Run(R_nc, PI, time_step_index, N, args.save_dir, args.save_file_name, args.method)
     
     
     

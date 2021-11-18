@@ -28,8 +28,28 @@ class Param_Init:
         ## Wavelengths taken from John Wilkin email regarding satelite wavelengths.
         self.wavelengths = [410,443,486,551,638,671] 
         ## The Chlorophyll to Nitrogen unit change. 
-        self.Chl2NL = 1.59
-        self.Chl2NS = .7950
+        """
+        Unit Change Information:
+        -----------------------
+        To change units from 'mmol Nitrogen m^-3' to 'mg chl-a m^-3'
+        
+        --> Convert from Nitrogen to Carbon => multiply by 106[Carbon]/16[Nitrogen]
+            -- This is called the Redfield Ratio.
+
+        --> Convert from mmols to mgs => multiply by 12[mg]/1[mmol]
+
+        --> Convert from Carbon to Chl-a => multiply by:
+            -- For Large Phytoplankton such as diatoms:
+               - 1[gram chl-a]/50[gram carbon]
+            -- For Small Phytoplankton such as nanophytoplankton: 
+               - 1[gram chl-a]/( 100 to 200 [gram carbon])  
+        
+        Overall unit change: 
+        NL2Chl = (106/16) * (12/1) * (1/50) = 1.59
+        NS2chl = (106/16) * (12/1) * (1/100) = 0.795
+        """
+        self.NL2Chl = 1.59
+        self.NS2Chl = .7950
         
         ## Average cosines and such taken from Dutkiewicz 2015. 
         self.r_s = 1.5 

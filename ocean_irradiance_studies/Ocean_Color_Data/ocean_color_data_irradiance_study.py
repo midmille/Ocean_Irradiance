@@ -22,6 +22,7 @@ import cartopy.feature as cfeature
 import Read_CSV_Dat as RCD
 import ocean_irradiance_module.Ocean_Irradiance as OI
 import ocean_irradiance_module.Ocean_Irradiance_ROMS as OIR
+from ocean_irradiance_module.PARAMS import Param_Init 
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 
 
@@ -125,7 +126,7 @@ def Mask(long_bound, lat_bound, long, lat, plot=False, ax=None):
     return mask
 
 
-def R_RS_Irr(lam, chlor_dat, use_art_phy=False):
+def R_RS_Irr(lam, chlor_dat, coefficients, use_art_phy=False):
     """
     This calculates the rrs value from an ocean irradiance calculation using a 
     constant phy profile from data. 
@@ -173,7 +174,7 @@ def R_RS_Irr(lam, chlor_dat, use_art_phy=False):
         ## Creating the Phy object.
         phy = OI.Phy(z_phy, phy_prof, ab_phy[0], ab_phy[1])
         ## Running OI
-        Eu_surf = OI.ocean_irradiance(z_phy[0], Ed0, Es0, Euh, ab_wat, 
+        Eu_surf = OI.ocean_irradiance_shoot_up(z_phy[0], Ed0, Es0, Euh, ab_wat, coefficients, 
                                       phy = phy, N = 30, 
                                       pt1_perc_zbot = True)[2][-1]
         ## Running R_RS
@@ -238,6 +239,8 @@ def Plot_Val_Comparison_Global(longitude, latitude, val1, val2, units, title1, t
     fig.colorbar(im1, ax=[ax1,ax2], shrink=cbar_shrink, label = units)
     ax2.set_title(title2)
     
+
+    fig.show()
     return fig,ax1,ax2
 
 
@@ -257,17 +260,20 @@ def Plot_Val_Distibution_Comparison(x,y,xlabel,ylabel,title,lim=None):
     ax.set_ylabel(ylabel)
     ax.grid()
     
+    fig.show()
     
     return 
 
 if __name__ == '__main__':
-    file = 'C:/Users/miles/RESEARCH/Current_Work/Ocean_Irradiance/ocean_irradiance_studies/Ocean_Color_Data/1629913643435826_chlor_a.csv'
+    file = '1629913643435826_chlor_a.csv'
     
     ## Copied from header of csv file. Might be better to read from file. 
     field_names = "id,latitude,longitude,date_time,cruise,seawifs_filename," +\
     "seawifs_es_error,seawifs_pixel_total,seawifs_tdiff,seawifs_solz,seawifs_senz," +\
     "seawifs_cv,seawifs_windspeed,seawifs_chlor_a,insitu_chlor_a_type,insitu_chlor_a,"+\
     "seawifs_rrs412,seawifs_rrs443,seawifs_rrs490,seawifs_rrs510,seawifs_rrs555,seawifs_rrs670"
+
+    PI = Param_Init()
     
     ## Reading in csv file
     skip_header = 29
@@ -329,20 +335,20 @@ if __name__ == '__main__':
     rrs_units='sr^-1'
     
     # ##443
-    rrs_irr_b_443_m = R_RS_Irr(lam_b_443, chlor_dat, use_art_phy=(False))
-    # Plot_Val_Comparison_Global(long_m, lat_m, seawifs_rrs_b_443_m, rrs_irr_b_443_m, rrs_units, 
-    #                             'seawifs_rrs_b_443_m', f'rrs_irr_b_m [{lam_b_443} nm]')
+    rrs_irr_b_443_m = R_RS_Irr(lam_b_443, chlor_dat, PI.coefficients, use_art_phy=(True))
+    Plot_Val_Comparison_Global(long_m, lat_m, seawifs_rrs_b_443_m, rrs_irr_b_443_m, rrs_units, 
+                                 'seawifs_rrs_b_443_m', f'rrs_irr_b_m [{lam_b_443} nm]')
     # Plot_Val_Distibution_Comparison(seawifs_rrs_b_443_m, rrs_irr_b_443_m, 'Seawifs RRS',  'Irradiance RRS', "RRS [443nm] ")
     
     ## 486
-    rrs_irr_b_486_m = R_RS_Irr(lam_b_486, chlor_dat, use_art_phy=(False))
+    rrs_irr_b_486_m = R_RS_Irr(lam_b_486, chlor_dat, PI.coefficients, use_art_phy=(True))
     # Plot_Val_Comparison_Global(long_m, lat_m, seawifs_rrs_b_490_m, rrs_irr_b_486_m, rrs_units, 
     #                             'seawifs_rrs_b_490_m', f'rrs_irr_b_m [{lam_b_486} nm]')
     # Plot_Val_Distibution_Comparison(seawifs_rrs_b_490_m, rrs_irr_b_486_m, 'Seawifs RRS',  
     #                                 'Irradiance RRS', "RRS [490nm] ")
     
     # ## Green 
-    rrs_irr_g_m = R_RS_Irr(lam_g, chlor_dat, use_art_phy=(False))
+    rrs_irr_g_m = R_RS_Irr(lam_g, chlor_dat, PI.coefficients, use_art_phy=(True))
     # Plot_Val_Comparison_Global(long_m, lat_m, seawifs_rrs_g_m, rrs_irr_g_m, rrs_units, 
     #                             'seawifs_rrs_g_m', f'rrs_irr_g_m [{lam_g} nm]')
     # Plot_Val_Distibution_Comparison(seawifs_rrs_g_m, rrs_irr_g_m, 'Seawifs RRS',  
@@ -360,9 +366,9 @@ if __name__ == '__main__':
     Plot_Val_Distibution_Comparison(rrs_ratio_443_seawifs, rrs_ratio_443_irr, 
                                     'Seawifs RRS Ratio', 'Irradiance RRS Ratio', 
                                     'RRS Ratio Distribution [Blue = 443 nm]')
-    Plot_Val_Distibution_Comparison(rrs_ratio_490_seawifs, rrs_ratio_486_irr, 
-                                    'Seawifs RRS Ratio', 'Irradiance RRS Ratio', 
-                                    'RRS Ratio Distribution [Blue = 486nm]')
+#    Plot_Val_Distibution_Comparison(rrs_ratio_g_seawifs, rrs_ratio_486_irr, 
+#                                    'Seawifs RRS Ratio', 'Irradiance RRS Ratio', 
+#                                    'RRS Ratio Distribution [Blue = 486nm]')
 
     
     ## chl_a comparisons

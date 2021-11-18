@@ -27,6 +27,8 @@ def Plot_Field(field, lat, lon, title, cbar_label, vmin=None, vmax=None, fig=Non
     ax.set_title(title)  
     ylims = ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
     ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
+
+    fig.show()
  
     return 
 
@@ -52,6 +54,29 @@ def Plot_Fields(subplot_rows, subplot_cols, subplot_loc, field, lat, lon, title,
  
     return fig
 
+
+def Plot_Scatter(field, lat, lon, title, cbar_label, vmin=None, vmax=None, fig=None):
+
+    cbar_shrink = 1
+
+    fig = plt.figure()
+    
+    ## The first value plot
+    ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+    ax.add_feature(cfeature.COASTLINE)
+    ax.add_feature(cfeature.LAND, color='grey', alpha=.5)
+    #ax.gridlines()
+    s = 15
+    im = ax.scatter(lon, lat, c=field, s=s, cmap='nipy_spectral', 
+                     transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin )
+    fig.colorbar(im, ax=ax, shrink=cbar_shrink, label = cbar_label)
+    ax.set_title(title)  
+    ylims = ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
+    ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
+
+    fig.show()
+ 
+    return 
 
 
 

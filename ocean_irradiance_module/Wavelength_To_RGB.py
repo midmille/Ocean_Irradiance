@@ -48,7 +48,7 @@ import time
 import logging
 
 
-def wavelength_to_rgb(wavelength, gamma=0.8):
+def wavelength_to_rgb(wavelength, gamma=0.8, normalize = True ):
 
     '''This converts a given wavelength of light to an 
     approximate RGB color value. The wavelength must be given
@@ -90,10 +90,14 @@ def wavelength_to_rgb(wavelength, gamma=0.8):
         R = 0.0
         G = 0.0
         B = 0.0
-    R *= 255
-    G *= 255
-    B *= 255
-    return (int(R), int(G), int(B))
+    
+    if normalize: 
+        return (R, G, B)
+    else: 
+        R *= 255
+        G *= 255
+        B *= 255
+        return (int(R), int(G), int(B))
 
 
 def main(options=None, args=None):

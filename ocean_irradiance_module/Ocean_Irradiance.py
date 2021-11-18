@@ -113,34 +113,30 @@ def numerical_Ed_2(z, c, Ed0):
     return Ed
 
 
-def zbot_func(E_d_0, c, z):
+def zbot_func(Ed0, c_wat, light_frac = .01):
     """
     Finds the zbot for at which light ha attenuated to .1% of its surface value 
     for water only coeffients
 
     Parameters
     ----------
-    E_d_0 : Float 
+    Ed0 : Float 
         Initial Value for E_d. 
-    a_wat : Float 
-        Absorbtion coefficient of water. 
-    b_wat : Float
-        Scattering Coefficient of water. 
-
+    c_wat
     Returns
     -------
     zbot : Float 
         .01% light level zbot. 
 
     """
-    zbots = np.linspace(0, -1000, 2001) 
+    zbots = np.linspace(0, -2000, 2001) 
     # c = (a_wat + b_wat) / v_d
 #    c = np.flip(c)
 #    z = np.flip(z)
-    Ed = analytical_Ed(zbots, c, E_d_0)
+    Ed = analytical_Ed(zbots, c_wat, Ed0)
     for k, Ed_i in enumerate(Ed) :
-        EdoE_d_0 = Ed_i / E_d_0
-        if EdoE_d_0 < .01 :
+        EdoEd0 = Ed_i / Ed0
+        if EdoEd0 < light_frac :
             zbot = zbots[k] 
             return zbot
    
@@ -234,10 +230,11 @@ def ocean_irradiance_scipy(zarr, Ed0, Es0, Euh, a, b, coefficients):
     res = integrate.solve_bvp(derivEdz, Ebcs, zarr, Eguess)
 
     y = res.y
+    z_mesh = res.x
 
-    Ed = y[0]
-    Es = y[1]
-    Eu = y[2]
+    Ed = np.interp(zarr, z_mesh, y[0])
+    Es = np.interp(zarr, z_mesh, y[1])
+    Eu = np.interp(zarr, z_mesh, y[2])
     
     return Ed, Es, Eu 
 
@@ -512,7 +509,7 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
         c_wat = (a_wat + b_wat)/v_d
-        zbot_pt1perc = zbot_func(Ed0, c_wat, z_phy)
+        zbot_pt1perc = zbot_func(Ed0, c_wat)
         print(zbot_pt1perc)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
@@ -700,8 +697,8 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
         c_wat = (a_wat + b_wat)/v_d
-        zbot_pt1perc = zbot_func(Ed0, c_wat, z_phy)
-        print(zbot_pt1perc)
+        zbot_pt1perc = zbot_func(Ed0, c_wat)
+        #print(zbot_pt1perc)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
     elif pt1_perc_zbot == False: 
@@ -899,7 +896,7 @@ def ocean_irradiance_shoot_fp(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
         c_wat = (a_wat + b_wat)/v_d
-        zbot_pt1perc = zbot_func(Ed0, c_wat, z_phy)
+        zbot_pt1perc = zbot_func(Ed0, c_wat)
         print(zbot_pt1perc)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
@@ -1154,7 +1151,7 @@ def ocean_irradiance_dutkiewicz(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy =
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
         # zbot_pt1perc = zbot_func(Ed0, a_wat, b_wat, v_d)
-        zbot_pt1perc = zbot_func(Ed0, c_wat, z_phy)
+        zbot_pt1perc = zbot_func(Ed0, c_wat)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
     elif pt1_perc_zbot == False: 
@@ -1425,7 +1422,7 @@ def ocean_irradiance_dutkiewicz_ROMS(hbot, Ed0, Es0, Euh, ab_wat, coefficients, 
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
         # zbot_pt1perc = zbot_func(Ed0, a_wat, b_wat, v_d)
-        zbot_pt1perc = zbot_func(Ed0, c_wat, z_phy)
+        zbot_pt1perc = zbot_func(Ed0, c_wat)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
     elif pt1_perc_zbot == False: 
@@ -1631,7 +1628,7 @@ def Demo(method='shoot_up'):
     if method == 'shoot_up':
         
         Ed, Es, Eu, zarr = ocean_irradiance_shoot_up(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
-                                            phy=phy, N=N, pt1_perc_zbot = True)
+                                            phy=phy, N=N, pt1_perc_zbot = False)
      
     if method == 'shoot_down':
         Ed, Es, Eu, zarr = ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,
@@ -1675,7 +1672,7 @@ def Demo(method='shoot_up'):
     plt.show()
     
     
-    return zarr, Ed
+    return zarr, Ed, Es, Eu
 
 
 #-------------------------------------MAIN-------------------------------------
@@ -1692,7 +1689,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # if args.demo: 
-    zarr, Ed = Demo('shoot_fp')
+    zarr, Ed, Es, Eu = Demo('shoot_up')
     
     #Ed_redo = np.flip(numerical_Ed(np.flip(zarr), np.flip(c_Ed_z), .7))
 
