@@ -30,15 +30,20 @@ def Plot_Comparison(ax, x, y, label, xlim=None, ylim=None, bf_line=False):
         return ax 
 
 
-def Plot_Frequency(ax, y, N_bins, label): 
+def Plot_Frequency(ax, y, N_bins, label, bin_edges=[]): 
     """ 
     Plots the frequency of the data as a line
     """
 
-    hist, bin_edges = np.histogram(y, bins = N_bins)
+
+    y = y[~np.isnan(y)]
+    if len(bin_edges) > 0:
+        hist, bin_edges = np.histogram(y, bins = bin_edges)
+    else:
+        hist, bin_edges = np.histogram(y, bins = N_bins)
    
     bin_centers = bin_edges[:-1] + (abs(bin_edges[0] - bin_edges[1]))
 
-    ax.plot(bin_centers, hist, label)
+    ax.plot(bin_centers, hist, label =label)
   
-    return ax
+    return ax, bin_edges

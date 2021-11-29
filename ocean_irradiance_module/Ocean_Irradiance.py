@@ -113,7 +113,7 @@ def numerical_Ed_2(z, c, Ed0):
     return Ed
 
 
-def zbot_func(Ed0, c_wat, light_frac = .01):
+def zbot_func(Ed0, c, light_frac = .01, phy=False, z=None):
     """
     Finds the zbot for at which light ha attenuated to .1% of its surface value 
     for water only coeffients
@@ -129,12 +129,14 @@ def zbot_func(Ed0, c_wat, light_frac = .01):
         .01% light level zbot. 
 
     """
-    zbots = np.linspace(0, -2000, 2001) 
-    # c = (a_wat + b_wat) / v_d
-#    c = np.flip(c)
-#    z = np.flip(z)
-    Ed = analytical_Ed(zbots, c_wat, Ed0)
-    for k, Ed_i in enumerate(Ed) :
+    zbots = np.linspace(-1000, 0, 2001) 
+    if phy==True: 
+        c = np.interp(zbots, z, c)
+        Ed = numerical_Ed(zbots, c, Ed0)
+    else:
+        Ed = analytical_Ed(zbots, c, Ed0)
+    ## The flipping is so the iteration starts at the surface.
+    for k, Ed_i in enumerate(np.flip(Ed)) :
         EdoEd0 = Ed_i / Ed0
         if EdoEd0 < light_frac :
             zbot = zbots[k] 
@@ -595,7 +597,7 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 
 
 
 def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 30, 
-                     pt1_perc_zbot = True):
+                     pt1_perc_zbot = True, pt1_perc_phy = True):
     
     
     """
@@ -696,8 +698,15 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     ## If pt1_perc_zbot is True
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
-        c_wat = (a_wat + b_wat)/v_d
-        zbot_pt1perc = zbot_func(Ed0, c_wat)
+        if pt1_perc_phy == True:
+            c_d = (a+b)/v_d
+            zbot_pt1perc = zbot_func(Ed0, c_d, phy=True, z=z_phy) 
+        else:    
+            c_wat = (a_wat + b_wat)/v_d
+            zbot_pt1perc = zbot_func(Ed0, c_wat)
+        if zbot_pt1perc == None:
+            print('bad pt1 perc light level')
+            zbot_pt1perc = -100
         #print(zbot_pt1perc)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
@@ -1603,7 +1612,7 @@ def Demo(method='shoot_up'):
     
     z = np.linspace(-600,0,N)
 
-    phy_prof = artificial_phy_prof(z, -50, 10,.5)
+    phy_prof = artificial_phy_prof(z, 0, 10,50)
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
     # print(phy_prof)
@@ -1628,7 +1637,7 @@ def Demo(method='shoot_up'):
     if method == 'shoot_up':
         
         Ed, Es, Eu, zarr = ocean_irradiance_shoot_up(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
-                                            phy=phy, N=N, pt1_perc_zbot = False)
+                                            phy=phy, N=N, pt1_perc_zbot = True, pt1_perc_phy=True)
      
     if method == 'shoot_down':
         Ed, Es, Eu, zarr = ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,

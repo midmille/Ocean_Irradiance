@@ -40,6 +40,7 @@ import ocean_irradiance_module.Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 import ocean_irradiance_visualization.Plot_Field as PF
+import ocean_irradiance_visualization.Plot_Comparison as PC
 
 
 def Get_Data(oc_chla_val_file, cal_cast_file, cal_bot_file): 
@@ -136,6 +137,12 @@ def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chl
             z, chla = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt)     
             ## Calculating the irradiance
             phy = OI.Phy(z, chla, abscat(lam, phy_type, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
+            if lam == 443: 
+                PI.Ed0= .7
+                PI.Es0=.3
+            if lam == 551: 
+                PI.Ed0 =.3
+                PI.Es0 =.7
             irr_out = OI.ocean_irradiance_shoot_up(
                                                    z[0],
                                                    PI.Ed0,
@@ -144,8 +151,9 @@ def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chl
                                                    abscat(lam, 'water'),
                                                    PI.coefficients,
                                                    phy=phy,
-                                                   N=100,
-                                                   pt1_perc_zbot=True
+                                                   N=1000,
+                                                   pt1_perc_zbot=True, 
+                                                   pt1_perc_phy=False    
                                                    )
             Eu_surf[k] =  irr_out[2][-1]
         Eu_surf_dict[lam] = np.copy(Eu_surf)
@@ -193,7 +201,10 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     rrs_555_dat = chla_val_cal_dat['aqua_rrs555'] 
     rrs_ratio_dat =  rrs_443_dat / rrs_555_dat 
 
+    ## This fig is for chla and rrs ratio
     fig, axes = plt.subplots(3, 2)
+    ## This fig is for rrs_443, rrs_551
+    fig2, axes2 = plt.subplots(3,2)
     
     ## Plot C2chla as LC2chla ratio with diff species. 
     LC2chla = 100
@@ -201,17 +212,19 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
         rrs_443, rrs_551, irr_chla = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=LC2chla)     
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
-        ## rrs slope 
-        rrs_m_443 = rrs_443 / rrs_443_dat
-        rrs_m_551 = rrs_551 / rrs_555_dat
         ## chla comparison
-        Plot_Comparison(axes[0,0], chla_dat, irr_chla, 'LC2chla Ratio Varied Species Chla', phy_type, 'Insitu', 'Model') 
-        Plot_Comparison(axes[0,1], rrs_ratio_dat, rrs_ratio, 'LC2chla Ratio Varied Species RRS Ratio', phy_type, 'Insitu', 'Model') 
+        Plot_Comparison(axes[0,0], chla_dat, irr_chla, 'Chla LC2chla Varied Species', phy_type, None, 'Model') 
+        Plot_Comparison(axes[0,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio  LC2chla Varied Species', phy_type, None, None) 
+        Plot_Comparison(axes2[0,0], rrs_443_dat, rrs_443, 'Rrs 443 LC2chla Varied Species', phy_type, None, 'Model') 
+        Plot_Comparison(axes2[0,1], rrs_555_dat, rrs_551, 'Rrs 551 LC2chla Varied Species', phy_type, None, None) 
     ## plotting satelite 
-    Plot_Comparison(axes[0,0], chla_dat, chla_sat, 'LC2chla Ratio Varied Species Chla', 'Sattelite', 'Insitu', 'Model') 
+    Plot_Comparison(axes[0,0], chla_dat, chla_sat, 'Chla LC2chla Varied Species', 'Sattelite', None, 'Model') 
     axes[0,0].legend( title='species')
     axes[0,0].grid()
     axes[0,1].grid()
+    axes2[0,0].legend( title='species')
+    axes2[0,0].grid()
+    axes2[0,1].grid()
 
     ## Plot C2chla as SC2chla ratio with diff species. 
     SC2chla = 50
@@ -220,12 +233,17 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
         ## chla comparison
-        Plot_Comparison(axes[1,0], chla_dat, irr_chla, 'SC2chla Ratio Varied Species Chla', phy_type, 'Insitu', 'Model') 
-        Plot_Comparison(axes[1,1], rrs_ratio_dat, rrs_ratio, 'SC2chla Ratio Varied Species RRS Ratio', phy_type, 'Insitu', 'Model') 
-    Plot_Comparison(axes[1,0], chla_dat, chla_sat, 'LC2chla Ratio Varied Species Chla', 'Sattelite', 'Insitu', 'Model') 
+        Plot_Comparison(axes[1,0], chla_dat, irr_chla, 'Chla SC2chla Varied Species', phy_type, None, 'Model') 
+        Plot_Comparison(axes[1,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio SC2chla Varied Species', phy_type, None, None) 
+        Plot_Comparison(axes2[1,0], rrs_443_dat, rrs_443, 'Rrs 443 LC2chla Varied Species', phy_type, None, 'Model') 
+        Plot_Comparison(axes2[1,1], rrs_555_dat, rrs_551, 'Rrs 551 LC2chla Varied Species', phy_type, None, None) 
+    Plot_Comparison(axes[1,0], chla_dat, chla_sat, 'Chla SC2chla Varied Species', 'Sattelite', None, 'Model') 
     axes[1,0].legend(title='species')
     axes[1,0].grid()
     axes[1,1].grid()
+    axes2[1,0].legend( title='species')
+    axes2[1,0].grid()
+    axes2[1,1].grid()
 
     ## Plot generic species with different C2chla. 
     phy_type = 'Generic'
@@ -234,21 +252,27 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
         ## chla comparison
-        Plot_Comparison(axes[2,0], chla_dat, irr_chla, 'Generic Species Varied C2chla Chla', C2chla, 'Insitu', 'Model') 
-        Plot_Comparison(axes[2,1], rrs_ratio_dat, rrs_ratio, 'Generic Species Varied C2chla RRS Ratio', C2chla, 'Insitu', 'Model') 
-    Plot_Comparison(axes[2,0], chla_dat, chla_sat, 'LC2chla Ratio Varied Species Chla', 'Sattelite', 'Insitu', 'Model') 
+        Plot_Comparison(axes[2,0], chla_dat, irr_chla, 'Chla Generic Species Varied C2chla', C2chla, 'Insitu', 'Model') 
+        Plot_Comparison(axes[2,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio Generic Species Varied C2chla', C2chla, 'Insitu', None) 
+        Plot_Comparison(axes2[2,0], rrs_443_dat, rrs_443, 'Rrs 443 LC2chla Varied Species', C2chla, 'Insitu', 'Model') 
+        Plot_Comparison(axes2[2,1], rrs_555_dat, rrs_551, 'Rrs 551 LC2chla Varied Species', C2chla, 'Insitu', None) 
+    Plot_Comparison(axes[2,0], chla_dat, chla_sat, 'Chla Generic Species Varied C2chla', 'Sattelite', 'Insitu', 'Model') 
     axes[2,0].legend(title='C2chla')
     axes[2,0].grid()
     axes[2,1].grid()
+    axes2[2,0].legend( title='C2chla')
+    axes2[2,0].grid()
+    axes2[2,1].grid()
 
     #plt.tight_layout()
     fig.show()
+    fig2.show()
 
 
-    return rrs_m_443, rrs_m_551 
+    return 
  
 
-def Run_Irr(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type):
+def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type):
     """
     This calculates the irradiance chla value for many different casts within a given time line. 
    
@@ -308,6 +332,12 @@ def Run_Irr(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal
 
                 ## Calculating the irradiance
                 phy = OI.Phy(z, chla, abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
+                if lam == 443: 
+                    PI.Ed0= .7
+                    PI.Es0=.3
+                if lam == 551: 
+                    PI.Ed0 =.3
+                    PI.Es0 =.7
                 ocean_irr_sol = OI.ocean_irradiance_shoot_up(
                                                              z[0],
                                                              PI.Ed0,
@@ -317,16 +347,18 @@ def Run_Irr(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal
                                                              PI.coefficients,
                                                              phy=phy,
                                                              N=N,
-                                                             pt1_perc_zbot=True
+                                                             pt1_perc_zbot=True,
+                                                             pt1_perc_phy=False
                                                              )
                 ## Ed, Es, Eu, z 
                 irr_arr[:,k,0] = ocean_irr_sol[0]
                 irr_arr[:,k,1] = ocean_irr_sol[1]
                 irr_arr[:,k,2] = ocean_irr_sol[2]
                 irr_arr[:,k,3] = ocean_irr_sol[3]
+ 
        
             ## save irr_arr into dict 
-            irr_field[lam] = irr_arr
+            irr_field[lam] = np.copy(irr_arr)
 
         ## save to pickle
         pickle.dump(irr_field, open(save_path, "wb"))
@@ -341,15 +373,26 @@ def Run_Irr(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal
     ## Now to caluclate chla. 
     ## Making the Eu at surface dict for ocean color function.
     Eu_surf_dict = {}
-    Eu_surf = np.zeros(N_cst)
+    f_field = {}
     for lam in wavelengths:
+        Eu_surf = np.zeros(N_cst)
+        ## calculation of the f paramter from Ocean Optics Webbook
+        f_arr = np.zeros((N_cst)) 
         for k,Eu in enumerate(irr_field[lam][-1, :, 2]): 
             if Eu<0 or Eu>1: 
                 Eu_surf[k] = np.nan
             else:
                 Eu_surf[k] = Eu
-            
+              
+            ## calculation of f. 
+            ## follows the ocean optics webbook normalizing radiances chapter.
+            a_wat, b_wat = abscat(lam, 'water')
+            b_b_wat = .551 * b_wat
+            f = (Eu / (PI.Ed0 + PI.Es0)) * (a_wat/b_b_wat) 
+            f_arr[k] = f 
+
         Eu_surf_dict[lam] = np.copy(Eu_surf)
+        f_field[lam] = np.copy(f_arr)
     ## calculating the chla 
     chla_irr = OIR.ocean_color_sol(Eu_surf_dict, PI.Ed0, PI.Es0)
 
@@ -363,7 +406,7 @@ def Run_Irr(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal
             z = np.zeros(N) * np.nan
             chla = np.zeros(N) * np.nan
         ## surface is the insitu.
-        chla_dat[k] = np.nanmean(chla[-5:])
+        chla_dat[k] = chla[-1]
 
     ## Plotting the comparison
     fig, ax = plt.subplots()
@@ -372,8 +415,18 @@ def Run_Irr(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal
 
     ## Plotting the comparison as a scatter on map. 
     PF.Plot_Scatter(chla_dat - chla_irr, lat_dat, lon_dat, 'Chla Bias', 'Chla_dat - Chla_irr', vmin=None, vmax=None, fig=None)
-    
-    return irr_field 
+
+    ## Plotting the frequency of diff chla vals
+    fig, ax = plt.subplots()
+    N_bins = 1000
+    ax, bin_edges = PC.Plot_Frequency(ax, chla_dat, N_bins, 'Chla_dat') 
+    ax, bin_edges = PC.Plot_Frequency(ax, chla_irr, N_bins, 'Chla_irr', bin_edges=bin_edges) 
+    ax.legend()
+    ax.set_title(f'Frequency Distribtion out of {len(chla_irr)}')
+    ax.set_xlabel('Chla Value [mg chla m^-3]')
+    fig.show()
+
+    return irr_field, f_field, chla_dat 
  
         
 
@@ -399,10 +452,10 @@ if __name__ == '__main__':
     chla_val_cal_dat = chla_val_dat[chla_val_dat['cruise'].str.contains('cal', regex = False) ]
 
     ## Running 
-    rrs_m_443, rrs_m_551 = Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals)
+    Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals)
 
     ## The number of vertical layers in irr grid. 
-    N = 100
+    N = 200
 
     ## The oldest that data can be used.
     ## should be around 5000 casts. 
@@ -421,7 +474,7 @@ if __name__ == '__main__':
     PI = Param_Init()
 
     ## Running comparison of insitu to irr surface chla for many cal casts. 
-    irr_field = Run_Irr(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type)  
+    irr_field, f_field, chla_dat = Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type)  
 
 
    

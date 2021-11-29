@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
     ## The reference chla. This is also the input into the irradiance model
     chla_ROMS = R_nc.chl_diatom + R_nc.chl_nanophyt  
-    chla_surf_ROMS = np.nanmean(chla_ROMS[time_step_index, -10:, :,:], axis = 0) 
+    chla_surf_ROMS = chla_ROMS[time_step_index, -1, :,:] 
     chla_surf_ROMS = chla_surf_ROMS.flatten()  
 
     ## storing the chla irr arrays
