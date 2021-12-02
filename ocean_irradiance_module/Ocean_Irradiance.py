@@ -669,6 +669,8 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     a = a_wat
     b = b_wat 
     
+    ## backscattering due to phy
+    b_b_phy = 0
     ## If phytoplankton, otherwise just water in column.
     if phy: 
         
@@ -687,12 +689,14 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
         if Nphy == 1 : 
             a = a + phy_prof * a_phy
             b = b + phy_prof * b_phy
+            b_b_phy = b_b_phy + phy_prof * b_phy * .02
             
         ## More than one species
         elif Nphy > 1 : 
             for k in range(Nphy):
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
+                b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * .02
 
     
     ## If pt1_perc_zbot is True
@@ -724,6 +728,7 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     if phy: 
         a = np.interp(z,z_phy,a)
         b = np.interp(z,z_phy,b)
+        b_b_phy = np.interp(z, z_phy, b_b_phy)
     else: 
         a = np.full(N, a)
         b = np.full(N, b)
@@ -734,7 +739,9 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     #     print('lengths of z and Ed must be the same, and a&b should be 1 less.')
         
 
-    b_b = .551*b
+    b_b_wat = .551*b_wat
+
+    b_b = b_b_wat + b_b_phy
     b_f = b - b_b 
     
 
@@ -1612,7 +1619,7 @@ def Demo(method='shoot_up'):
     
     z = np.linspace(-600,0,N)
 
-    phy_prof = artificial_phy_prof(z, 0, 10,50)
+    phy_prof = artificial_phy_prof(z, 0, 10,1)
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
     # print(phy_prof)
@@ -1697,8 +1704,8 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
-    # if args.demo: 
-    zarr, Ed, Es, Eu = Demo('shoot_up')
+    if args.demo: 
+        zarr, Ed, Es, Eu = Demo('shoot_up')
     
     #Ed_redo = np.flip(numerical_Ed(np.flip(zarr), np.flip(c_Ed_z), .7))
 
