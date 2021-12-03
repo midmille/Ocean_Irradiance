@@ -113,7 +113,7 @@ def Get_Cast_Depth_Chla(cal_bot_dat, cast_count):
     return z, chla
 
  
-def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=None): 
+def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, esd, C2chla=None): 
     """
     This function loops over the cruise data and calculates the irradiances and chla at the surface for each. 
     """ 
@@ -139,7 +139,7 @@ def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chl
             z, chla = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt)     
             chla_dat[k] = chla[-1]
             ## Calculating the irradiance
-            phy = OI.Phy(z, chla, abscat(lam, phy_type, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
+            phy = OI.Phy(z, chla, esd, abscat(lam, phy_type, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
 
             irr_out = OI.ocean_irradiance_shoot_up(
                                                    z[0],
@@ -187,7 +187,7 @@ def Loop_Cal_Cruise_Baird(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type,
             ## Getting the chla and depth profile.
             z, chla = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt)     
             ## Calculating the irradiance
-            phy = OI.Phy(z, chla, abscat(lam, phy_type, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
+            phy = OI.Phy(z, chla, abscat(lam, phy_type, esd, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
 
             Rrs = OIB.ocean_irradiance_baird(
                                              z[0],
@@ -228,7 +228,7 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
     return ax 
 
 
-def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals, method='shoot_up', theta_air = None):
+def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, esd, C2chla_vals, method='shoot_up', theta_air = None):
     """
     Plots a scatter plot comparing the values
     """ 
@@ -249,7 +249,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     LC2chla = 100
     for k, phy_type in enumerate(species):
         if method == 'shoot_up':
-            rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=LC2chla)     
+            rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, esd, C2chla=LC2chla)     
         if method == 'baird':
             rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise_Baird(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, theta_air, C2chla=LC2chla)     
         ## Ratio of rrs 
@@ -273,7 +273,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     SC2chla = 50
     for k, phy_type in enumerate(species):
         if method == 'shoot_up':
-            rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=SC2chla)     
+            rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, esd, C2chla=SC2chla)     
         if method == 'baird':
             rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise_Baird(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, theta_air, C2chla=SC2chla)     
         ## Ratio of rrs 
@@ -295,18 +295,18 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     phy_type = 'Generic'
     for k, C2chla in enumerate(C2chla_vals):
         if method == 'shoot_up':
-            rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=C2chla)     
+            rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, esd, C2chla=C2chla)     
         if method == 'baird':
             rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise_Baird(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, theta_air, C2chla=C2chla)     
         
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
         ## chla comparison
-        Plot_Comparison(axes[2,0], chla_insitu, irr_chla, 'Chla Generic Species Varied C2chla', C2chla, 'Insitu', 'Model') 
-        Plot_Comparison(axes[2,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio Generic Species Varied C2chla', C2chla, 'Insitu', None) 
-        Plot_Comparison(axes2[2,0], rrs_443_dat, rrs_443, 'Rrs 443 LC2chla Varied Species', C2chla, 'Insitu', 'Model') 
-        Plot_Comparison(axes2[2,1], rrs_555_dat, rrs_551, 'Rrs 551 LC2chla Varied Species', C2chla, 'Insitu', None) 
-    Plot_Comparison(axes[2,0], chla_insitu, chla_sat, 'Chla Generic Species Varied C2chla', 'Sattelite', 'Insitu', 'Model') 
+        Plot_Comparison(axes[2,0], chla_insitu, irr_chla, 'Chla Generic Species Varied C2chla', C2chla, 'In Situ', 'Model') 
+        Plot_Comparison(axes[2,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio Generic Species Varied C2chla', C2chla, 'In Situ', None) 
+        Plot_Comparison(axes2[2,0], rrs_443_dat, rrs_443, 'Rrs 443 LC2chla Varied Species', C2chla, 'In Situ', 'Model') 
+        Plot_Comparison(axes2[2,1], rrs_555_dat, rrs_551, 'Rrs 551 LC2chla Varied Species', C2chla, 'In Situ', None) 
+    Plot_Comparison(axes[2,0], chla_insitu, chla_sat, 'Chla Generic Species Varied C2chla', 'Sattelite', 'In Situ', 'Model') 
     axes[2,0].legend(title='C2chla')
     axes[2,0].grid()
     axes[2,1].grid()
@@ -320,7 +320,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
   
     ## plotting a comparison of chla dat to chla insitu 
     fig, ax = plt.subplots()
-    Plot_Comparison(ax, chla_insitu, chla_dat, 'Chla NOMAD Insitu Compared to Cast Insitu', None, 'NOMAD', 'Cast')
+    Plot_Comparison(ax, chla_insitu, chla_dat, 'Chla NOMAD In Situ Compared to Cast In Situ', None, 'NOMAD', 'Cast')
     ax.grid()
     fig.show()
 
@@ -328,7 +328,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     return 
  
 
-def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species):
+def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, esd):
     """
     This calculates the irradiance chla value for many different casts within a given time line. 
    
@@ -390,7 +390,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                     ## Storing the surface chla as the insitu comparison.
     
                     ## Calculating the irradiance
-                    phy = OI.Phy(z, chla, abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
+                    phy = OI.Phy(z, chla, esd, abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
                     #if lam == 443: 
                     #    PI.Ed0= .7
                     #    PI.Es0=.3
@@ -468,7 +468,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
             chla_dat[k] = chla[-1]
     
         ## Plotting the comparison
-        ax = Plot_Comparison(ax, chla_dat, chla_irr, 'Chla Insitu to Chla Irr', phy_type, 'Insitu', 'Model', xlim=50, ylim=50)
+        ax = Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
     ax.legend(title='species')
     fig.show()
     
@@ -566,7 +566,7 @@ def Run_Baird_Comp_Insitu(save_dir, save_file, wavelengths, N, year_min, cal_cas
 
     ## Plotting the comparison
     fig, ax = plt.subplots()
-    Plot_Comparison(ax, chla_dat, chla_irr, 'Chla Insitu to Chla Irr', phy_type, 'Insitu', 'Model', xlim=None, ylim=None)
+    Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=None, ylim=None)
     fig.show()
 
     ## Plotting the comparison as a scatter on map. 
@@ -607,12 +607,15 @@ if __name__ == '__main__':
     ## getting the data with cal cruises only
     chla_val_cal_dat = chla_val_dat[chla_val_dat['cruise'].str.contains('cal', regex = False) ]
  
-    ## Angle of the azimuth. 
+    ## Angle of the azimuth. Only for baird. 
     theta_air=.55
+
+    ## Equivalent spherical diameter. In micro meters.
+    esd = 20
 
     ## Running 
     #Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals, method='baird', theta_air=theta_air)
-    Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals)
+    Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, esd, C2chla_vals)
 
     ## The number of vertical layers in irr grid. 
     N = 200
@@ -635,7 +638,7 @@ if __name__ == '__main__':
 
     ## Running comparison of insitu to irr surface chla for many cal casts. 
     #Run_Baird_Comp_Insitu(args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, theta_air)  
-    Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species)
+    Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, esd)
 
 
    

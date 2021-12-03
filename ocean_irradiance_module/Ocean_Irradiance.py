@@ -16,14 +16,17 @@ class Phy:
                 -- z should be a column vector
         --> Phytoplankton chlorophyll concentrations [mg chl-a m^-3]
                 --2-D array with columns corresponding to diff. phytoplankton
+        --> Equivalent Spherical Diameter
+                -- 1-D Array corresponding to the number of phytoplankton
         --> absorbtion coefficient, a [m^-1]
                 -- Vector corresponding to different phytoplankton
         --> backscatter coefficient, b [m^-1]
                 -- Vector corresponding to different phytoplankton
     """
-    def __init__(self, z, phy, a, b):
+    def __init__(self, z, phy, esd, a, b):
         self.z = z
         self.phy = phy
+        self.esd = esd
         self.a = a
         self.b = b
         self.Nz = len(z)
@@ -32,10 +35,38 @@ class Phy:
         elif phy.ndim == 2:
             self.Nphy = np.shape(phy)[1]
             assert self.Nphy == len(a) and self.Nphy == len(b)
+            assert self.NPhy == len(esd)
 
         assert np.shape(phy)[0] == self.Nz
         
         return 
+
+
+def Backscatter_Ratio(esd):
+    """ 
+    This calculates the backscatter ratio for a given equivalent spherical diameter. 
+    This equation comes from equation 6 of the paper:
+
+    "Spectral backscattering properties of marine phytoplankton cultures"
+    by 
+    Amanda L. Whitmire, W. Scott Pegau, Lee Karp-Boss, Emmanuel Boss, and Timothy J. Cowles1
+    2010
+
+    Parameters
+    ----------
+    esd: Float
+        The equivalent spherical diameter of the given phytoplankton species. Should be 
+        in micro meters.
+    
+    Returns
+    -------
+    bb_r: Float
+        The backscatter ratio.
+    """
+   
+    bb_r = (4.390*10**-3)*esd**0.432
+    
+    return bb_r
 
 
 def analytical_Ed(zarr,c, Ed0): 
@@ -629,6 +660,10 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
         True refers to using the .1% light level as the zbot so long as that the magnitude 
         of the .1% light level is smaller than the magnitude of hbot. False refers
         to just using given hbot as zbot. 
+    pt1_perc_phy: Boolean, default is True
+        The .1% light level is used to set zbot, but this flag calculates the 
+        .1% light level with phytoplankton. The pt1_perc_zbot flag must also be True for this
+        to work.
 
     Returns
     -------
@@ -647,10 +682,9 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     
     ##N centers
     Nm1 = N - 1  
-    
+
     ##initial guess... doesn't matter too much
     init_guess = .001
-    # init_guess = 0
     
     Ed1 = np.full(N, init_guess)
     Es1 = np.full(N, init_guess)
@@ -685,15 +719,21 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
         a_phy = phy.a
         b_phy = phy.b
         
+        ## equivalent spherical diameter
+        esd = phy.esd
         ## Just one phytoplankton species
         if Nphy == 1 : 
+            ## The back scatter ratio
+            bb_r = Backscatter_Ratio(esd)    
             a = a + phy_prof * a_phy
             b = b + phy_prof * b_phy
-            b_b_phy = b_b_phy + phy_prof * b_phy * .02
+            b_b_phy = b_b_phy + phy_prof * b_phy * bb_r
             
         ## More than one species
         elif Nphy > 1 : 
             for k in range(Nphy):
+                ## The back scatter ratio
+                bb_r = Backscatter_Ratio(esd[k])    
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
                 b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * .02
