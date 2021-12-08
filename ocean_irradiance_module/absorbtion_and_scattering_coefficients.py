@@ -130,7 +130,30 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default'):
     if constituent == 'Syn':
         return Syn[wavelength]
     
- 
+def equivalent_spherical_diameter(species):
+    """
+    Retrieves the equivalent spherical diameter for each species of phytoplankton
+    
+    The ESD is returned in units of micro meters.
+
+    See Notes for 12/7
+    """ 
+
+    if species == 'HLPro': 
+        return 0.6 
+    if species == 'Cocco': 
+        return 4 
+    if species == 'Diat':
+        return 17
+    if species == 'Generic': 
+        return 10 
+    if species == 'Syn':
+        return .98 
+    
+
+
+
+
 
 
 

@@ -38,6 +38,8 @@ class ROMS_netcdf:
         self.diatom =  roms_nc.variables["diatom"][:]
         ## Getting nanophytoplankton array.
         self.nanophyt =  roms_nc.variables["nanophytoplankton"][:]
+        ## salinity
+        #self.salt = roms_nc.varaibles["salt"][:]
         ## Changing to chl
         self.chl_diatom = PI.NL2Chl * self.diatom
         ## Changing to chl

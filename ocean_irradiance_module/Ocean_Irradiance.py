@@ -42,6 +42,37 @@ class Phy:
         return 
 
 
+class CDOM:
+    """
+    The CDOM Class includes:
+        --> z coordinates corresponding to concentrations [m (< 0)]
+                -- z should be a column vector
+        --> salinity concentrations []
+                --1-D array same size as z
+        --> given wavelength
+                -- float 
+    The CDOM is calculated from the salinity following equations 2 and 3 from 
+    "Remote-sensing reflectance and true colour produced by a coupled
+     hydrodynamic, optical, sediment, biogeochemical model of the 
+     Great Barrier Reef, Australia: Comparison with satellite data"
+    by Mark E. Baird 2016
+
+    """
+    def __init__(self, z, salt, wavelength):
+        self.z = z
+        self.salt = salt
+        self.wavelength = wavelength
+
+        ## calculate cdom from salitnity following Baird 2016 
+        ## Edited by Jonathan such that absorbtion = 0 at 34.
+        salt[salt >= 34] = 34
+        a_443 = -0.0332*salt + 1.1288
+        self.a = a_443*np.exp(-0.012*(wavelength - 443))
+        
+        return 
+
+
+
 def Backscatter_Ratio(esd):
     """ 
     This calculates the backscatter ratio for a given equivalent spherical diameter. 
@@ -627,8 +658,7 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 
     return Ed, Es, Eu, z
 
 
-def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 30, 
-                     pt1_perc_zbot = True, pt1_perc_phy = True):
+def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, CDOM=None, N = 30, pt1_perc_zbot = True, pt1_perc_phy = True):
     
     
     """
@@ -738,7 +768,21 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
                 b = b + phy_prof[:,k] * b_phy[k]
                 b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * .02
 
+    ## Inclusion of CDOM
+    if CDOM: 
+        ## unpacking the object
+        ## For now it is assumed that phy and cdom share same grid.
+        if phy:
+            a_cdom = CDOM.a
+            a = a + a_cdom 
+        ## This is for only CDOM no phy
+        else:
+            a_cdom = CDOM.a
+            z_cdom = CDOM.z 
+            a = a + a_cdom 
+
     
+    ## Irradiance Grid Stuff
     ## If pt1_perc_zbot is True
     if pt1_perc_zbot == True :
         ## Finding the zbot at the .1% light level. 
@@ -769,6 +813,10 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
         a = np.interp(z,z_phy,a)
         b = np.interp(z,z_phy,b)
         b_b_phy = np.interp(z, z_phy, b_b_phy)
+    elif CDOM: 
+        a = np.interp(z,z_cdom,a)
+        ## no scattering for cdom, thus just water scattering.
+        b = np.full(N, b)
     else: 
         a = np.full(N, a)
         b = np.full(N, b)
@@ -1653,11 +1701,11 @@ def Demo(method='shoot_up'):
     
     PI = Param_Init()
     
-    N = 300
+    N = 3000
     Nm1 = N-1 
     lam =443
     
-    z = np.linspace(-600,0,N)
+    z = np.linspace(-100,0,N)
 
     phy_prof = artificial_phy_prof(z, 0, 10,1)
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
@@ -1672,7 +1720,12 @@ def Demo(method='shoot_up'):
     
     
     ## Define the Phytoplankton class.
-    phy = Phy(z, phy_prof, a_phy, b_phy)
+    phy = Phy(z, phy_prof, .02,a_phy, b_phy)
+
+    ## Salinity for CDOM
+    salt = np.full(N, 34.5)
+    ## define the CDOM class
+    cdom = CDOM(z,salt,lam) 
 
 
     ## The fixed point position: 
@@ -1684,7 +1737,7 @@ def Demo(method='shoot_up'):
     if method == 'shoot_up':
         
         Ed, Es, Eu, zarr = ocean_irradiance_shoot_up(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
-                                            phy=phy, N=N, pt1_perc_zbot = True, pt1_perc_phy=True)
+                                            phy=phy, CDOM=cdom, N=N, pt1_perc_zbot = True, pt1_perc_phy=True)
      
     if method == 'shoot_down':
         Ed, Es, Eu, zarr = ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,
