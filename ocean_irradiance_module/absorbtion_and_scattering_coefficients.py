@@ -51,9 +51,9 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default'):
     ## if the unit change is default then
     if C2chla == 'default':
         ## Large phytoplankton ie diatoms 
-        LC2chla = 50
+        LC2chla = 100
         ## Small phytoplankton ie nanophytoplankton
-        SC2chla = 100
+        SC2chla = 50
         ## the rest of the species will be somewhere in between. 
         C2chla = 75
     else: 

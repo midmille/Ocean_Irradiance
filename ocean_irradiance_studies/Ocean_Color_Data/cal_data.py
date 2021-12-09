@@ -293,8 +293,8 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
         ## chla comparison
         Plot_Comparison(axes[1,0], chla_insitu, irr_chla, 'Chla SC2chla Varied Species', phy_type, None, 'Model') 
         Plot_Comparison(axes[1,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio SC2chla Varied Species', phy_type, None, None) 
-        Plot_Comparison(axes2[1,0], rrs_443_dat, rrs_443, 'Rrs 443 LC2chla Varied Species', phy_type, None, 'Model') 
-        Plot_Comparison(axes2[1,1], rrs_555_dat, rrs_551, 'Rrs 551 LC2chla Varied Species', phy_type, None, None) 
+        Plot_Comparison(axes2[1,0], rrs_443_dat, rrs_443, 'Rrs 443 SC2chla Varied Species', phy_type, None, 'Model') 
+        Plot_Comparison(axes2[1,1], rrs_555_dat, rrs_551, 'Rrs 551 SC2chla Varied Species', phy_type, None, None) 
     Plot_Comparison(axes[1,0], chla_insitu, chla_sat, 'Chla SC2chla Varied Species', 'Sattelite', None, 'Model') 
     axes[1,0].legend(title='species')
     axes[1,0].grid()
@@ -316,8 +316,8 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
         ## chla comparison
         Plot_Comparison(axes[2,0], chla_insitu, irr_chla, 'Chla Generic Species Varied C2chla', C2chla, 'In Situ', 'Model') 
         Plot_Comparison(axes[2,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio Generic Species Varied C2chla', C2chla, 'In Situ', None) 
-        Plot_Comparison(axes2[2,0], rrs_443_dat, rrs_443, 'Rrs 443 LC2chla Varied Species', C2chla, 'In Situ', 'Model') 
-        Plot_Comparison(axes2[2,1], rrs_555_dat, rrs_551, 'Rrs 551 LC2chla Varied Species', C2chla, 'In Situ', None) 
+        Plot_Comparison(axes2[2,0], rrs_443_dat, rrs_443, 'Rrs 443 Generic Species Varied C2chla', C2chla, 'In Situ', 'Model') 
+        Plot_Comparison(axes2[2,1], rrs_555_dat, rrs_551, 'Rrs 551 Generic Species Varied C2chla', C2chla, 'In Situ', None) 
     Plot_Comparison(axes[2,0], chla_insitu, chla_sat, 'Chla Generic Species Varied C2chla', 'Sattelite', 'In Situ', 'Model') 
     axes[2,0].legend(title='C2chla')
     axes[2,0].grid()
@@ -340,7 +340,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     return 
  
 
-def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species):
+def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, C2chla):
     """
     This calculates the irradiance chla value for many different casts within a given time line. 
    
@@ -403,7 +403,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                     ## Storing the surface chla as the insitu comparison.
     
                     ## Calculating the irradiance
-                    phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
+                    phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla)[0], abscat(lam, phy_type, C2chla)[1])
                     cdom = OI.CDOM(z, salt, lam)
                     #if lam == 443: 
                     #    PI.Ed0= .7
@@ -650,9 +650,11 @@ if __name__ == '__main__':
     ## Param Init object 
     PI = Param_Init()
 
+    ## C2chla for all species
+    C2chla = 200
     ## Running comparison of insitu to irr surface chla for many cal casts. 
     #Run_Baird_Comp_Insitu(args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, theta_air)  
-    irr_field, f_field, chla_dat, zbot_dat = Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species)
+    irr_field, f_field, chla_dat, zbot_dat = Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, C2chla)
 
 
    

@@ -107,6 +107,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     PI = Param_Init()
+    print(args.file)
     R_nc = ROMS_netcdf(args.file)
 
     ## settting time step index

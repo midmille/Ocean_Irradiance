@@ -16,6 +16,7 @@ from netCDF4 import Dataset
 # os.environ["PROJ_LIB"] = "C:/Users/Miles Miller/anaconda3/envs/pybasemap36/Library/share"
 # import seapy 
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
+from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
 from ocean_irradiance_module import Ocean_Irradiance
 import os
 import sys
