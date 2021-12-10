@@ -179,45 +179,6 @@ def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chl
     return rrs_443, rrs_551, irr_chla, chla_dat        
 
 
-def Loop_Cal_Cruise_Baird(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, theta_air, C2chla=None): 
-    """
-    This function loops over the cruise data and calculates the Rrs and chla using the 
-    Baird model. 
-    """ 
-
-    Rrss = np.zeros(len(chla_val_cal_dat['cruise']))
-    Rrs_dict = {}
-    ## Looping over ocean color wavelengths.
-    for lam in [443, 551]:
-        ## Then loop over cal cruises. 
-        for k, id in enumerate(chla_val_cal_dat['/fields=id']): 
-            ## Getting the cast count. 
-            cst_cnt = Get_Cst_Cnt(chla_val_cal_dat, cal_cast_dat, id)
-            if cst_cnt == None: 
-                Rrss[k] = np.nan
-                continue 
-            ## Getting the chla and depth profile.
-            z, chla = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt)     
-            ## Calculating the irradiance
-            phy = OI.Phy(z, chla, abscat(lam, phy_type, esd, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
-
-            Rrs = OIB.ocean_irradiance_baird(
-                                             z[0],
-                                             abscat(lam, 'water'),
-                                             theta_air,
-                                             phy=phy,
-                                             N=1000,
-                                             )
-            Rrss[k] =  Rrs
-        Rrs_dict[lam] = np.copy(Rrss)
-            
-         
-    ## Chla 
-    chla = OIR.OCx_alg(Rrs_dict[443], Rrs_dict[551])
-
-    return Rrs_dict[443], Rrs_dict[551], chla 
-            
-
 def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None): 
     """
     Plots the given values on a given axes
@@ -262,8 +223,6 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     for k, phy_type in enumerate(species):
         if method == 'shoot_up':
             rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=LC2chla)     
-        if method == 'baird':
-            rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise_Baird(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, theta_air, C2chla=LC2chla)     
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
         print(rrs_443)
@@ -286,8 +245,6 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     for k, phy_type in enumerate(species):
         if method == 'shoot_up':
             rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=SC2chla)     
-        if method == 'baird':
-            rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise_Baird(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, theta_air, C2chla=SC2chla)     
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
         ## chla comparison
@@ -308,9 +265,6 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     for k, C2chla in enumerate(C2chla_vals):
         if method == 'shoot_up':
             rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=C2chla)     
-        if method == 'baird':
-            rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise_Baird(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, theta_air, C2chla=C2chla)     
-        
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
         ## chla comparison
@@ -503,106 +457,10 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
         #fig.show()
     
     return irr_field, f_field, chla_dat, zbot_dat 
+
+
+def Run_Cal_Comp_Viirs():
     
-    
-def Run_Baird_Comp_Insitu(save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, theta_air):
-    """
-    This calculates the Baird chla value for many different casts within a given time line. 
-   
-    Parameters
-    ----------
-    save_dir: String 
-        The name of the directory that the irradiance field pickle file will be saved in. 
-    save_file: String
-        The name of the pickle file.
-    wavelengths: List
-        A list of the wavelengths for which irradiance will be calculated for. 
-    N: Int 
-        The number of vertical levels for the irradiance grid. 
-    year_min: Int
-        The start year for casts to be calculated. the limit is 1949. 
-    cal_casts_dat: Pandas Data Frame
-        The data frame containning all the casts.
-    cal_bot_dat: Pandas Data Frame
-        The data frame containing all the bottles corresponding to the casts.
-
-    Returns
-    -------
-    """
-    
-    ## The location of the save file.
-    save_path = f'{save_dir}/{save_file}'
- 
-    ## Bounded data set in the desired timeline.
-    cal_cast_dat_bnd = cal_cast_dat[cal_cast_dat['Year'] > year_min]
-    ## The number of casts to be calculated. 
-    N_cst = len(cal_cast_dat_bnd)
-
-    Rrs_dict = {}
-    for lam in wavelengths: 
-        ## The array in which to store all the irradiance solutions into. 
-        Rrs_arr = np.zeros(N_cst)
-         
-        ## Now loop over the casts and calculate the irradiance chla each time.  
-        for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
-            print(f'{k}/{N_cst}')
-            ## Getting the chla and depth profile.
-            z, chla = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt)     
-            ## checking for zero sized return
-            if len(z) == 0: 
-                z = np.zeros(N) * np.nan
-                chla = np.zeros(N) * np.nan
-            ## Storing the surface chla as the insitu comparis
-            ## Calculating the irradiance
-            phy = OI.Phy(z, chla, abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
-            Rrs = OIB.ocean_irradiance_baird(
-                                             z[0],
-                                             abscat(lam, 'water'),
-                                             theta_air,
-                                             phy=phy,
-                                             N=N,
-                                             )
-            Rrs_arr[k] = Rrs
-        ## Save into a dict. 
-        Rrs_dict[lam] = np.copy(Rrs_arr)
-
-    ## Now to caluclate chla. 
-    chla_irr = OIR.OCx_alg(Rrs_dict[443], Rrs_dict[551])
-
-    ## chla data from calcofi 
-    chla_dat = np.zeros(N_cst)
-    lon_dat = cal_cast_dat_bnd['Lon_Dec']
-    lat_dat = cal_cast_dat_bnd['Lat_Dec']
-    for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
-        z, chla = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt)     
-        if len(z) == 0: 
-            z = np.zeros(N) * np.nan
-            chla = np.zeros(N) * np.nan
-        ## surface is the insitu.
-        chla_dat[k] = chla[-1]
-
-    ## Plotting the comparison
-    fig, ax = plt.subplots()
-    Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=None, ylim=None)
-    fig.show()
-
-    ## Plotting the comparison as a scatter on map. 
-    PF.Plot_Scatter(chla_dat - chla_irr, lat_dat, lon_dat, 'Chla Bias', 'Chla_dat - Chla_irr', vmin=None, vmax=None, fig=None)
-
-    ## Plotting the frequency of diff chla vals
-    fig, ax = plt.subplots()
-    N_bins = 1000
-    ax, bin_edges = PC.Plot_Frequency(ax, chla_dat, N_bins, 'Chla_dat') 
-    ax, bin_edges = PC.Plot_Frequency(ax, chla_irr, N_bins, 'Chla_irr', bin_edges=bin_edges) 
-    ax.legend()
-    ax.set_title(f'Frequency Distribtion out of {len(chla_irr)}')
-    ax.set_xlabel('Chla Value [mg chla m^-3]')
-    fig.show()
-
-    return  
- 
-        
-
 
 if __name__ == '__main__': 
 
@@ -628,8 +486,7 @@ if __name__ == '__main__':
     theta_air=.55
 
     ## Running 
-    #Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals, method='baird', theta_air=theta_air)
-    Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals)
+    #Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals)
 
     ## The number of vertical layers in irr grid. 
     N = 200
@@ -653,8 +510,7 @@ if __name__ == '__main__':
     ## C2chla for all species
     C2chla = 200
     ## Running comparison of insitu to irr surface chla for many cal casts. 
-    #Run_Baird_Comp_Insitu(args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, theta_air)  
-    irr_field, f_field, chla_dat, zbot_dat = Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, C2chla)
+    #irr_field, f_field, chla_dat, zbot_dat = Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, C2chla)
 
 
    
