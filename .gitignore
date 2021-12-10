@@ -1,3 +1,4 @@
 *.p
 ocean_irradiance_out/
 *.csv
+*.nc
