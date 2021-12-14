@@ -43,7 +43,7 @@ from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absor
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
 import ocean_irradiance_visualization.Plot_Field as PF
 import ocean_irradiance_visualization.Plot_Comparison as PC
-
+import viirs_calcofi_val
 
 def Get_Data(oc_chla_val_file, cal_cast_file, cal_bot_file): 
     """
@@ -333,64 +333,53 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
 
     ## Checking if the save file exists.
     ## If it doesn't then do the calculation.
-    fig, ax = plt.subplots()
-    for phy_type in species:
-        ## The location of the save file.
-        save_path = f'{save_dir}/{save_file}_{phy_type}.p'
-
-        if os.path.exists(save_path) == False:
-
-            for lam in wavelengths: 
-                ## The array in which to store all the irradiance solutions into. 
-                irr_arr = np.zeros((N,N_cst, 4))
-             
-                ## Now loop over the casts and calculate the irradiance chla each time.  
-                for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
-                    print(f'{k}/{N_cst}')
-                    ## Getting the chla and depth profile.
-                    z, chla, salt = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt, incld_salt=True)     
-                    ## checking for zero sized return
-                    if len(z) == 0: 
-                        z = np.zeros(N) * np.nan
-                        chla = np.zeros(N) * np.nan
-                        salt = np.zeros(N) * np.nan
-                    ## Storing the surface chla as the insitu comparison.
+    ## The location of the save file.
+    save_path = f'{save_dir}/{save_file}_{phy_type}.p'
+    if os.path.exists(save_path) == False:
     
-                    ## Calculating the irradiance
-                    phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla)[0], abscat(lam, phy_type, C2chla)[1])
-                    cdom = OI.CDOM(z, salt, lam)
-                    #if lam == 443: 
-                    #    PI.Ed0= .7
-                    #    PI.Es0=.3
-                    #if lam == 551: 
-                    #    PI.Ed0 =.3
-                    #    PI.Es0 =.7
-                    ocean_irr_sol = OI.ocean_irradiance_shoot_up(
-                                                                 z[0],
-                                                                 PI.Ed0,
-                                                                 PI.Es0,
-                                                                 PI.Euh,
-                                                                 abscat(lam, 'water'),
-                                                                 PI.coefficients,
-                                                                 phy=phy,
-                                                                 CDOM=None,
-                                                                 N=N,
-                                                                 pt1_perc_zbot=True,
-                                                                 pt1_perc_phy=True
-                                                                 )
-                    ## Ed, Es, Eu, z 
-                    irr_arr[:,k,0] = ocean_irr_sol[0]
-                    irr_arr[:,k,1] = ocean_irr_sol[1]
-                    irr_arr[:,k,2] = ocean_irr_sol[2]
-                    irr_arr[:,k,3] = ocean_irr_sol[3]
- 
-           
-                ## save irr_arr into dict 
-                irr_field[lam] = np.copy(irr_arr)
-    
-            ## save to pickle
-            pickle.dump(irr_field, open(save_path, "wb"))
-            print('Python calculation complete and saved')
+        for lam in wavelengths: 
+            ## The array in which to store all the irradiance solutions into. 
+            irr_arr = np.zeros((N,N_cst, 4))
+         
+            ## Now loop over the casts and calculate the irradiance chla each time.  
+            for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
+                print(f'{k}/{N_cst}')
+                ## Getting the chla and depth profile.
+                z, chla, salt = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt, incld_salt=True)     
+                ## checking for zero sized return
+                if len(z) == 0: 
+                    z = np.zeros(N) * np.nan
+                    chla = np.zeros(N) * np.nan
+                    salt = np.zeros(N) * np.nan
+                ## Storing the surface chla as the insitu comparison. 
+                ## Calculating the irradiance
+                phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
+                cdom = OI.CDOM(z, salt, lam)
+                ocean_irr_sol = OI.ocean_irradiance_shoot_up(
+                                                             z[0],
+                                                             PI.Ed0,
+                                                             PI.Es0,
+                                                             PI.Euh,
+                                                             abscat(lam, 'water'),
+                                                             PI.coefficients,
+                                                             phy=phy,
+                                                             CDOM=None,
+                                                             N=N,
+                                                             pt1_perc_zbot=True,
+                                                             pt1_perc_phy=True
+                                                             )
+                ## Ed, Es, Eu, z 
+                irr_arr[:,k,0] = ocean_irr_sol[0]
+                irr_arr[:,k,1] = ocean_irr_sol[1]
+                irr_arr[:,k,2] = ocean_irr_sol[2]
+                irr_arr[:,k,3] = ocean_irr_sol 
+       
+            ## save irr_arr into dict 
+            irr_field[lam] = np.copy(irr_arr) 
+
+        ## save to pickle
+        pickle.dump(irr_field, open(save_path, "wb"))
+        print('Python calculation complete and saved')
 
         ## If the save file does exist then load it. 
         elif os.path.exists(save_path) == True:
@@ -401,26 +390,23 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
         ## Now to caluclate chla. 
         ## Making the Eu at surface dict for ocean color function.
         Eu_surf_dict = {}
-        f_field = {}
+        Rrs_443 = np.zeros(N_cst)
+        Rrs_551 = np.zeros(N_cst)
+
         for lam in wavelengths:
             Eu_surf = np.zeros(N_cst)
-            ## calculation of the f paramter from Ocean Optics Webbook
-            f_arr = np.zeros((N_cst)) 
             for k,Eu in enumerate(irr_field[lam][-1, :, 2]): 
                 if Eu<0 or Eu>1: 
-                    Eu_surf[k] = np.nan
-                else:
-                    Eu_surf[k] = Eu
-                  
-                ## calculation of f. 
-                ## follows the ocean optics webbook normalizing radiances chapter.
-                a_wat, b_wat = abscat(lam, 'water')
-                b_b_wat = .551 * b_wat
-                f = (Eu / (PI.Ed0 + PI.Es0)) * (a_wat/b_b_wat) 
-                f_arr[k] = f 
-    
+                    Eu = np.nan
+                Eu_surf[k] = Eu
+
+                ## Calculating the Rrs.
+                if lam == 443: 
+                    Rrs_443[k] = OI.R_RS(PI.Ed0, PI.Es0, Eu)
+                if lam == 551: 
+                    Rrs_551[k] = OI.R_RS(PI.Ed0, PI.Es0, Eu)
+
             Eu_surf_dict[lam] = np.copy(Eu_surf)
-            f_field[lam] = np.copy(f_arr)
         ## calculating the chla 
         chla_irr = OIR.ocean_color_sol(Eu_surf_dict, PI.Ed0, PI.Es0)
     
@@ -438,10 +424,12 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
             chla_dat[k] = chla[-1]
             zbot_dat[k] = z[0]
     
+#!#! Please move Plotting to sperate function to loop over the species.        
+ 
         ## Plotting the comparison
-        ax = Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
-    ax.legend(title='species')
-    fig.show()
+        #ax = Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
+    #ax.legend(title='species')
+    #fig.show()
     
         ## Plotting the comparison as a scatter on map. 
    #     PF.Plot_Scatter(chla_dat - chla_irr, lat_dat, lon_dat, 'Chla Bias', 'Chla_dat - Chla_irr', vmin=None, vmax=None, fig=None)
@@ -456,11 +444,84 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
         #ax.set_xlabel('Chla Value [mg chla m^-3]')
         #fig.show()
     
-    return irr_field, f_field, chla_dat, zbot_dat 
+    return chla_dat, irr_field, chla_irr, Rrs_443, Rrs_551
 
 
-def Run_Cal_Comp_Viirs():
+def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, species):
+    """
+    The main goal of this function is to plot a one to one comparison of the satellite derived 
+    chla values and that from cal cofi. 
+    """
     
+    save_path = f'{save_dir}/{save_head}'
+
+    if os.path.exists(f'{save_path}_cal_chla.p') == False:
+
+        ## Bounded data set in the desired timeline.
+        cal_cast_dat_bnd = cal_cast_dat[cal_cast_dat['Year'] > year_min]
+        ## The number of casts to be calculated. 
+        N_cst = len(cal_cast_dat_bnd)
+    
+        cal_chla = np.zeros(N_cst)
+        viirs_chla = np.zeros(N_cst)
+        viirs_Rrs443 = np.zeros(N_cst)
+        viirs_Rrs551 = np.zeros(N_cst)
+    
+        ## calcofi lon and lat for bounded points.
+        lon = cal_cast_dat_bnd['Lon_Dec'].to_numpy()
+        lat = cal_cast_dat_bnd['Lat_Dec'].to_numpy()
+        year = cal_cast_dat_bnd['Year'].to_numpy()
+        julian_day = cal_cast_dat_bnd['Julian_Day'].to_numpy()
+        
+        
+        ## Now loop over the casts and calculate the irradiance chla each time.  
+        for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
+            ## getting the viirs chla
+            Rrs443, Rrs551, chla = viirs_calcofi_val.Viirs_Rrs_Chla(julian_day[k], year[k], lat[k], lon[k])
+            viirs_chla[k] = chla
+            viirs_Rrs443[k] = Rrs443
+            viirs_Rrs551[k] = Rrs551
+    
+        pickle.dump(cal_chla, open(f'{save_path}_cal_chla.p', "wb"))
+        pickle.dump(viirs_chla, open(f'{save_path}_viirs_chla.p', "wb"))
+        pickle.dump(viirs_Rrs443, open(f'{save_path}_viirs_Rrs_443.p', "wb"))
+        pickle.dump(viirs_Rrs551, open(f'{save_path}_viirs_Rrs_551.p', "wb"))
+
+
+    elif os.path.exists(f'{save_path}_cal_chla.p') == True:
+        
+        ## Loading data from pickle.
+        cal_chla = pickle.load(open(f'{save_path}_cal_chla.p', "rb"))
+        viirs_chla = pickle.load(open(f'{save_path}_viirs_chla.p', "rb"))
+        viirs_Rrs443 = pickle.load(open(f'{save_path}_viirs_Rrs_443.p', 'rb'))
+        viirs_Rrs551 = pickle.load(open(f'{save_path}_viirs_Rrs_551.p', 'rb'))
+
+    ## The irradiance calculation of Rrs and chla
+    cal_chla, irr_field, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Irr_Comp_Insitu(PI, 
+                                                                          save_dir,
+                                                                          f'{save_head}_irr.p',
+                                                                          wavelengths,
+                                                                          N,
+                                                                          year_min,
+                                                                          cal_cast_dat,
+                                                                          cal_bot_dat,
+                                                                          species)
+ 
+    ## Plotting one to one comparison.
+    fig, ax = plt.subplots()
+    Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'Chla') 
+    Plot_Comparison(ax, cal_chla, irr_chla, 'Comparison to Cal Chla', 'Irradiance' , 'Calcofi Chla', 'Chla') 
+    ax.legend()
+    fig.show() 
+
+    ## Rrs Comparison
+    fig, ax = plt.subplots()
+    Plot_Comparison(ax, viirs_Rrs443, irr_Rrs443, 'Comparison of VIIRS to Irradiance Rrs', '443', 'VIIRS', 'Irr') 
+    Plot_Comparison(ax, viirs_Rrs551, irr_Rrs551, 'Comparison of VIIRS to Irradiance Rrs', '551', 'VIIRS', 'Irr') 
+    ax.legend()  
+    fig.show() 
+
+    return cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551
 
 if __name__ == '__main__': 
 
@@ -493,7 +554,7 @@ if __name__ == '__main__':
 
     ## The oldest that data can be used.
     ## should be around 5000 casts. 
-    year_min = 2000
+    year_min = 2012
  
     ## Wavelengths
     wavelengths = [443, 551]
@@ -507,10 +568,13 @@ if __name__ == '__main__':
     ## Param Init object 
     PI = Param_Init()
 
-    ## C2chla for all species
-    C2chla = 200
     ## Running comparison of insitu to irr surface chla for many cal casts. 
     #irr_field, f_field, chla_dat, zbot_dat = Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, C2chla)
+
+    save_path = f'{args.save_dir}/{args.save_file_head}'
+    phy_type = 'Diat'
+    ## Runnning the comparison of calcofi to viirs
+    cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, phy_type) 
 
 
    
