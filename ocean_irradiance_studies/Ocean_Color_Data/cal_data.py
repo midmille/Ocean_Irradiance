@@ -294,7 +294,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     return 
  
 
-def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, C2chla):
+def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species):
     """
     This calculates the irradiance chla value for many different casts within a given time line. 
    
@@ -372,7 +372,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                 irr_arr[:,k,0] = ocean_irr_sol[0]
                 irr_arr[:,k,1] = ocean_irr_sol[1]
                 irr_arr[:,k,2] = ocean_irr_sol[2]
-                irr_arr[:,k,3] = ocean_irr_sol 
+                irr_arr[:,k,3] = ocean_irr_sol[3] 
        
             ## save irr_arr into dict 
             irr_field[lam] = np.copy(irr_arr) 
@@ -381,49 +381,45 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
         pickle.dump(irr_field, open(save_path, "wb"))
         print('Python calculation complete and saved')
 
-        ## If the save file does exist then load it. 
-        elif os.path.exists(save_path) == True:
-            irr_field = pickle.load(open(save_path,'rb'))
-            print('Yay, file loaded :)')
+    ## If the save file does exist then load it. 
+    elif os.path.exists(save_path) == True:
+        irr_field = pickle.load(open(save_path,'rb'))
+        print('Yay, file loaded :)')
 
     
-        ## Now to caluclate chla. 
-        ## Making the Eu at surface dict for ocean color function.
-        Eu_surf_dict = {}
-        Rrs_443 = np.zeros(N_cst)
-        Rrs_551 = np.zeros(N_cst)
+    ## Now to caluclate chla. 
+    ## Making the Eu at surface dict for ocean color function.
+    Eu_surf_dict = {}
+    Rrs_443 = np.zeros(N_cst)
+    Rrs_551 = np.zeros(N_cst)
+    for lam in wavelengths:
+        Eu_surf = np.zeros(N_cst)
+        for k,Eu in enumerate(irr_field[lam][-1, :, 2]): 
+            if Eu<0 or Eu>1: 
+                Eu = np.nan
+            Eu_surf[k] = Eu
+            ## Calculating the Rrs.
+            if lam == 443: 
+                Rrs_443[k] = OIR.R_RS(PI.Ed0, PI.Es0, Eu)
+            if lam == 551: 
+                Rrs_551[k] = OIR.R_RS(PI.Ed0, PI.Es0, Eu)
+        Eu_surf_dict[lam] = np.copy(Eu_surf)
+    ## calculating the chla 
+    chla_irr = OIR.ocean_color_sol(Eu_surf_dict, PI.Ed0, PI.Es0) 
+    ## chla data from calcofi 
+    chla_dat = np.zeros(N_cst)
+    zbot_dat = np.zeros(N_cst)
+    lon_dat = cal_cast_dat_bnd['Lon_Dec']
+    lat_dat = cal_cast_dat_bnd['Lat_Dec']
+    for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
+        z, chla = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt)     
+        if len(z) == 0: 
+            z = np.zeros(N) * np.nan
+            chla = np.zeros(N) * np.nan
+        ## surface is the insitu.
+        chla_dat[k] = chla[-1]
+        zbot_dat[k] = z[0] 
 
-        for lam in wavelengths:
-            Eu_surf = np.zeros(N_cst)
-            for k,Eu in enumerate(irr_field[lam][-1, :, 2]): 
-                if Eu<0 or Eu>1: 
-                    Eu = np.nan
-                Eu_surf[k] = Eu
-
-                ## Calculating the Rrs.
-                if lam == 443: 
-                    Rrs_443[k] = OI.R_RS(PI.Ed0, PI.Es0, Eu)
-                if lam == 551: 
-                    Rrs_551[k] = OI.R_RS(PI.Ed0, PI.Es0, Eu)
-
-            Eu_surf_dict[lam] = np.copy(Eu_surf)
-        ## calculating the chla 
-        chla_irr = OIR.ocean_color_sol(Eu_surf_dict, PI.Ed0, PI.Es0)
-    
-        ## chla data from calcofi 
-        chla_dat = np.zeros(N_cst)
-        zbot_dat = np.zeros(N_cst)
-        lon_dat = cal_cast_dat_bnd['Lon_Dec']
-        lat_dat = cal_cast_dat_bnd['Lat_Dec']
-        for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
-            z, chla = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt)     
-            if len(z) == 0: 
-                z = np.zeros(N) * np.nan
-                chla = np.zeros(N) * np.nan
-            ## surface is the insitu.
-            chla_dat[k] = chla[-1]
-            zbot_dat[k] = z[0]
-    
 #!#! Please move Plotting to sperate function to loop over the species.        
  
         ## Plotting the comparison
@@ -574,7 +570,7 @@ if __name__ == '__main__':
     save_path = f'{args.save_dir}/{args.save_file_head}'
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
-    cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, phy_type) 
+    cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
 
 
    
