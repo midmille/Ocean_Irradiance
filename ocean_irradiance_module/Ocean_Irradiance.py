@@ -430,6 +430,10 @@ def Irradiance_RK4(Nm1, Ed, Es, Eu, z, a, b, c_d, b_b, b_f, r_s, r_u, v_d, v_s, 
             Es[k+1] = Es[k] + (( (dEsdz1/6)+(dEsdz2/3)+(dEsdz3/3)+(dEsdz4/6))*dz)
             Eu[k+1] = Eu[k] + (( (dEudz1/6)+(dEudz2/3)+(dEudz3/3)+(dEudz4/6))*dz)
             
+            ## Setting very small Eu to zero. 
+            if Eu[k+1] < 1e-10:
+                Eu[k+1] = 0
+            
 
     return Ed, Es, Eu
 
