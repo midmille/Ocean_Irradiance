@@ -226,8 +226,8 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                 a = np.array([ab_diat[0], ab_syn[0]])
                 b = np.array([ab_diat[1], ab_syn[1]])
                 
-                phy = Ocean_Irradiance.Phy(z_r0, phy_profs, a, b)    
-                
+                phy = Ocean_Irradiance.Phy(z_r0, phy_profs, [ESD('Diat'), ESD('Syn')], a, b)    
+
                 if method == 'shoot_down':
                     
                     ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,

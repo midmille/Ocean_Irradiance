@@ -35,7 +35,7 @@ class Phy:
         elif phy.ndim == 2:
             self.Nphy = np.shape(phy)[1]
             assert self.Nphy == len(a) and self.Nphy == len(b)
-            assert self.NPhy == len(esd)
+            assert self.Nphy == len(esd)
 
         assert np.shape(phy)[0] == self.Nz
         
@@ -201,7 +201,7 @@ def zbot_func(Ed0, c, light_frac = .01, phy=False, z=None):
     for k, Ed_i in enumerate(np.flip(Ed)) :
         EdoEd0 = Ed_i / Ed0
         if EdoEd0 < light_frac :
-            zbot = zbots[k] 
+            zbot = np.flip(zbots)[k] 
             return zbot
    
         
@@ -718,7 +718,7 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     Nm1 = N - 1  
 
     ##initial guess... doesn't matter too much
-    init_guess = .001
+    init_guess = .2
     
     Ed1 = np.full(N, init_guess)
     Es1 = np.full(N, init_guess)

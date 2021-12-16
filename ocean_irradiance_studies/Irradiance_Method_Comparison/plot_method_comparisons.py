@@ -25,7 +25,7 @@ def Load_Fields(irr_out_dir):
     
     irr_out_scipy = pickle.load(open(f'{irr_out_dir}/irradiance_out_scipy.p', 'rb')) 
     irr_out_shoot_down = pickle.load(open(f'{irr_out_dir}/irradiance_out_shoot_down_log.p', 'rb')) 
-    irr_out_shoot_up = pickle.load(open(f'{irr_out_dir}/irradiance_out_shoot_up_log.p', 'rb')) 
+    irr_out_shoot_up = pickle.load(open(f'{irr_out_dir}/irr_field_shoot_up.p', 'rb')) 
     irr_out_shoot_fp = pickle.load(open(f'{irr_out_dir}/irradiance_out_shoot_fp_20_shots.p', 'rb')) 
     irr_out_dut = pickle.load(open(f'{irr_out_dir}/irradiance_out_dut.p', 'rb')) 
 
@@ -255,7 +255,11 @@ def main():
     ## The ROMS output oobject 
     R_nc = RRO.ROMS_netcdf(ROMS_file)
 
-    #Plot_Irradiance_Fields( Ei, fields, methods, wavelengths, R_nc, plot_surface=True, plot_min=True, plot_max=True, plot_surf_diff = True) 
+    Plot_Irradiance_Fields( Ei, fields, methods, wavelengths, R_nc, plot_surface=True, plot_min=True, plot_max=True, plot_surf_diff = True) 
      
     Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc)
    
+
+if __name__ == '__main__':
+
+    main()
