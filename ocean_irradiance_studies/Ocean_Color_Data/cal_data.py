@@ -457,7 +457,7 @@ def Loop_Species_Irr_Comp_Cal(PI, save_dir, save_file, wavelengths, N, year_min,
         ax = Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
 
     ax.legend()
-    fig,show()
+    fig.show()
   
     return
 

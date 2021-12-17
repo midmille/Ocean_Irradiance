@@ -191,11 +191,12 @@ def zbot_func(Ed0, c, light_frac = .01, phy=False, z=None):
         .01% light level zbot. 
 
     """
-    zbots = np.linspace(-500, 0, 2001) 
     if phy==True: 
+        zbots = np.linspace(-250, 0, 2001) 
         c = np.interp(zbots, z, c)
         Ed = numerical_Ed(zbots, c, Ed0)
     else:
+        zbots = np.linspace(-700, 0, 2001) 
         Ed = analytical_Ed(zbots, c, Ed0)
     ## The flipping is so the iteration starts at the surface.
     for k, Ed_i in enumerate(np.flip(Ed)) :
@@ -222,8 +223,8 @@ def Log_Trans(zbot,Nlayers):
         The resulting z-grid. 
 
     """
-    zarr_exp = np.linspace(np.log(abs(zbot)),0, Nlayers)
-    zarr = -np.exp(zarr_exp)
+    zarr_exp = np.linspace(np.log(abs(zbot-1)),0, Nlayers)
+    zarr = 1-np.exp(zarr_exp)
     
     return zarr
 
@@ -1712,7 +1713,7 @@ def Demo(method='shoot_up'):
     
     z = np.linspace(-100,0,N)
 
-    phy_prof = artificial_phy_prof(z, -50, 1, 20, prof_type = 'tan')
+    phy_prof = artificial_phy_prof(z, -50, 1, 10, prof_type = 'tan')
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
     # print(phy_prof)
