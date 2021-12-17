@@ -82,6 +82,9 @@ def Viirs_Rrs_Chla(julian_day, year, lat, lon):
 #    lat_i_551 = np.argmin( abs(lat_551 - lat) )
 #    lon_i_551 = np.argmin( abs(lon_551 - lon) )
 
+    near_lat = lat_443[lat_i_443]
+    near_lon = lon_443[lon_i_443]
+
     nlw443 = nlw443_arr[lat_i_443, lon_i_443]
     nlw551 = nlw551_arr[lat_i_443, lon_i_443]
 
@@ -93,7 +96,7 @@ def Viirs_Rrs_Chla(julian_day, year, lat, lon):
     chla = OIR.OCx_alg(Rrs443, Rrs551)
     
 
-    return Rrs443, Rrs551, chla
+    return Rrs443, Rrs551, chla, near_lat, near_lon
 
 
 

@@ -34,6 +34,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import pickle
+import datetime
 ## User made mod
 import ocean_irradiance_module.Ocean_Irradiance as OI
 import ocean_irradiance_baird.ocean_irradiance_baird as OIB
@@ -44,6 +45,23 @@ from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equiv
 import ocean_irradiance_visualization.Plot_Field as PF
 import ocean_irradiance_visualization.Plot_Comparison as PC
 import viirs_calcofi_val
+
+def Date_to_Julian_Date(date):
+    """
+    This function changes a date into a julain day. The date should be formatted as follows:
+    'YEAR-MONTH-DAY'
+
+    https://stackoverflow.com/questions/13943062/extract-day-of-year-and-julian-day-from-a-string-date
+    """
+
+    fmt = '%Y-%m-%d'
+    dt = datetime.datetime.strptime(date, fmt)
+    tt = dt.timetuple()
+    julian = tt.tm_yday
+
+    return julian
+    
+    
 
 def Get_Data(oc_chla_val_file, cal_cast_file, cal_bot_file): 
     """
@@ -478,9 +496,9 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head,
         N_cst = len(cal_cast_dat_bnd)
     
         cal_chla = np.zeros(N_cst)
-        viirs_chla = np.zeros(N_cst)
-        viirs_Rrs443 = np.zeros(N_cst)
-        viirs_Rrs551 = np.zeros(N_cst)
+#        viirs_chla = np.zeros(N_cst)
+#        viirs_Rrs443 = np.zeros(N_cst)
+#        viirs_Rrs551 = np.zeros(N_cst)
     
         ## calcofi lon and lat for bounded points.
         lon = cal_cast_dat_bnd['Lon_Dec'].to_numpy()
@@ -491,16 +509,28 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head,
         
         ## Now loop over the casts and calculate the irradiance chla each time.  
         for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
-            ## getting the viirs chla
-            Rrs443, Rrs551, chla = viirs_calcofi_val.Viirs_Rrs_Chla(julian_day[k], year[k], lat[k], lon[k])
-            viirs_chla[k] = chla
-            viirs_Rrs443[k] = Rrs443
-            viirs_Rrs551[k] = Rrs551
+            
+             z, c_chla = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt, incld_salt=False)     
+             ## checking for zero sized return
+             if len(z) == 0: 
+                 z = np.zeros(N) * np.nan
+                 c_chla = np.zeros(N) * np.nan
+
+             cal_chla[k] = c_chla[-1]
+#            ## getting the viirs chla
+#            Rrs443, Rrs551, chla, v_lat, v_lon = viirs_calcofi_val.Viirs_Rrs_Chla(julian_day[k], year[k], lat[k], lon[k])
+#            viirs_chla[k] = chla
+#            viirs_Rrs443[k] = Rrs443
+#            viirs_Rrs551[k] = Rrs551
+#            viirs_lat[k] = v_lat
+#            viirs_lon[k] = v_lon
     
         pickle.dump(cal_chla, open(f'{save_path}_cal_chla.p', "wb"))
-        pickle.dump(viirs_chla, open(f'{save_path}_viirs_chla.p', "wb"))
-        pickle.dump(viirs_Rrs443, open(f'{save_path}_viirs_Rrs_443.p', "wb"))
-        pickle.dump(viirs_Rrs551, open(f'{save_path}_viirs_Rrs_551.p', "wb"))
+#        pickle.dump(viirs_chla, open(f'{save_path}_viirs_chla.p', "wb"))
+#        pickle.dump(viirs_Rrs443, open(f'{save_path}_viirs_Rrs_443.p', "wb"))
+#        pickle.dump(viirs_Rrs551, open(f'{save_path}_viirs_Rrs_551.p', "wb"))
+#        pickle.dump(viirs_lat, open(f'{save_path}_viirs_lat.p', "wb"))
+#        pickle.dump(viirs_lon, open(f'{save_path}_viirs_lon.p', "wb"))
 
 
     elif os.path.exists(f'{save_path}_cal_chla.p') == True:
@@ -512,31 +542,111 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head,
         viirs_Rrs551 = pickle.load(open(f'{save_path}_viirs_Rrs_551.p', 'rb'))
 
     ## The irradiance calculation of Rrs and chla
-    cal_chla, irr_field, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Irr_Comp_Insitu(PI, 
-                                                                          save_dir,
-                                                                          f'{save_head}_irr.p',
-                                                                          wavelengths,
-                                                                          N,
-                                                                          year_min,
-                                                                          cal_cast_dat,
-                                                                          cal_bot_dat,
-                                                                          species)
+#    cal_chla, irr_field, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Irr_Comp_Insitu(PI, 
+#                                                                          save_dir,
+#                                                                          f'{save_head}_irr.p',
+#                                                                          wavelengths,
+#                                                                          N,
+#                                                                          year_min,
+#                                                                          cal_cast_dat,
+#                                                                          cal_bot_dat,
+#                                                                          species)
  
     ## Plotting one to one comparison.
     fig, ax = plt.subplots()
-    Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'Chla') 
-    Plot_Comparison(ax, cal_chla, irr_chla, 'Comparison to Cal Chla', 'Irradiance' , 'Calcofi Chla', 'Chla') 
-    ax.legend()
+    Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla') 
+    #Plot_Comparison(ax, cal_chla, irr_chla, 'Comparison to Cal Chla', 'Irradiance' , 'Calcofi Chla', 'Chla') 
+    #ax.legend()
     fig.show() 
 
     ## Rrs Comparison
-    fig, ax = plt.subplots()
-    Plot_Comparison(ax, viirs_Rrs443, irr_Rrs443, 'Comparison of VIIRS to Irradiance Rrs', '443', 'VIIRS', 'Irr') 
-    Plot_Comparison(ax, viirs_Rrs551, irr_Rrs551, 'Comparison of VIIRS to Irradiance Rrs', '551', 'VIIRS', 'Irr') 
-    ax.legend()  
-    fig.show() 
+    #fig, ax = plt.subplots()
+    #Plot_Comparison(ax, viirs_Rrs443, irr_Rrs443, 'Comparison of VIIRS to Irradiance Rrs', '443', 'VIIRS', 'Irr') 
+    #Plot_Comparison(ax, viirs_Rrs551, irr_Rrs551, 'Comparison of VIIRS to Irradiance Rrs', '551', 'VIIRS', 'Irr') 
+    #ax.legend()  
+    #fig.show() 
+
+    ## Plotting Comparison of chla and location
+    
 
     return cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551
+
+
+def Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type):
+    """
+    This file uses the 13 points from the NOMAD validation data set and compares chla to 
+    the satellite value of 
+    """
+
+    ## Calculating the irradiance and cal cofi insitu
+    irr_rrs443, irr_rrs551, irr_chla, cal_chla = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla='default')
+
+
+    ## The NOMAD Sattelite and insitu. 
+    nomad_insitu_chla = chla_val_cal_dat['insitu_chlor_a']
+    nomad_sat_chla = chla_val_cal_dat['aqua_chlor_a']
+    nomad_sat_rrs_443 = chla_val_cal_dat['aqua_rrs443'] 
+    nomad_sat_rrs_555 = chla_val_cal_dat['aqua_rrs555'] 
+    nomad_lon = chla_val_cal_dat['longitude'].to_numpy()
+    nomad_lat = chla_val_cal_dat['latitude'].to_numpy()
+    nomad_date_time = chla_val_cal_dat['date_time']
+
+    ## The chla and rrs from viirs
+    ## VIIRS went only started in 2012.
+    ## The chla_val_cal_dat in around 2003
+#    viirs_chla = np.zeros(len(chla_val_cal_dat))
+#    viirs_rrs443 = np.zeros(len(chla_val_cal_dat))
+#    viirs_rrs551 = np.zeros(len(chla_val_cal_dat))
+#    
+#    for k, date_time in enumerate(chla_val_cal_dat['date_time']):
+#        date, time = date_time.split()
+#        year = date.split('-')[0]
+#        julian_day =  Date_to_Julian_Date(date)   
+#
+#        rrs443, rrs551, chla = viirs_calcofi_val.Viirs_Rrs_Chla(julian_day, year, nomad_lat[k],nomad_lon[k])
+#        
+#        viirs_chla[k] = chla
+#        viirs_rrs443[k] = rrs443
+#        viirs_rrs551[k] = rrs551
+
+    ## Plotting
+    ## --------
+
+    ## Plotting the chla's against nomad in situ chla.
+    fig, axes = plt.subplots(nrows=1, ncols=3)
+    ax1, ax2, ax3 = axes
+
+    title = 'Chla Comparisons'
+    xlabel = 'Chla NOMAD In Situ [mg chla m^-3]'
+    ylabel = 'Chla [mg chla m^-3]'
+    ax1 = Plot_Comparison(ax1, nomad_insitu_chla, nomad_sat_chla, title, 'NOMAD Satellite', xlabel, ylabel)
+    ax1 = Plot_Comparison(ax1, nomad_insitu_chla, cal_chla , title, 'Calcofi In Situ', xlabel, ylabel)
+    ax1 = Plot_Comparison(ax1, nomad_insitu_chla, irr_chla , title, 'Irr Model', xlabel, ylabel)
+#    ax1 = Plot_Comparison(ax1, nomad_insitu_chla, viirs_chla, title, 'VIIRS', xlabel, ylabel)
+    ax1.legend()
+
+    ## Plotting the rrs's against the nomad rrs.
+    ## 443
+    title = 'Rrs 443 Comparison'
+    xlabel = 'Rrs 443 NOMAD Satellite [sr^-1]'
+    ylabel = 'Rrs 443 [sr^-1]'
+    ax2 = Plot_Comparison(ax2, nomad_sat_rrs_443, irr_rrs443, title, 'Irr Model', xlabel, ylabel)
+#    ax2 = Plot_Comparison(ax2, nomad_sat_rrs_443, viirs_rrs443, title, 'VIIRS', xlabel, ylabel)
+    ax2.legend()
+
+    ## 551
+    title = 'Rrs 551 Comparison'
+    xlabel = 'Rrs 551 NOMAD Satellite [sr^-1]'
+    ylabel = 'Rrs 551 [sr^-1]'
+    ax3 = Plot_Comparison(ax3, nomad_sat_rrs_555, irr_rrs551, title, 'Irr Model', xlabel, ylabel)
+#    ax3 = Plot_Comparison(ax3, nomad_sat_rrs_555, viirs_rrs551, title, 'VIIRS', xlabel, ylabel)
+    ax3.legend()
+ 
+    fig.show()
+
+   
+    return 
+    
 
 if __name__ == '__main__': 
 
@@ -567,7 +677,7 @@ if __name__ == '__main__':
     ## The number of vertical layers in irr grid. 
     N = 200
 
-    ## The oldest that data can be used.
+    ## The oldest.
     ## should be around 5000 casts. 
     year_min = 2000
  
@@ -585,12 +695,14 @@ if __name__ == '__main__':
 
     ## Running comparison of insitu to irr surface chla for many cal casts. 
     #Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, 'Diat')
-    Loop_Species_Irr_Comp_Cal(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species)
+   # Loop_Species_Irr_Comp_Cal(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species)
 
     save_path = f'{args.save_dir}/{args.save_file_head}'
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
-    #cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
+   # cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
 
 
+    ## Running the comparison of viirs, calcofi, irr, and nomad
+    Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type)
    
