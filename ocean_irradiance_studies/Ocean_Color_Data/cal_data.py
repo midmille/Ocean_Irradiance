@@ -294,7 +294,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     return 
  
 
-def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species):
+def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, plot=False):
     """
     This calculates the irradiance chla value for many different casts within a given time line. 
    
@@ -422,10 +422,12 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
 
 #!#! Please move Plotting to sperate function to loop over the species.        
  
-        ## Plotting the comparison
-        #ax = Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
-    #ax.legend(title='species')
-    #fig.show()
+    ## Plotting the comparison
+    if plot:
+        fig, ax =plt.subplots()
+        ax = Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
+        ax.legend(title='species')
+        fig.show()
     
         ## Plotting the comparison as a scatter on map. 
    #     PF.Plot_Scatter(chla_dat - chla_irr, lat_dat, lon_dat, 'Chla Bias', 'Chla_dat - Chla_irr', vmin=None, vmax=None, fig=None)
@@ -441,6 +443,23 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
         #fig.show()
     
     return chla_dat, irr_field, chla_irr, Rrs_443, Rrs_551
+
+
+def Loop_Species_Irr_Comp_Cal(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species): 
+    """
+    """
+
+    fig, ax = plt.subplots()
+
+    for k, phy_type in enumerate(species):
+
+        chla_dat, irr_field, chla_irr, Rrs_443, Rrs_551 = Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, plot=False)
+        ax = Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
+
+    ax.legend()
+    fig,show()
+  
+    return
 
 
 def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, species):
@@ -550,7 +569,7 @@ if __name__ == '__main__':
 
     ## The oldest that data can be used.
     ## should be around 5000 casts. 
-    year_min = 2012
+    year_min = 2000
  
     ## Wavelengths
     wavelengths = [443, 551]
@@ -565,12 +584,13 @@ if __name__ == '__main__':
     PI = Param_Init()
 
     ## Running comparison of insitu to irr surface chla for many cal casts. 
-    #irr_field, f_field, chla_dat, zbot_dat = Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, C2chla)
+    #Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, 'Diat')
+    Loop_Species_Irr_Comp_Cal(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species)
 
     save_path = f'{args.save_dir}/{args.save_file_head}'
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
-    cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
+    #cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
 
 
    

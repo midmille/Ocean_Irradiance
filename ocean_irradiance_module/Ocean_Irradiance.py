@@ -191,7 +191,7 @@ def zbot_func(Ed0, c, light_frac = .01, phy=False, z=None):
         .01% light level zbot. 
 
     """
-    zbots = np.linspace(-1000, 0, 2001) 
+    zbots = np.linspace(-500, 0, 2001) 
     if phy==True: 
         c = np.interp(zbots, z, c)
         Ed = numerical_Ed(zbots, c, Ed0)
@@ -1684,12 +1684,13 @@ def ocean_irradiance_dutkiewicz_ROMS(hbot, Ed0, Es0, Euh, ab_wat, coefficients, 
     return Ed, Es, Eu, z
     
 
-def artificial_phy_prof(z,loc,width,conc):
+def artificial_phy_prof(z,loc,width,conc, prof_type='gauss'):
 
-    # prof = conc*(1 + np.tanh((z-loc)/width)) 
-    
-    prof = conc* np.exp(-((z-loc)**2)/(2*width**2))
-    
+    if prof_type == 'tan': 
+        prof= conc*(1 + np.tanh((z-loc)/width)) 
+    elif prof_type == 'gauss': 
+        prof = conc* np.exp(-((z-loc)**2)/(2*width**2))
+     
     return prof
 
 
@@ -1711,7 +1712,7 @@ def Demo(method='shoot_up'):
     
     z = np.linspace(-100,0,N)
 
-    phy_prof = artificial_phy_prof(z, 0, 10,1)
+    phy_prof = artificial_phy_prof(z, -50, 1, 20, prof_type = 'tan')
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
     # print(phy_prof)

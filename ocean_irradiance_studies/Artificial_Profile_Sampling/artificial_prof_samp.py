@@ -28,7 +28,7 @@ def Sampling_Sensitivity(PI, zbot, N_irr, phy_type, wavelengths):
     """
 
     ## The array of number of sampiling points. 
-    N_samps = np.arange(1, 1000, 5) 
+    N_samps = np.arange(1, 100, 1) 
 
     ## Eu Dictionary.
     Eu_surf_dict = {}
@@ -40,7 +40,7 @@ def Sampling_Sensitivity(PI, zbot, N_irr, phy_type, wavelengths):
         for k, N_samp in enumerate(N_samps):
             ## Creating the sample grid.
             z_samp = np.linspace(zbot, 0, N_samp)
-            phy_samp = OI.artificial_phy_prof(z_samp, 0, 40, 1)
+            phy_samp = OI.artificial_phy_prof(z_samp, -50, 1, 20, prof_type='tan')
             phy_samp[phy_samp < 1e-6] = 0
 
             ## Phytoplankton object. 
@@ -102,7 +102,7 @@ def Plot_Sampling_Sensitivity(N_samps, chla_bias):
 if __name__ == '__main__': 
 
     PI = Param_Init()
-    zbot = -100
+    zbot = -200
     N_irr = 200
     phy_type = 'Diat'
     wavelengths = [443, 551]
