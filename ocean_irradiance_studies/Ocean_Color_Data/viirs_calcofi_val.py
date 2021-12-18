@@ -59,7 +59,7 @@ def Viirs_Rrs_Chla(julian_day, year, lat, lon):
         print('Path does not exist')
         print(path_443)
         print(path_551)
-        return np.NAN, np.NAN, np.NAN
+        return np.NAN, np.NAN, np.NAN, np.NAN, np.NAN
     
     nlw443_df = Dataset(path_443,'r')
     nlw551_df = Dataset(path_551,'r')
