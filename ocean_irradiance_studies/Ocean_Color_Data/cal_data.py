@@ -687,6 +687,55 @@ def Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_ty
     return 
     
 
+def Count_Cal_Chla_Samp_Pts(year_min, cal_cast_dat, cal_bot_dat):
+    """
+    This file counts the number of sampling point used in each calcofi cast and plots 
+    it against the value of chla at the surface.
+    """
+
+    ## Bounded data set in the desired timeline.
+    cal_cast_dat_bnd = cal_cast_dat[cal_cast_dat['Year'] > year_min]
+    ## The number of casts to be calculated. 
+    N_cst = len(cal_cast_dat_bnd)
+
+    ## The number of points sampled fopr each cast
+    cst_samps = np.zeros(N_cst)
+    cst_zbot = np.zeros(N_cst)
+    cst_chla = np.zeros(N_cst)
+
+    for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
+            
+         z, chla = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt, incld_salt=False)     
+         ## checking for zero sized return
+         if len(z) == 0: 
+             cst_samps[k] = 0
+             cst_zbot[k] = np.nan 
+             cst_chla[k] = np.nan
+         else: 
+             cst_samps[k] = len(chla)
+             cst_zbot[k] = z[0]
+             cst_chla[k] = chla[-1]
+       
+    ## Plotting the results
+    fig, axes =  plt.subplots(nrows = 1, ncols = 2)
+
+    ## Plotting the number of sampling points against chla.
+    axes[0].plot(cst_chla, cst_samps, 'o',fillstyle='none')
+    axes[0].set_xlabel('Chla')
+    axes[0].set_ylabel('Number of Sampling Points in Cast')
+    axes[0].set_title('Number of Sampling Points')
+
+    ## Plotting the bottom depth of cast. 
+    axes[1].plot(cst_chla, cst_zbot, 'o',fillstyle='none')
+    axes[1].set_xlabel('Chla')
+    axes[1].set_ylabel('Zbot [m]')
+    axes[1].set_title('Bottom depth of the Cast')
+    
+    fig.show()
+
+    return 
+
+
 if __name__ == '__main__': 
 
     import argparse 
@@ -739,9 +788,11 @@ if __name__ == '__main__':
     save_path = f'{args.save_dir}/{args.save_file_head}'
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
-    cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
+    #cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
 
 
     ## Running the comparison of viirs, calcofi, irr, and nomad
 #    Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type)
    
+    ## Plotting the sample points of th casts
+    Count_Cal_Chla_Samp_Pts(year_min, cal_cast_dat, cal_bot_dat)
