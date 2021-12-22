@@ -191,12 +191,12 @@ def zbot_func(Ed0, c, light_frac = .01, phy=False, z=None):
         .01% light level zbot. 
 
     """
+    zbots = np.linspace(-1000, 0, 5000) 
+    
     if phy==True: 
-        zbots = np.linspace(-250, 0, 2001) 
         c = np.interp(zbots, z, c)
         Ed = numerical_Ed(zbots, c, Ed0)
     else:
-        zbots = np.linspace(-700, 0, 2001) 
         Ed = analytical_Ed(zbots, c, Ed0)
     ## The flipping is so the iteration starts at the surface.
     for k, Ed_i in enumerate(np.flip(Ed)) :
