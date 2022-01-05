@@ -37,7 +37,9 @@ def ocean_irradiance_baird(hbot, ab_wat, theta_air, phy = None, N = 30):
     a_wat,b_wat = ab_wat 
     a = a_wat
     b = b_wat 
-    
+
+    ## backscattering due to phy
+    b_b_phy = 0
     ## If phytoplankton, otherwise just water in column.
     if phy: 
         
@@ -52,16 +54,25 @@ def ocean_irradiance_baird(hbot, ab_wat, theta_air, phy = None, N = 30):
         a_phy = phy.a
         b_phy = phy.b
         
+        ## equivalent spherical diameter
+        esd = phy.esd
         ## Just one phytoplankton species
         if Nphy == 1 : 
+            ## The back scatter ratio
+            bb_r = Backscatter_Ratio(esd)    
             a = a + phy_prof * a_phy
             b = b + phy_prof * b_phy
+            b_b_phy = b_b_phy + phy_prof * b_phy * bb_r
             
         ## More than one species
         elif Nphy > 1 : 
             for k in range(Nphy):
+                ## The back scatter ratio
+                bb_r = Backscatter_Ratio(esd[k])    
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
+                b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * bb_r
+
 
     ## Log grid calculation. 
     ## The cell edges.
@@ -75,12 +86,15 @@ def ocean_irradiance_baird(hbot, ab_wat, theta_air, phy = None, N = 30):
     if phy: 
         a = np.interp(z_c,z_phy,a)
         b = np.interp(z_c,z_phy,b)
+        b_b_phy = np.interp(z, z_phy, b_b_phy)
     else: 
         a = np.full(N, a)
         b = np.full(N, b)
         
     ## Calculation of backscattering coefficient.
-    b_b = .551*b
+    b_b_wat = .551*b_wat
+
+    b_b = b_b_wat + b_b_phy
     b_f = b - b_b 
     
     #print('a', a)

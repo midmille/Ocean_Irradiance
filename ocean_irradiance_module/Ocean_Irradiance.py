@@ -35,7 +35,7 @@ class Phy:
         elif phy.ndim == 2:
             self.Nphy = np.shape(phy)[1]
             assert self.Nphy == len(a) and self.Nphy == len(b)
-            assert self.NPhy == len(esd)
+            assert self.Nphy == len(esd)
 
         assert np.shape(phy)[0] == self.Nz
         
@@ -191,7 +191,8 @@ def zbot_func(Ed0, c, light_frac = .01, phy=False, z=None):
         .01% light level zbot. 
 
     """
-    zbots = np.linspace(-1000, 0, 2001) 
+    zbots = np.linspace(-1000, 0, 5000) 
+    
     if phy==True: 
         c = np.interp(zbots, z, c)
         Ed = numerical_Ed(zbots, c, Ed0)
@@ -201,7 +202,7 @@ def zbot_func(Ed0, c, light_frac = .01, phy=False, z=None):
     for k, Ed_i in enumerate(np.flip(Ed)) :
         EdoEd0 = Ed_i / Ed0
         if EdoEd0 < light_frac :
-            zbot = zbots[k] 
+            zbot = np.flip(zbots)[k] 
             return zbot
    
         
@@ -222,8 +223,8 @@ def Log_Trans(zbot,Nlayers):
         The resulting z-grid. 
 
     """
-    zarr_exp = np.linspace(np.log(abs(zbot)),0, Nlayers)
-    zarr = -np.exp(zarr_exp)
+    zarr_exp = np.linspace(np.log(abs(zbot-1)),0, Nlayers)
+    zarr = 1-np.exp(zarr_exp)
     
     return zarr
 
@@ -429,6 +430,10 @@ def Irradiance_RK4(Nm1, Ed, Es, Eu, z, a, b, c_d, b_b, b_f, r_s, r_u, v_d, v_s, 
             ## RK4
             Es[k+1] = Es[k] + (( (dEsdz1/6)+(dEsdz2/3)+(dEsdz3/3)+(dEsdz4/6))*dz)
             Eu[k+1] = Eu[k] + (( (dEudz1/6)+(dEudz2/3)+(dEudz3/3)+(dEudz4/6))*dz)
+            
+            ## Setting very small Eu to zero. 
+            if Eu[k+1] < 1e-10:
+                Eu[k+1] = 0
             
 
     return Ed, Es, Eu
@@ -714,7 +719,7 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     Nm1 = N - 1  
 
     ##initial guess... doesn't matter too much
-    init_guess = .001
+    init_guess = .2
     
     Ed1 = np.full(N, init_guess)
     Es1 = np.full(N, init_guess)
@@ -766,7 +771,7 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
                 bb_r = Backscatter_Ratio(esd[k])    
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
-                b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * .02
+                b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * bb_r
 
     ## Inclusion of CDOM
     if CDOM: 
@@ -1680,12 +1685,13 @@ def ocean_irradiance_dutkiewicz_ROMS(hbot, Ed0, Es0, Euh, ab_wat, coefficients, 
     return Ed, Es, Eu, z
     
 
-def artificial_phy_prof(z,loc,width,conc):
+def artificial_phy_prof(z,loc,width,conc, prof_type='gauss'):
 
-    # prof = conc*(1 + np.tanh((z-loc)/width)) 
-    
-    prof = conc* np.exp(-((z-loc)**2)/(2*width**2))
-    
+    if prof_type == 'tan': 
+        prof= conc*(1 + np.tanh((z-loc)/width)) 
+    elif prof_type == 'gauss': 
+        prof = conc* np.exp(-((z-loc)**2)/(2*width**2))
+     
     return prof
 
 
@@ -1707,7 +1713,7 @@ def Demo(method='shoot_up'):
     
     z = np.linspace(-100,0,N)
 
-    phy_prof = artificial_phy_prof(z, 0, 10,1)
+    phy_prof = artificial_phy_prof(z, -50, 1, 10, prof_type = 'tan')
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
     # print(phy_prof)
