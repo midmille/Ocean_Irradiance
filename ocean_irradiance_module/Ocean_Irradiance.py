@@ -771,7 +771,7 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
                 bb_r = Backscatter_Ratio(esd[k])    
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
-                b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * .02
+                b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * bb_r
 
     ## Inclusion of CDOM
     if CDOM: 
