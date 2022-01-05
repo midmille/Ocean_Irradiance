@@ -24,9 +24,10 @@ import os
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import interpolate
 
 
-def Run_Irr_Comp_Cop(PI, cop_nc, save_dir, save_file_head, wavelengths, N, phy_type, plot=True):
+def Run_Irr_Comp_Cop(PI, cop_chla_nc, cop_rrs443_nc, cop_rrs560_nc, save_dir, save_file_head, wavelengths, N, phy_type, plot=True):
     """
     This file is to calculate the chla using the irradiance model from the chla profiles of the copernicus data.
     Then compare the resulting surface chla to that of copernicus.
@@ -34,11 +35,27 @@ def Run_Irr_Comp_Cop(PI, cop_nc, save_dir, save_file_head, wavelengths, N, phy_t
     
     ## Copernicus data. 
     ## The first index is time, I only downloaded one step.
-    cop_chla = np.flip(cop_nc.variables['chl'][0, :,:,:], axis=0)
+    cop_chla = np.flip(cop_chla_nc.variables['chl'][0, :,:,:], axis=0)
     ## Copernicus Z grid is positive downwards.
-    cop_z = -np.flip(cop_nc.variables['depth'][:])
+    cop_z = -np.flip(cop_chla_nc.variables['depth'][:])
     nzi, nyi, nxi = cop_chla.shape
-    
+
+    ## Interpolating the copernicus rrs to be on copernicus chla grid.
+    ## Chla grid 
+    cop_chla_lat = cop_chla_nc.variables['latitude'][:]
+    cop_chla_lon = cop_chla_nc.variables['longitude'][:]
+    ## rrs grid, only gonna use 443, 551 is same grid.
+    cop_rrs_lat = cop_rrs443_nc.variables['lat'][:]
+    cop_rrs_lon = cop_rrs443_nc.variables['lon'][:]
+    ## the values of rrs.
+    cop_rrs443 = cop_rrs443_nc.variables['RRS443'][:]
+    cop_rrs560 = cop_rrs560_nc.variables['RRS560'][:]
+    ## The actual 2-D interpolation results in a function.
+    f_interp_rrs443 = interpolate.interp2d(cop_rrs_lat, cop_rrs_lon, cop_rrs443)
+    f_interp_rrs560 = interpolate.interp2d(cop_rrs_lat, cop_rrs_lon, cop_rrs560)
+    ## The interpolated values onto the chla grid.
+    cop_rrs443 = f_interp_rrs443(cop_chla_lat, cop_chla_lon)
+    cop_rrs560 = f_interp_rrs560(cop_chla_lat, cop_chla_lon)
 
     ## The name of the pickle file that the data is being saved into.
     save_path = f'{save_dir}/{save_file_head}_{phy_type}.p' 
@@ -99,9 +116,9 @@ def Run_Irr_Comp_Cop(PI, cop_nc, save_dir, save_file_head, wavelengths, N, phy_t
         Eu_surf = irr_field[lam][-1,:,:,2]
         ## Calculating the Rrs.
         if lam == 443: 
-            Rrs_443 = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf)
+            irr_rrs443 = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf)
         if lam == 551: 
-            Rrs_551 = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf)
+            irr_rrs551 = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf)
         Eu_surf_dict[lam] = Eu_surf
 
     ## Calculating the chla 
@@ -115,22 +132,35 @@ def Run_Irr_Comp_Cop(PI, cop_nc, save_dir, save_file_head, wavelengths, N, phy_t
         ax.set_ylabel('Irradiance Model Chla')
         fig.show()
 
-    return  cop_chla, irr_chla
+    return  cop_chla, cop_rrs443, cop_rrs560, irr_chla, irr_rrs443, irr_rrs551
 
 
-def Loop_Species_Irr_Comp_Cop(PI, cop_nc, save_dir, save_file_head, wavelengths, N, species): 
+def Loop_Species_Irr_Comp_Cop(PI, cop_chla_nc, cop_rrs443_nc, cop_rrs560_nc, save_dir, save_file_head, wavelengths, N, species): 
     """
     To loop the species for the comparison of the irradiance model to the copernicus data.
     """
 
-    fig, ax = plt.subplots()
-
+    fig, axes = plt.subplots(nrows=1, ncols=3)
+    ax1, ax2, ax3 = axes
     for k, phy_type in enumerate(species):
 
-        cop_chla, irr_chla = Run_Irr_Comp_Cop(PI, cop_nc, save_dir, save_file_head, wavelengths, N, phy_type, plot=False)
-        ax = PC.Plot_Comparison(ax, cop_chla[-1,:,:].flatten(), irr_chla.flatten(), label=phy_type, xlim=1.5, ylim=1.5)
+        cop_chla, cop_rrs443, cop_rrs560, irr_chla, irr_rrs443, irr_rrs551 = Run_Irr_Comp_Cop(PI, cop_chla_nc, cop_rrs443_nc, cop_rrs560_nc, save_dir, save_file_head, wavelengths, N, phy_type, plot=False)
+        ax1 = PC.Plot_Comparison(ax1, cop_chla[-1,:,:].flatten(), irr_chla.flatten(), label=phy_type, xlim=1.5, ylim=1.5)
+        ax2 = PC.Plot_Comparison(ax2, cop_rrs443.flatten(), irr_rrs443.flatten(), label=phy_type, xlim=.02, ylim=.02)
+        ax3 = PC.Plot_Comparison(ax3, cop_rrs560.flatten(), irr_rrs551.flatten(), label=phy_type, xlim=.02, ylim=.02)
 
-    ax.legend()
+    ax1.set_ylabel('Irr Model Chla [mg chl-a m^-3]')
+    ax2.set_ylabel('Irr Model Rrs [sr^-1]')
+    ax3.set_ylabel('Irr Model Rrs [sr^-1]')
+    ax1.set_xlabel('Copernicus Chla [mg chl-a m^-3]')
+    ax2.set_xlabel('Copernicus Rrs [sr^-1]') 
+    ax3.set_xlabel('Copernicus Rrs [sr^-1]') 
+    ax1.set_title('Chla')
+    ax2.set_title('rrs443')
+    ax3.set_title('rrs551')
+    ax1.legend()
+    ax2.legend()
+    ax3.legend()
     fig.show()
   
     return
@@ -143,13 +173,17 @@ if __name__ == '__main__':
 
     import argparse 
     parser = argparse.ArgumentParser(description='Ocean irradiance calculation and comparison to copernicus data.')
-    parser.add_argument('nc_file', help='The name of the copernicus nc data file.')
+    parser.add_argument('chla_nc_file', help='The name of the copernicus nc data file.')
+    parser.add_argument('rrs443_nc_file', help='The name of the copernicus nc data file.')
+    parser.add_argument('rrs560_nc_file', help='The name of the copernicus nc data file.')
     parser.add_argument('save_dir', help='Directory to save results into')
     parser.add_argument('save_file_head', help='Heading of the file name for the save file.')
     args = parser.parse_args()
 
     ## Make the file into a Dataset object.
-    cop_nc = Dataset(args.nc_file)
+    cop_chla_nc = Dataset(args.chla_nc_file)
+    cop_rrs443_nc = Dataset(args.rrs443_nc_file)
+    cop_rrs560_nc = Dataset(args.rrs560_nc_file)
  
     ## Params
     PI = Param_Init()
@@ -163,9 +197,9 @@ if __name__ == '__main__':
     species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 
     ## Running comparison
-    #Run_Irr_Comp_Cop(PI, cop_nc, args.save_dir, args.save_file_head, wavelengths, N, phy_type)
+    #Run_Irr_Comp_Cop(PI, cop_chla_nc, args.save_dir, args.save_file_head, wavelengths, N, phy_type)
     ## Looping over different spcecies
-    Loop_Species_Irr_Comp_Cop(PI, cop_nc, args.save_dir, args.save_file_head, wavelengths, N, species)
+    Loop_Species_Irr_Comp_Cop(PI, cop_chla_nc, cop_rrs443_nc, cop_rrs560_nc, args.save_dir, args.save_file_head, wavelengths, N, species)
 
 
     
