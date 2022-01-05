@@ -22,6 +22,7 @@ import numpy as np
 import ocean_irradiance_module.Ocean_Irradiance as OI
 import ocean_irradiance_module.Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
+from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
 
 def ocean_irradiance_baird(hbot, ab_wat, theta_air, phy = None, N = 30):
 
@@ -63,7 +64,7 @@ def ocean_irradiance_baird(hbot, ab_wat, theta_air, phy = None, N = 30):
                 b = b + phy_prof[:,k] * b_phy[k]
 
     ## Log grid calculation. 
-    ## The cell centers.
+    ## The cell edges.
     z_e = OI.Log_Trans(hbot, N) 
     ## making the cell centers z. 
     z_c = np.zeros(Nm1)
@@ -141,6 +142,8 @@ if __name__ == '__main__':
     z_phy = np.linspace(-600, 0, N)
     ## Artificial phytoplankton profile units chla. 
     phy_prof = OI.artificial_phy_prof(z_phy, 0, 10, 1)
+    ## Phytoplankton species
+    phy_type = 'Diat'
     
     ## dictionary with lam as keys
     Rrs_dict = {}
@@ -148,9 +151,9 @@ if __name__ == '__main__':
     for lam in wavelengths:
         ab_wat = abscat(lam, 'water')
        
-        a_phy, b_phy = abscat(lam, 'Diat')
+        a_phy, b_phy = abscat(lam, phy_type)
 
-        phy = OI.Phy(z_phy, phy_prof, a_phy, b_phy)
+        phy = OI.Phy(z_phy, phy_prof, ESD(phy_type), a_phy, b_phy)
 
         hbot = z_phy[0] 
 

@@ -628,8 +628,8 @@ if __name__ == '__main__':
     theta_air=.55
 
     ## Running 
-    #Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals, method='baird', theta_air=theta_air)
-    Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals)
+    Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals, method='baird', theta_air=theta_air)
+    #Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals)
 
     ## The number of vertical layers in irr grid. 
     N = 200
@@ -653,8 +653,8 @@ if __name__ == '__main__':
     ## C2chla for all species
     C2chla = 200
     ## Running comparison of insitu to irr surface chla for many cal casts. 
-    #Run_Baird_Comp_Insitu(args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, theta_air)  
-    irr_field, f_field, chla_dat, zbot_dat = Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, C2chla)
+    Run_Baird_Comp_Insitu(args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, theta_air)  
+    #irr_field, f_field, chla_dat, zbot_dat = Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species, C2chla)
 
 
    
