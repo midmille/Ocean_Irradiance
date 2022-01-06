@@ -59,7 +59,7 @@ def ocean_irradiance_baird(hbot, ab_wat, theta_air, phy = None, N = 30):
         ## Just one phytoplankton species
         if Nphy == 1 : 
             ## The back scatter ratio
-            bb_r = Backscatter_Ratio(esd)    
+            bb_r = OI.Backscatter_Ratio(esd)    
             a = a + phy_prof * a_phy
             b = b + phy_prof * b_phy
             b_b_phy = b_b_phy + phy_prof * b_phy * bb_r
@@ -68,7 +68,7 @@ def ocean_irradiance_baird(hbot, ab_wat, theta_air, phy = None, N = 30):
         elif Nphy > 1 : 
             for k in range(Nphy):
                 ## The back scatter ratio
-                bb_r = Backscatter_Ratio(esd[k])    
+                bb_r = OI.Backscatter_Ratio(esd[k])    
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
                 b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * bb_r
@@ -86,7 +86,7 @@ def ocean_irradiance_baird(hbot, ab_wat, theta_air, phy = None, N = 30):
     if phy: 
         a = np.interp(z_c,z_phy,a)
         b = np.interp(z_c,z_phy,b)
-        b_b_phy = np.interp(z, z_phy, b_b_phy)
+        b_b_phy = np.interp(z_c, z_phy, b_b_phy)
     else: 
         a = np.full(N, a)
         b = np.full(N, b)
@@ -120,14 +120,17 @@ def ocean_irradiance_baird(hbot, ab_wat, theta_air, phy = None, N = 30):
     ## Calculated on centers.
     w = np.zeros(Nm1)
     
+    w_int = 0
     for k in range(Nm2, -1, -1):    
         w[k] = 0.5*(np.exp(-2*K_e[k+1]) + np.exp(-2*K_e[k])) 
-    #print('w', w)
+        w_int = w_int + w[k] * (z_e[k+1] - z_e[k])
+    print('w_ing', w_int)
+   # print('w', w)
 
     ## Calculating u from equation 12
     u = 0
     for k in range(Nm2, -1, -1): 
-     #   print(u)
+       # print(u)
         u = u + (((w[k]*b_b[k])/(a[k] + b_b[k])) * (z_e[k+1] - z_e[k]))
 
     ## rrs calculation.
@@ -148,7 +151,7 @@ if __name__ == '__main__':
     wavelengths = [443, 551]
 
     ## N layers 
-    N = 200
+    N = 2000
 
     ## azimuth angle in air, rn is just the overhead. 
     theta_air = .558
