@@ -199,12 +199,14 @@ def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chl
     return rrs_443, rrs_551, irr_chla, chla_dat        
 
 
-def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None): 
+def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None, marker='o', color=None): 
     """
     Plots the given values on a given axes
     """
-
-    ax.plot(x, y,'o', fillstyle='none', label=label, markersize=5)
+    if color==None:
+        ax.plot(x, y,'o', fillstyle='none', label=label, markersize=5)
+    else:
+        ax.plot(x, y,'o', fillstyle='none', markeredgecolor=color, label=label, markersize=5)
     ax.plot(x, x, 'k')
     if xlim == None: 
         ax.relim()
@@ -245,7 +247,6 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
             rrs_443, rrs_551,  irr_chla, chla_dat = Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=LC2chla)     
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
-        print(rrs_443)
         ## chla comparison
         Plot_Comparison(axes[0,0], chla_insitu, irr_chla, 'Chla LC2chla Varied Species', phy_type, None, 'Model') 
         Plot_Comparison(axes[0,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio  LC2chla Varied Species', phy_type, None, None) 
@@ -482,7 +483,7 @@ def Loop_Species_Irr_Comp_Cal(PI, save_dir, save_file, wavelengths, N, year_min,
     return
 
 
-def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, species):
+def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False):
     """
     The main goal of this function is to plot a one to one comparison of the satellite derived 
     chla values and that from cal cofi. 
@@ -550,66 +551,100 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head,
         viirs_lon = pickle.load(open(f'{save_path}_viirs_lon.p', "rb"))
 
     ## The irradiance calculation of Rrs and chla
-#    cal_chla, irr_field, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Irr_Comp_Insitu(PI, 
-#                                                                          save_dir,
-#                                                                          f'{save_head}_irr.p',
-#                                                                          wavelengths,
-#                                                                          N,
-#                                                                          year_min,
-#                                                                          cal_cast_dat,
-#                                                                          cal_bot_dat,
-#                                                                          species)
+    cal_chla, irr_field, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Irr_Comp_Insitu(PI, 
+                                                                          save_dir,
+                                                                          f'{save_head}_{year_min}',
+                                                                          wavelengths,
+                                                                          N,
+                                                                          year_min,
+                                                                          cal_cast_dat,
+                                                                          cal_bot_dat,
+                                                                          phy_type)
  
-    ## Plotting one to one comparison.
-    fig, ax = plt.subplots()
-    Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla') 
-    #Plot_Comparison(ax, cal_chla, irr_chla, 'Comparison to Cal Chla', 'Irradiance' , 'Calcofi Chla', 'Chla') 
-    #ax.legend()
-    fig.show() 
 
-    ## Rrs Comparison
-    #fig, ax = plt.subplots()
-    #Plot_Comparison(ax, viirs_Rrs443, irr_Rrs443, 'Comparison of VIIRS to Irradiance Rrs', '443', 'VIIRS', 'Irr') 
-    #Plot_Comparison(ax, viirs_Rrs551, irr_Rrs551, 'Comparison of VIIRS to Irradiance Rrs', '551', 'VIIRS', 'Irr') 
-    #ax.legend()  
-    #fig.show() 
-
-
-    ## Plotting Comparison of chla and location
-    fig = plt.figure()
+    if plot:
+        ## Plotting one to one comparison.
+        fig, ax = plt.subplots()
+        Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla') 
+        #Plot_Comparison(ax, cal_chla, irr_chla, 'Comparison to Cal Chla', 'Irradiance' , 'Calcofi Chla', 'Chla') 
+        #ax.legend()
+        fig.show() 
     
-    ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
-    ax.add_feature(cfeature.COASTLINE)
-    ax.add_feature(cfeature.LAND, color='grey', alpha=.5)
-    #ax.gridlines()
-    ## size of scatter points.
-    s = 15
-    vmin = 0
-    vmax = 3
-    cbar_shrink = 1
-    cbar_label = 'chla [mg chla m^-3]'
+        ## Rrs Comparison
+        #fig, ax = plt.subplots()
+        #Plot_Comparison(ax, viirs_Rrs443, irr_Rrs443, 'Comparison of VIIRS to Irradiance Rrs', '443', 'VIIRS', 'Irr') 
+        #Plot_Comparison(ax, viirs_Rrs551, irr_Rrs551, 'Comparison of VIIRS to Irradiance Rrs', '551', 'VIIRS', 'Irr') 
+        #ax.legend()  
+        #fig.show() 
+    
+    
+        ## Plotting Comparison of chla and location
+        fig = plt.figure()
+        
+        ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+        ax.add_feature(cfeature.COASTLINE)
+        ax.add_feature(cfeature.LAND, color='grey', alpha=.5)
+        #ax.gridlines()
+        ## size of scatter points.
+        s = 15
+        vmin = 0
+        vmax = 3
+        cbar_shrink = 1
+        cbar_label = 'chla [mg chla m^-3]'
+    
+        ## Plotting the cal cofi
+        im = ax.scatter(lon, lat, c=cal_chla, s=s, cmap='nipy_spectral', 
+                         transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='calcofi' )
+        ## The viirs data.
+        im = ax.scatter(viirs_lon, viirs_lat, c=viirs_chla, s=s, cmap='nipy_spectral', 
+                         transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='VIIRS', marker='v')
+        ## plotting the lins between corresponding points. 
+        for k in range(N_cst):
+            plt.plot([lon[k], viirs_lon[k]], [lat[k], viirs_lat[k]],linewidth=.5, c ='k')
+    
+        fig.colorbar(im, ax=ax, shrink=cbar_shrink, label = cbar_label)
+        ax.set_title('Calcofi and VIIRS Position')  
+        ylims = ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
+        ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
+        ax.legend()
 
-    ## Plotting the cal cofi
-    im = ax.scatter(lon, lat, c=cal_chla, s=s, cmap='nipy_spectral', 
-                     transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='calcofi' )
-    ## The viirs data.
-    im = ax.scatter(viirs_lon, viirs_lat, c=viirs_chla, s=s, cmap='nipy_spectral', 
-                     transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='VIIRS', marker='v')
-    ## plotting the lins between corresponding points. 
-    for k in range(N_cst):
-        plt.plot([lon[k], viirs_lon[k]], [lat[k], viirs_lat[k]],linewidth=.5, c ='k')
+        fig.show()
+ 
+    
 
-    fig.colorbar(im, ax=ax, shrink=cbar_shrink, label = cbar_label)
-    ax.set_title('Calcofi and VIIRS Position')  
-    ylims = ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
-    ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
-    ax.legend()
+    return cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551, irr_chla, irr_Rrs443, irr_Rrs551
 
+
+def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, species): 
+    """
+    """
+
+    fig, axes = plt.subplots(nrows=2, ncols=3)
+    axes_list = axes.flatten()
+    chla_ax = axes_list[0]
+    rrs_axes = axes_list[1:]
+
+    for k, phy_type in enumerate(species):
+        cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
+        
+        ## Plotting one to one comparison.
+        chla_ax = Plot_Comparison(chla_ax, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
+        #ax.legend()
+        fig.show() 
+    
+        ## Rrs Comparison
+        rrs_ax = rrs_axes[k]
+        Plot_Comparison(rrs_ax, viirs_Rrs443, irr_Rrs443, f'{phy_type} Rrs', '443', 'VIIRS', 'Irr') 
+        Plot_Comparison(rrs_ax, viirs_Rrs551, irr_Rrs551, f'{phy_type} Rrs', '551', 'VIIRS', 'Irr') 
+        rrs_ax.legend()  
+ 
+    Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla', marker='v', color='grey') 
+    chla_ax.legend()
     fig.show()
- 
-    
 
-    return cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551
+
+    return
+
 
 
 def Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type):
@@ -789,10 +824,11 @@ if __name__ == '__main__':
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
     #cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
+    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
 
     ## Running the comparison of viirs, calcofi, irr, and nomad
 #    Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type)
    
     ## Plotting the sample points of th casts
-    Count_Cal_Chla_Samp_Pts(year_min, cal_cast_dat, cal_bot_dat)
+    #Count_Cal_Chla_Samp_Pts(year_min, cal_cast_dat, cal_bot_dat)
