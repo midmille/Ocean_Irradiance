@@ -620,6 +620,8 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, save_dir, s
     """
 
     fig, axes = plt.subplots(nrows=2, ncols=3)
+    ## The zoomed in chla plot with different species.
+    fig_z, ax_z = plt.subplots()
     axes_list = axes.flatten()
     chla_ax = axes_list[0]
     rrs_axes = axes_list[1:]
@@ -629,6 +631,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, save_dir, s
         
         ## Plotting one to one comparison.
         chla_ax = Plot_Comparison(chla_ax, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
+        ax_z = Plot_Comparison(ax_z, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
         #ax.legend()
         fig.show() 
     
@@ -638,8 +641,11 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, save_dir, s
         Plot_Comparison(rrs_ax, viirs_Rrs551, irr_Rrs551, f'{phy_type} Rrs', '551', 'VIIRS', 'Irr') 
         rrs_ax.legend()  
  
-    Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla', marker='v', color='grey') 
+    chla_ax = Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla', marker='v', color='grey') 
+    ax_z = Plot_Comparison(ax_z, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla', marker='v', color='grey') 
+    ax_z.legend()
     chla_ax.legend()
+    fig_z.show()
     fig.show()
 
 

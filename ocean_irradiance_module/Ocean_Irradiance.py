@@ -191,7 +191,8 @@ def zbot_func(Ed0, c, light_frac = .01, phy=False, z=None):
         .01% light level zbot. 
 
     """
-    zbots = np.linspace(-1000, 0, 5000) 
+    #zbots = np.linspace(-1000, 0, 10000) 
+    zbots = Log_Trans(-1000, 5000) 
     
     if phy==True: 
         c = np.interp(zbots, z, c)
@@ -199,10 +200,13 @@ def zbot_func(Ed0, c, light_frac = .01, phy=False, z=None):
     else:
         Ed = analytical_Ed(zbots, c, Ed0)
     ## The flipping is so the iteration starts at the surface.
+    print(c)
+    print(Ed)
     for k, Ed_i in enumerate(np.flip(Ed)) :
         EdoEd0 = Ed_i / Ed0
         if EdoEd0 < light_frac :
             zbot = np.flip(zbots)[k] 
+            print(zbot)
             return zbot
    
         
@@ -760,6 +764,7 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
         if Nphy == 1 : 
             ## The back scatter ratio
             bb_r = Backscatter_Ratio(esd)    
+            print(bb_r)
             a = a + phy_prof * a_phy
             b = b + phy_prof * b_phy
             b_b_phy = b_b_phy + phy_prof * b_phy * bb_r
@@ -1707,13 +1712,13 @@ def Demo(method='shoot_up'):
     
     PI = Param_Init()
     
-    N = 3000
+    N = 200
     Nm1 = N-1 
-    lam =443
+    lam =551
     
-    z = np.linspace(-100,0,N)
+    z = np.linspace(-600,0,N)
 
-    phy_prof = artificial_phy_prof(z, -50, 1, 10, prof_type = 'tan')
+    phy_prof = artificial_phy_prof(z, -50, 1, 25, prof_type = 'tan')
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
     # print(phy_prof)
@@ -1743,7 +1748,7 @@ def Demo(method='shoot_up'):
     if method == 'shoot_up':
         
         Ed, Es, Eu, zarr = ocean_irradiance_shoot_up(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
-                                            phy=phy, CDOM=cdom, N=N, pt1_perc_zbot = True, pt1_perc_phy=True)
+                                            phy=phy, CDOM=None, N=N, pt1_perc_zbot = True, pt1_perc_phy=True)
      
     if method == 'shoot_down':
         Ed, Es, Eu, zarr = ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,
@@ -1784,7 +1789,7 @@ def Demo(method='shoot_up'):
     ax2.legend()
     ax2.grid()
     
-    plt.show()
+    fig.show()
     
     
     return zarr, Ed, Es, Eu
