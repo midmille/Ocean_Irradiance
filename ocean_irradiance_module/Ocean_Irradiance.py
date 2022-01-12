@@ -200,13 +200,10 @@ def zbot_func(Ed0, c, light_frac = .01, phy=False, z=None):
     else:
         Ed = analytical_Ed(zbots, c, Ed0)
     ## The flipping is so the iteration starts at the surface.
-    print(c)
-    print(Ed)
     for k, Ed_i in enumerate(np.flip(Ed)) :
         EdoEd0 = Ed_i / Ed0
         if EdoEd0 < light_frac :
             zbot = np.flip(zbots)[k] 
-            print(zbot)
             return zbot
    
         
@@ -764,7 +761,6 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
         if Nphy == 1 : 
             ## The back scatter ratio
             bb_r = Backscatter_Ratio(esd)    
-            print(bb_r)
             a = a + phy_prof * a_phy
             b = b + phy_prof * b_phy
             b_b_phy = b_b_phy + phy_prof * b_phy * bb_r
