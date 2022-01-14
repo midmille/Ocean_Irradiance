@@ -122,9 +122,11 @@ def ocean_irradiance_baird(hbot, ab_wat, theta_air, phy = None, N = 30):
     
     w_int = 0
     for k in range(Nm2, -1, -1):    
-        w[k] = 0.5*(np.exp(-2*K_e[k+1]) + np.exp(-2*K_e[k])) 
+       # w[k] = 0.5*(np.exp(-2*K_e[k+1]) + np.exp(-2*K_e[k])) 
+        w[k] = (z_e[k+1] - z_e[k]) *0.5*(np.exp(-2*K_e[k+1]) + np.exp(-2*K_e[k])) 
         w_int = w_int + w[k] * (z_e[k+1] - z_e[k])
     print('w_ing', w_int)
+    w =  w / w_int
    # print('w', w)
 
     ## Calculating u from equation 12
