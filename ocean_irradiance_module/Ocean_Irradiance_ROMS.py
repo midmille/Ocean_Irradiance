@@ -222,6 +222,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                 phy_profs = np.zeros((len(z_r0),2))
                 phy_profs[:,0] = chl_diatom[:,j,i]
                 phy_profs[:,1] = chl_nanophyt[:,j,i]
+                #print(phy_profs)
                 
                 a = np.array([ab_diat[0], ab_syn[0]])
                 b = np.array([ab_diat[1], ab_syn[1]])
@@ -231,13 +232,12 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                 if method == 'shoot_down':
                     
                     ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
-                                                                      ab_wat, coefficients, phy, N=N, 
-                                                                      pt1_perc_zbot = pt1_perc_zbot)
+                                                                      ab_wat, coefficients, phy, N=N)
                 elif method == 'shoot_up':
                     
                     ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_shoot_up(hbot,E_d_0,E_s_0,E_u_h,
                                                                       ab_wat, coefficients, phy, N=N, 
-                                                                      pt1_perc_zbot = pt1_perc_zbot)
+                                                                      pt1_perc_zbot = pt1_perc_zbot, )
                 elif method == 'shoot_fp':
                     
                     ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_shoot_fp(hbot,E_d_0,E_s_0,E_u_h,
@@ -265,7 +265,7 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     return irr_arr
 
 
-def Irradiance_Run(R_nc, PI, nstp, N, save_dir, save_file, method):
+def Irradiance_Run(R_nc, PI, nstp, N, save_dir, save_file, method, wavelengths):
     
     
     ## The name of the file that the python Eu dict will be saved to as pickle.
@@ -286,7 +286,7 @@ def Irradiance_Run(R_nc, PI, nstp, N, save_dir, save_file, method):
             
         #mask = np.ones((R_nc.nyi, R_nc.nxi))
         irr_field_py = {}
-        for lam in R_nc.wavelengths:
+        for lam in wavelengths:
             print('Current Wavelength:', lam)
             irr_field_py[lam] = Ocean_Irradiance_Field(
                                               R_nc.maskr, 
@@ -314,7 +314,8 @@ def Irradiance_Run(R_nc, PI, nstp, N, save_dir, save_file, method):
 
     return irr_field_py
 
-   
+def Plot_Irradiance_Field(irr_field):
+    return
     
 if __name__ == '__main__':
     
@@ -332,20 +333,21 @@ if __name__ == '__main__':
     parser.add_argument('--plot', action='store_true', help="Visualization of Result")
     args = parser.parse_args()
     
-    print(args.file)
 
     PI = Param_Init()
     R_nc = ROMS_netcdf(args.file)
 
     ## updating default to wavelengths necessary for the OCx_algorithim
-    R_nc.wavelengths = [443, 551]
+    wavelengths = [
 
     ## settting time step index
     time_step_index = 1
     
-    N = 100
+    N = 200
     
-    Irradiance_Run(R_nc, PI, time_step_index, N, args.save_dir, args.save_file_name, args.method)
+    irr_field = Irradiance_Run(R_nc, PI, time_step_index, N, args.save_dir, args.save_file_name, args.method, wavelengths)
+
+
     
     
     

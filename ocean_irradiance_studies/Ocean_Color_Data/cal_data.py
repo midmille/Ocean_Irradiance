@@ -199,28 +199,6 @@ def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chl
     return rrs_443, rrs_551, irr_chla, chla_dat        
 
 
-def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None, marker='o', color=None): 
-    """
-    Plots the given values on a given axes
-    """
-    if color==None:
-        ax.plot(x, y,'o', fillstyle='none', label=label, markersize=5)
-    else:
-        ax.plot(x, y,'o', fillstyle='none', markeredgecolor=color, label=label, markersize=5)
-    ax.plot(x, x, 'k')
-    if xlim == None: 
-        ax.relim()
-    elif ylim == None: 
-        ax.relim()
-    else:
-        ax.set_xlim([0, xlim])
-        ax.set_ylim([0, ylim])
-
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    
-    return ax 
 
 
 def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals, method='shoot_up', theta_air = None):
@@ -248,12 +226,12 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
         ## chla comparison
-        Plot_Comparison(axes[0,0], chla_insitu, irr_chla, 'Chla LC2chla Varied Species', phy_type, None, 'Model') 
-        Plot_Comparison(axes[0,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio  LC2chla Varied Species', phy_type, None, None) 
-        Plot_Comparison(axes2[0,0], rrs_443_dat, rrs_443, 'Rrs 443 LC2chla Varied Species', phy_type, None, 'Model') 
-        Plot_Comparison(axes2[0,1], rrs_555_dat, rrs_551, 'Rrs 551 LC2chla Varied Species', phy_type, None, None) 
+        PC.Plot_Comparison(axes[0,0], chla_insitu, irr_chla, 'Chla LC2chla Varied Species', phy_type, None, 'Model') 
+        PC.Plot_Comparison(axes[0,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio  LC2chla Varied Species', phy_type, None, None) 
+        PC.Plot_Comparison(axes2[0,0], rrs_443_dat, rrs_443, 'Rrs 443 LC2chla Varied Species', phy_type, None, 'Model') 
+        PC.Plot_Comparison(axes2[0,1], rrs_555_dat, rrs_551, 'Rrs 551 LC2chla Varied Species', phy_type, None, None) 
     ## plotting satelite 
-    Plot_Comparison(axes[0,0], chla_insitu, chla_sat, 'Chla LC2chla Varied Species', 'Sattelite', None, 'Model') 
+    PC.Plot_Comparison(axes[0,0], chla_insitu, chla_sat, 'Chla LC2chla Varied Species', 'Sattelite', None, 'Model') 
     axes[0,0].legend( title='species')
     axes[0,0].grid()
     axes[0,1].grid()
@@ -269,11 +247,11 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
         ## chla comparison
-        Plot_Comparison(axes[1,0], chla_insitu, irr_chla, 'Chla SC2chla Varied Species', phy_type, None, 'Model') 
-        Plot_Comparison(axes[1,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio SC2chla Varied Species', phy_type, None, None) 
-        Plot_Comparison(axes2[1,0], rrs_443_dat, rrs_443, 'Rrs 443 SC2chla Varied Species', phy_type, None, 'Model') 
-        Plot_Comparison(axes2[1,1], rrs_555_dat, rrs_551, 'Rrs 551 SC2chla Varied Species', phy_type, None, None) 
-    Plot_Comparison(axes[1,0], chla_insitu, chla_sat, 'Chla SC2chla Varied Species', 'Sattelite', None, 'Model') 
+        PC.Plot_Comparison(axes[1,0], chla_insitu, irr_chla, 'Chla SC2chla Varied Species', phy_type, None, 'Model') 
+        PC.Plot_Comparison(axes[1,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio SC2chla Varied Species', phy_type, None, None) 
+        PC.Plot_Comparison(axes2[1,0], rrs_443_dat, rrs_443, 'Rrs 443 SC2chla Varied Species', phy_type, None, 'Model') 
+        PC.Plot_Comparison(axes2[1,1], rrs_555_dat, rrs_551, 'Rrs 551 SC2chla Varied Species', phy_type, None, None) 
+    PC.Plot_Comparison(axes[1,0], chla_insitu, chla_sat, 'Chla SC2chla Varied Species', 'Sattelite', None, 'Model') 
     axes[1,0].legend(title='species')
     axes[1,0].grid()
     axes[1,1].grid()
@@ -289,11 +267,11 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
         ## Ratio of rrs 
         rrs_ratio = rrs_443 / rrs_551
         ## chla comparison
-        Plot_Comparison(axes[2,0], chla_insitu, irr_chla, 'Chla Generic Species Varied C2chla', C2chla, 'In Situ', 'Model') 
-        Plot_Comparison(axes[2,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio Generic Species Varied C2chla', C2chla, 'In Situ', None) 
-        Plot_Comparison(axes2[2,0], rrs_443_dat, rrs_443, 'Rrs 443 Generic Species Varied C2chla', C2chla, 'In Situ', 'Model') 
-        Plot_Comparison(axes2[2,1], rrs_555_dat, rrs_551, 'Rrs 551 Generic Species Varied C2chla', C2chla, 'In Situ', None) 
-    Plot_Comparison(axes[2,0], chla_insitu, chla_sat, 'Chla Generic Species Varied C2chla', 'Sattelite', 'In Situ', 'Model') 
+        PC.Plot_Comparison(axes[2,0], chla_insitu, irr_chla, 'Chla Generic Species Varied C2chla', C2chla, 'In Situ', 'Model') 
+        PC.Plot_Comparison(axes[2,1], rrs_ratio_dat, rrs_ratio, 'Rrs Ratio Generic Species Varied C2chla', C2chla, 'In Situ', None) 
+        PC.Plot_Comparison(axes2[2,0], rrs_443_dat, rrs_443, 'Rrs 443 Generic Species Varied C2chla', C2chla, 'In Situ', 'Model') 
+        PC.Plot_Comparison(axes2[2,1], rrs_555_dat, rrs_551, 'Rrs 551 Generic Species Varied C2chla', C2chla, 'In Situ', None) 
+    PC.Plot_Comparison(axes[2,0], chla_insitu, chla_sat, 'Chla Generic Species Varied C2chla', 'Sattelite', 'In Situ', 'Model') 
     axes[2,0].legend(title='C2chla')
     axes[2,0].grid()
     axes[2,1].grid()
@@ -307,7 +285,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
   
     ## plotting a comparison of chla dat to chla insitu 
     fig, ax = plt.subplots()
-    Plot_Comparison(ax, chla_insitu, chla_dat, 'Chla NOMAD In Situ Compared to Cast In Situ', None, 'NOMAD', 'Cast')
+    PC.Plot_Comparison(ax, chla_insitu, chla_dat, 'Chla NOMAD In Situ Compared to Cast In Situ', None, 'NOMAD', 'Cast')
     ax.grid()
     fig.show()
 
@@ -446,7 +424,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
     ## Plotting the comparison
     if plot:
         fig, ax =plt.subplots()
-        ax = Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
+        ax = PC.Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
         ax.legend(title='species')
         fig.show()
     
@@ -475,7 +453,7 @@ def Loop_Species_Irr_Comp_Cal(PI, save_dir, save_file, wavelengths, N, year_min,
     for k, phy_type in enumerate(species):
 
         chla_dat, irr_field, chla_irr, Rrs_443, Rrs_551 = Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, plot=False)
-        ax = Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
+        ax = PC.Plot_Comparison(ax, chla_dat, chla_irr, 'Chla In Situ to Chla Irr', phy_type, 'In Situ', 'Model', xlim=50, ylim=50)
 
     ax.legend()
     fig.show()
@@ -517,6 +495,8 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
         pml_chla = np.zeros(N_cst)
         pml_Rrs443 = np.zeros(N_cst)
         pml_Rrs560 = np.zeros(N_cst)
+        pml_lat = np.zeros(N_cst)
+        pml_lon = np.zeros(N_cst)
         ## Setting the cal cofi limits for the downloaded domain.
         year_lims = [year[0], year[-1]]
         julian_date_lims = [julian_day[0], julian_day[-1]]
@@ -546,10 +526,12 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
 #             viirs_lon[k] = v_lon
 
              ## Getting the PML data.
-             p_Rrs443, p_Rrs560, p_chla = plymouth_oc.Get_Point_PML_Dataset(pml_ds, year[k], julian_day[k], lat[k], lon[k]) 
+             p_Rrs443, p_Rrs560, p_chla, p_lat, p_lon = plymouth_oc.Get_Point_PML_Dataset(pml_ds, year[k], julian_day[k], lat[k], lon[k]) 
              pml_chla[k] = p_chla
              pml_Rrs443[k] = p_Rrs443
              pml_Rrs560[k] = p_Rrs560
+             pml_lat[k] = p_lat
+             pml_lon[k] = p_lon
 
 
         pickle.dump(cal_chla, open(f'{save_path}_cal_chla.p', "wb"))
@@ -561,6 +543,8 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
         pickle.dump(pml_chla, open(f'{save_path}_pml_chla.p', 'wb'))
         pickle.dump(pml_Rrs443, open(f'{save_path}_pml_Rrs443.p', 'wb'))
         pickle.dump(pml_Rrs560, open(f'{save_path}_pml_Rrs551.p', 'wb'))
+        pickle.dump(pml_lat, open(f'{save_path}_pml_lat.p', 'wb'))
+        pickle.dump(pml_lon, open(f'{save_path}_pml_lon.p', 'wb'))
 
 
     elif os.path.exists(f'{save_path}_cal_chla.p') == True:
@@ -575,6 +559,8 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
         pml_chla = pickle.load(open(f'{save_path}_pml_chla.p', 'rb'))
         pml_Rrs443 = pickle.load(open(f'{save_path}_pml_Rrs443.p', 'rb'))
         pml_Rrs560 = pickle.load(open(f'{save_path}_pml_Rrs551.p', 'rb'))
+        pml_lat = pickle.load(open(f'{save_path}_pml_lat.p', 'rb'))
+        pml_lon = pickle.load(open(f'{save_path}_pml_lon.p', 'rb'))
 
     ## The irradiance calculation of Rrs and chla
     cal_chla, irr_field, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Irr_Comp_Insitu(PI, 
@@ -591,15 +577,15 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
     if plot:
         ## Plotting one to one comparison.
         fig, ax = plt.subplots()
-        Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla') 
-        #Plot_Comparison(ax, cal_chla, irr_chla, 'Comparison to Cal Chla', 'Irradiance' , 'Calcofi Chla', 'Chla') 
+        PC.Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla') 
+        #PC.Plot_Comparison(ax, cal_chla, irr_chla, 'Comparison to Cal Chla', 'Irradiance' , 'Calcofi Chla', 'Chla') 
         #ax.legend()
         fig.show() 
     
         ## Rrs Comparison
         #fig, ax = plt.subplots()
-        #Plot_Comparison(ax, viirs_Rrs443, irr_Rrs443, 'Comparison of VIIRS to Irradiance Rrs', '443', 'VIIRS', 'Irr') 
-        #Plot_Comparison(ax, viirs_Rrs551, irr_Rrs551, 'Comparison of VIIRS to Irradiance Rrs', '551', 'VIIRS', 'Irr') 
+        #PC.Plot_Comparison(ax, viirs_Rrs443, irr_Rrs443, 'Comparison of VIIRS to Irradiance Rrs', '443', 'VIIRS', 'Irr') 
+        #PC.Plot_Comparison(ax, viirs_Rrs551, irr_Rrs551, 'Comparison of VIIRS to Irradiance Rrs', '551', 'VIIRS', 'Irr') 
         #ax.legend()  
         #fig.show() 
     
@@ -622,17 +608,20 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
         im = ax.scatter(lon, lat, c=cal_chla, s=s, cmap='nipy_spectral', 
                          transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='calcofi' )
         ## The viirs data.
-        im = ax.scatter(viirs_lon, viirs_lat, c=viirs_chla, s=s, cmap='nipy_spectral', 
-                         transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='VIIRS', marker='v')
+        #im = ax.scatter(pml_lon, pml_lat, c=pml_chla, s=s, cmap='nipy_spectral', 
+                         #transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='CCI', marker='v')
         ## plotting the lins between corresponding points. 
-        for k in range(N_cst):
-            plt.plot([lon[k], viirs_lon[k]], [lat[k], viirs_lat[k]],linewidth=.5, c ='k')
+        #for k in range(N_cst):
+            #plt.plot([lon[k], pml_lon[k]], [lat[k], pml_lat[k]],linewidth=.5, c ='k')
     
         fig.colorbar(im, ax=ax, shrink=cbar_shrink, label = cbar_label)
-        ax.set_title('Calcofi and VIIRS Position')  
+        ax.set_title('CalCOFI Profile Positions')  
         ylims = ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
         ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
-        ax.legend()
+        gl = ax.gridlines(draw_labels=True)
+        gl.top_labels=False
+        gl.right_labels=False
+        #ax.legend(title=r'mg Chl-a $\mathrm{m}^-1$,)
 
         fig.show()
  
@@ -647,38 +636,43 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, pml_url, sa
     ## The limits for the Rrs plots, in order [xlim, ylim].
     Rrs_ax_lims = [[.014, .014], [.025, .025], [.035, .035], [.0225, .0225], [.014, .014]]
 
-    fig, axes = plt.subplots(nrows=2, ncols=3)
+    ncols = len(species)
+    fig, axes = plt.subplots(nrows=1, ncols=ncols)
     ## The zoomed in chla plot with different species.
     fig_z, ax_z = plt.subplots()
     axes_list = axes.flatten()
-    chla_ax = axes_list[0]
-    rrs_axes = axes_list[1:]
+    #chla_ax = axes_list[0]
+    #rrs_axes = axes_list[1:]
 
     for k, phy_type in enumerate(species):
-        cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551, pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
+        cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551, pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=True)
         
         ## Plotting one to one comparison.
-        chla_ax = Plot_Comparison(chla_ax, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
-        ax_z = Plot_Comparison(ax_z, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
+        #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
+        ax_z = PC.Plot_Comparison(ax_z, cal_chla, irr_chla, 'Irradiance Model Comparison to CalCOFI', f'Irr {phy_type}' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', '[mg Chl-a $\mathrm{m}^{-3}$]') 
         #ax.legend()
-        fig.show() 
     
         ## Rrs Comparison
-        rrs_ax = rrs_axes[k]
+        rrs_ax = axes_list[k]
         ## viirs Rrs
-        Plot_Comparison(rrs_ax, viirs_Rrs443, irr_Rrs443, f'{phy_type} Rrs', '443', 'VIIRS', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
-        Plot_Comparison(rrs_ax, viirs_Rrs551, irr_Rrs551, f'{phy_type} Rrs', '551', 'VIIRS', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
+        #PC.Plot_Comparison(rrs_ax, viirs_Rrs443, irr_Rrs443, f'{phy_type} Rrs', '443', 'VIIRS', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
+        #PC.Plot_Comparison(rrs_ax, viirs_Rrs551, irr_Rrs551, f'{phy_type} Rrs', '551', 'VIIRS', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
         ## PML rrs
-        #Plot_Comparison(rrs_ax, pml_Rrs443, irr_Rrs443, f'{phy_type} Rrs', '443', 'CCI', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
-        #Plot_Comparison(rrs_ax, pml_Rrs560, irr_Rrs551, f'{phy_type} Rrs', '551', 'CCI', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
+        if k == 0: 
+            ylabel = 'Irradiance Model'
+        else: 
+            ylabel = None
+            
+        PC.Plot_Comparison(rrs_ax, pml_Rrs443, irr_Rrs443, f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', '443 [nm]', 'CCI', ylabel, xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
+        PC.Plot_Comparison(rrs_ax, pml_Rrs560, irr_Rrs551, f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', '551 [nm]', 'CCI', ylabel, xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
         rrs_ax.legend()  
  
-    chla_ax = Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
-    chla_ax = Plot_Comparison(chla_ax, cal_chla, pml_chla, 'Comparison to Cal Chla', 'CCI Chla', 'Calcofi Chla', 'Chla', marker='v', color='black') 
-    ax_z = Plot_Comparison(ax_z, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
-    ax_z = Plot_Comparison(ax_z, cal_chla, pml_chla, 'Comparison to Cal Chla', 'CCI Chla', 'Calcofi Chla', 'Chla', marker='v', color='black') 
+    #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
+    #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, pml_chla, 'Comparison to Cal Chla', 'CCI Chla', 'Calcofi Chla', 'Chla', marker='v', color='black') 
+    #ax_z = PC.Plot_Comparison(ax_z, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
+    ax_z = PC.Plot_Comparison(ax_z, cal_chla, pml_chla, 'Irradiance Model Comparison to CalCOFI', f'CCI Chl-a' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', '[mg Chl-a $\mathrm{m}^{-3}$]', marker='v', color='black') 
     ax_z.legend()
-    chla_ax.legend()
+    #chla_ax.legend()
     ## Adding the CCI data info to the figure
     #text(0, .1, 'CCI = ESA CCI Ocean Colour Product Level-3 v5.0 Daily', figure=fig)
     fig_z.show()
@@ -688,7 +682,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, pml_url, sa
     ## the OCx algorithim from CCI Rrs values. 
     fig, ax = plt.subplots()
     pml_OCx_chla = OIR.OCx_alg(pml_Rrs443, pml_Rrs560)
-    ax = Plot_Comparison(ax, pml_chla, pml_OCx_chla, 'CCI Chla Compared to Chla Calculated Using OCx and CCI Rrs', 'CCI', 'CCI chla', 'Chla from CCI Rrs and OCx (VIIRS Params)', marker='v') 
+    ax = PC.Plot_Comparison(ax, pml_chla, pml_OCx_chla, 'CCI Chla Compared to Chla Calculated Using OCx and CCI Rrs', 'CCI', 'CCI chla', 'Chla from CCI Rrs and OCx (VIIRS Params)', marker='v') 
     fig.show()
 
 
@@ -743,10 +737,10 @@ def Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_ty
     title = 'Chla Comparisons'
     xlabel = 'Chla NOMAD In Situ [mg chla m^-3]'
     ylabel = 'Chla [mg chla m^-3]'
-    ax = Plot_Comparison(ax, nomad_insitu_chla, nomad_sat_chla, title, 'NOMAD Satellite', xlabel, ylabel)
-    ax = Plot_Comparison(ax, nomad_insitu_chla, cal_chla , title, 'Calcofi In Situ', xlabel, ylabel)
-    ax = Plot_Comparison(ax, nomad_insitu_chla, irr_chla , title, 'Irr Model', xlabel, ylabel)
-#    ax1 = Plot_Comparison(ax1, nomad_insitu_chla, viirs_chla, title, 'VIIRS', xlabel, ylabel)
+    ax = PC.Plot_Comparison(ax, nomad_insitu_chla, nomad_sat_chla, title, 'NOMAD Satellite', xlabel, ylabel)
+    ax = PC.Plot_Comparison(ax, nomad_insitu_chla, cal_chla , title, 'Calcofi In Situ', xlabel, ylabel)
+    ax = PC.Plot_Comparison(ax, nomad_insitu_chla, irr_chla , title, 'Irr Model', xlabel, ylabel)
+#    ax1 = PC.Plot_Comparison(ax1, nomad_insitu_chla, viirs_chla, title, 'VIIRS', xlabel, ylabel)
     ax.legend()
 
     ## Plotting the rrs's against the nomad rrs.
@@ -754,16 +748,16 @@ def Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_ty
 #    title = 'Rrs 443 Comparison'
 #    xlabel = 'Rrs 443 NOMAD Satellite [sr^-1]'
 #    ylabel = 'Rrs 443 [sr^-1]'
-#    ax2 = Plot_Comparison(ax2, nomad_sat_rrs_443, irr_rrs443, title, 'Irr Model', xlabel, ylabel)
-#    ax2 = Plot_Comparison(ax2, nomad_sat_rrs_443, viirs_rrs443, title, 'VIIRS', xlabel, ylabel)
+#    ax2 = PC.Plot_Comparison(ax2, nomad_sat_rrs_443, irr_rrs443, title, 'Irr Model', xlabel, ylabel)
+#    ax2 = PC.Plot_Comparison(ax2, nomad_sat_rrs_443, viirs_rrs443, title, 'VIIRS', xlabel, ylabel)
 #    ax2.legend()
 
     ## 551
 #    title = 'Rrs 551 Comparison'
 #    xlabel = 'Rrs 551 NOMAD Satellite [sr^-1]'
 #    ylabel = 'Rrs 551 [sr^-1]'
-#    ax3 = Plot_Comparison(ax3, nomad_sat_rrs_555, irr_rrs551, title, 'Irr Model', xlabel, ylabel)
-#    ax3 = Plot_Comparison(ax3, nomad_sat_rrs_555, viirs_rrs551, title, 'VIIRS', xlabel, ylabel)
+#    ax3 = PC.Plot_Comparison(ax3, nomad_sat_rrs_555, irr_rrs551, title, 'Irr Model', xlabel, ylabel)
+#    ax3 = PC.Plot_Comparison(ax3, nomad_sat_rrs_555, viirs_rrs551, title, 'VIIRS', xlabel, ylabel)
 #    ax3.legend()
  
     fig.show()
@@ -830,7 +824,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ## The species that have coefficients.
-    species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
+    species = ['Diat', 'Cocco']
+    #species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
+    #species = ['HLPro', 'Cocco', 'Diat']
  
     ## The spread of different C2chla ratios. 
     C2chla_vals = np.arange(50,200, 25)

@@ -120,8 +120,11 @@ def Get_Point_PML_Dataset(pml_ds, year, julian_day, lat, lon):
     Rrs443 = pml_ds.variables['Rrs_443'][time_i, lat_i, lon_i]
     Rrs560 = pml_ds.variables['Rrs_560'][time_i, lat_i, lon_i]
     chla = pml_ds.variables['chlor_a'][time_i, lat_i, lon_i]
+    lat = pml_ds.variables['lat'][lat_i]
+    lon = pml_ds.variables['lon'][lon_i]
+    
 
-    return Rrs443, Rrs560, chla
+    return Rrs443, Rrs560, chla, lat, lon
 
 
 

@@ -5,6 +5,7 @@ Created on Thu Dec 10 08:52:28 2020
 """
 import numpy as np
 import scipy as sp 
+import matplotlib.pyplot as plt
 from scipy import integrate
 
 
@@ -205,10 +206,10 @@ def zbot_func(Ed0, a, b, v_d, light_frac = .01, phy=False, z=None):
     """
     
     ## For now let the scattering be zero. 
-    b = 0
+    #b = 0
     c = (a+b) / v_d
     #zbots = np.linspace(-1000, 0, 10000) 
-    zbots = Log_Trans(-1000, 5000) 
+    zbots = Log_Trans(-1500, 5000) 
     
     if phy==True: 
         c = np.interp(zbots, z, c)
@@ -218,6 +219,7 @@ def zbot_func(Ed0, a, b, v_d, light_frac = .01, phy=False, z=None):
     ## The flipping is so the iteration starts at the surface.
     for k, Ed_i in enumerate(np.flip(Ed)) :
         EdoEd0 = Ed_i / Ed0
+        #print(EdoEd0, light_frac, np.flip(zbots)[k], phy, Ed_i)
         if EdoEd0 < light_frac :
             zbot = np.flip(zbots)[k] 
             return zbot
@@ -596,7 +598,7 @@ def ocean_irradiance(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = None, N = 
         ## Finding the zbot at the .1% light level. 
         c_wat = (a_wat + b_wat)/v_d
         zbot_pt1perc = zbot_func(Ed0, c_wat)
-        print(zbot_pt1perc)
+        #print(zbot_pt1perc)
         ## choosing the smaller zbot and making negative
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
     elif pt1_perc_zbot == False: 
@@ -813,7 +815,7 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
             zbot_pt1perc = zbot_func(Ed0, a, b, v_d, phy=True, z=z_phy) 
         else:    
             c_wat = (a_wat + b_wat)/v_d
-            zbot_pt1perc = zbot_func(Ed0, c_wat)
+            zbot_pt1perc = zbot_func(Ed0, a_wat, b_wat, v_d, phy=False)
         if zbot_pt1perc == None:
             print('bad pt1 perc light level')
             zbot_pt1perc = -100
@@ -1726,11 +1728,13 @@ def Demo(method='shoot_up'):
     
     N = 200
     Nm1 = N-1 
-    lams = [443, 551]
+    lams = [410, 410]
     
-    z = np.linspace(-200,0,N)
+    z = np.linspace(-1000,0,N)
 
-    phy_prof = artificial_phy_prof(z, -10, 20, 1, prof_type = 'gauss')
+    #phy_prof = artificial_phy_prof(z, -10, 20, 1, prof_type = 'gauss')
+    phy_prof = np.full(200, 1)
+    #phy_prof = np.append(phy_prof1, np.full(100, 1))
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
     # print(phy_prof)
@@ -1765,7 +1769,7 @@ def Demo(method='shoot_up'):
         if method == 'shoot_up':
             
             Ed, Es, Eu, zarr = ocean_irradiance_shoot_up(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
-                                                phy=phy, CDOM=None, N=N, pt1_perc_zbot = True, pt1_perc_phy=True)
+                                                phy=phy, CDOM=None, N=N, pt1_perc_zbot = True, pt1_perc_phy=False)
          
         if method == 'shoot_down':
             Ed, Es, Eu, zarr = ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,
@@ -1790,7 +1794,7 @@ def Demo(method='shoot_up'):
         Ed_c = 'g'
         Es_c = 'b'
         Eu_c = 'r'
-        if lam == 443:
+        if lam == 410:
             ax2.plot(Ed, zarr, label=f'Ed', color = Ed_c, ls=markers[k] )
             ax2.plot(Es, zarr, label=f'Es', color = Es_c, ls=markers[k])
             ax2.plot(Eu, zarr, label=f'Eu', color = Eu_c, ls= markers[k])

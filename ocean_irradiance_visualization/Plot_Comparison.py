@@ -8,26 +8,55 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def Plot_Comparison(ax, x, y, label, xlim=None, ylim=None, bf_line=False): 
+def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None, marker='o', color=None): 
     """
     Plots the given values on a given axes
     """
-
-    ax.plot(x, y,'o', fillstyle='none', label=label, markersize=5)
-    ax.plot(x, x, 'k')
-    if bf_line: 
-        m, b = np.polyfit(x,y,1) 
-        ax.plot(x, m*x +b, 'r:')
-    if xlim == None: 
-        xlim = x.max()
-    if ylim == None: 
-        ylim = y.max()
-    ax.set_xlim([0, xlim])
-    ax.set_ylim([0, ylim])
-    if bf_line: 
-        return m, b 
+    if color==None:
+        ax.plot(x, y,'o', fillstyle='none', label=label, markersize=5)
     else:
-        return ax 
+        ax.plot(x, y,'o', fillstyle='none', markeredgecolor=color, label=label, markersize=5)
+    if xlim == None: 
+        ax.relim()
+    elif ylim == None: 
+        ax.relim()
+    else:
+        ax.set_xlim([0, xlim])
+        ax.set_ylim([0, ylim])
+    ## Using the limits as the coordinates for the x=y line.
+    ylims = ax.get_ylim()
+    xlims = ax.get_xlim()
+    low_lim_min = min(ylims[0], xlims[0]) 
+    high_lim_max = max(ylims[1], xlims[1])
+    ax.plot([low_lim_min, high_lim_max], [low_lim_min, high_lim_max], 'k')
+
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    
+    return ax 
+
+
+#def Plot_Comparison(ax, x, y, label, xlim=None, ylim=None, bf_line=False): 
+    #"""
+    #Plots the given values on a given axes
+    #"""
+#
+    #ax.plot(x, y,'o', fillstyle='none', label=label, markersize=5)
+    #ax.plot(x, x, 'k')
+    #if bf_line: 
+        #m, b = np.polyfit(x,y,1) 
+        #ax.plot(x, m*x +b, 'r:')
+    #if xlim == None: 
+        #xlim = x.max()
+    #if ylim == None: 
+        #ylim = y.max()
+    #ax.set_xlim([0, xlim])
+    #ax.set_ylim([0, ylim])
+    #if bf_line: 
+        #return m, b 
+    #else:
+        #return ax 
 
 
 def Plot_Frequency(ax, y, N_bins, label, bin_edges=[]): 
