@@ -1726,80 +1726,98 @@ def Demo(method='shoot_up'):
     
     N = 200
     Nm1 = N-1 
-    lam =551
+    lams = [443, 551]
     
-    z = np.linspace(-600,0,N)
+    z = np.linspace(-200,0,N)
 
-    phy_prof = artificial_phy_prof(z, -50, 1, 25, prof_type = 'tan')
+    phy_prof = artificial_phy_prof(z, -10, 20, 1, prof_type = 'gauss')
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
     # print(phy_prof)
     # z = ROMS_point[1:,0]
     # phy_prof = np.full(len(z), 1)
-    
-    ab_wat = abscat(lam, 'water')
-    
-    a_phy, b_phy = abscat(lam, 'Syn')
-    
-    
-    ## Define the Phytoplankton class.
-    phy = Phy(z, phy_prof, .02,a_phy, b_phy)
-
-    ## Salinity for CDOM
-    salt = np.full(N, 34.5)
-    ## define the CDOM class
-    cdom = CDOM(z,salt,lam) 
-
-
-    ## The fixed point position: 
-    fp = -50
-    fpi =0
-
-    zbot = z[0]
-    
-    if method == 'shoot_up':
-        
-        Ed, Es, Eu, zarr = ocean_irradiance_shoot_up(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
-                                            phy=phy, CDOM=None, N=N, pt1_perc_zbot = True, pt1_perc_phy=True)
-     
-    if method == 'shoot_down':
-        Ed, Es, Eu, zarr = ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,
-                                               phy=phy, N=N, pt1_perc_zbot=True)
-        
-    if method == 'shoot_fp': 
-        Ed, Es, Eu, zarr, fpi = ocean_irradiance_shoot_fp(zbot, fp, fpi, PI.Ed0, PI.Es0, PI.Euh, 
-                                                     ab_wat, PI.coefficients, phy = phy, N = N, 
-                                                     pt1_perc_zbot = True)
-        
-    if method == 'scipy':
-        Ed, Es, Eu, zarr = ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,
-                                               phy=phy, N=N, pt1_perc_zbot=False, use_bvp_solver=True)    
-
-    if method == 'dut':
-        Ed, Es, Eu, zarr = ocean_irradiance_dutkiewicz(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  
-                                                          PI.coefficients, phy=phy, N=N, pt1_perc_zbot=False)
-    ## Plotting the Results
-    #-------------------------------------------------------------------------
-    fig, axes = plt.subplots(1, 2, sharey=True)
+    fig, axes = plt.subplots(1, 3, sharey=True)
     ax1 = axes[0]
     ax2 = axes[1]
+    ax3 = axes[2]
     
+    for k, lam in enumerate(lams):
+        ab_wat = abscat(lam, 'water')
+    
+        a_phy, b_phy = abscat(lam, 'Syn')
+        
+        
+        ## Define the Phytoplankton class.
+        phy = Phy(z, phy_prof, .02,a_phy, b_phy)
+    
+        ## Salinity for CDOM
+        salt = np.full(N, 34.5)
+        ## define the CDOM class
+        cdom = CDOM(z,salt,lam) 
+        
+    
+        ## The fixed point position: 
+        fp = -50
+        fpi =0
+    
+        zbot = z[0]
+        
+        if method == 'shoot_up':
+            
+            Ed, Es, Eu, zarr = ocean_irradiance_shoot_up(zbot,PI.Ed0,PI.Es0,PI.Euh,ab_wat, PI.coefficients, 
+                                                phy=phy, CDOM=None, N=N, pt1_perc_zbot = True, pt1_perc_phy=True)
+         
+        if method == 'shoot_down':
+            Ed, Es, Eu, zarr = ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,
+                                                   phy=phy, N=N, pt1_perc_zbot=True)
+            
+        if method == 'shoot_fp': 
+            Ed, Es, Eu, zarr, fpi = ocean_irradiance_shoot_fp(zbot, fp, fpi, PI.Ed0, PI.Es0, PI.Euh, 
+                                                         ab_wat, PI.coefficients, phy = phy, N = N, 
+                                                         pt1_perc_zbot = True)
+            
+        if method == 'scipy':
+            Ed, Es, Eu, zarr = ocean_irradiance(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  PI.coefficients,
+                                                   phy=phy, N=N, pt1_perc_zbot=False, use_bvp_solver=True)    
+    
+        if method == 'dut':
+            Ed, Es, Eu, zarr = ocean_irradiance_dutkiewicz(zbot, PI.Ed0, PI.Es0, PI.Euh, ab_wat,  
+                                                              PI.coefficients, phy=phy, N=N, pt1_perc_zbot=False)
+        ## Plotting the Results
+        #-------------------------------------------------------------------------
+        
+        markers = ['-', '-'] 
+        Ed_c = 'g'
+        Es_c = 'b'
+        Eu_c = 'r'
+        if lam == 443:
+            ax2.plot(Ed, zarr, label=f'Ed', color = Ed_c, ls=markers[k] )
+            ax2.plot(Es, zarr, label=f'Es', color = Es_c, ls=markers[k])
+            ax2.plot(Eu, zarr, label=f'Eu', color = Eu_c, ls= markers[k])
+        if lam == 551:
+            ax3.plot(Ed, zarr, label=f'Ed', color = Ed_c, ls=markers[k] )
+            ax3.plot(Es, zarr, label=f'Es', color = Es_c, ls=markers[k])
+            ax3.plot(Eu, zarr, label=f'Eu', color = Eu_c, ls= markers[k])
+
     ax1.plot(phy_prof, z)
     if method == 'shoot_fp':
         ax1.hlines( zarr[fpi], min(phy_prof),max(phy_prof), color='r')
-    ax1.set_xlabel('Concentration')
+    ax1.set_xlabel('Concentration [mg Chl-a m^-3]')
     ax1.set_ylabel('Z [m]')
-    ax1.set_title('Phytoplankton Concentration Profile')
+    ax1.set_title('Phytoplankton Concentration')
     ax1.grid()
-    
-    ax2.plot(Ed, zarr, label='Ed')
-    ax2.plot(Es, zarr, label='Es')
-    ax2.plot(Eu, zarr, label='Eu')
+ 
     ax2.set_xlim(-0.1,1)
     ax2.set_xlabel('Irradiance')
-    ax2.set_title('Resulting Irradiance Profiles')
+    ax2.set_title(r'Irradiance Profiles $\lambda=443$')
     ax2.legend()
     ax2.grid()
+
+    ax3.set_xlim(-0.1,1)
+    ax3.set_xlabel('Irradiance')
+    ax3.set_title(r'Irradiance Profiles $\lambda=551$')
+    ax3.legend()
+    ax3.grid()
     
     fig.show()
     

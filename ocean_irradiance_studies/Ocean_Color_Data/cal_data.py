@@ -47,8 +47,9 @@ from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equiv
 import ocean_irradiance_visualization.Plot_Field as PF
 import ocean_irradiance_visualization.Plot_Comparison as PC
 import viirs_calcofi_val
+import plymouth_oc
 
-def Date_to_Julian_Date(date):
+def Date_to_Julian_Date(date, fmt='%Y-%m-%d'):
     """
     This function changes a date into a julain day. The date should be formatted as follows:
     'YEAR-MONTH-DAY'
@@ -56,7 +57,6 @@ def Date_to_Julian_Date(date):
     https://stackoverflow.com/questions/13943062/extract-day-of-year-and-julian-day-from-a-string-date
     """
 
-    fmt = '%Y-%m-%d'
     dt = datetime.datetime.strptime(date, fmt)
     tt = dt.timetuple()
     julian = tt.tm_yday
@@ -483,7 +483,7 @@ def Loop_Species_Irr_Comp_Cal(PI, save_dir, save_file, wavelengths, N, year_min,
     return
 
 
-def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False):
+def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False):
     """
     The main goal of this function is to plot a one to one comparison of the satellite derived 
     chla values and that from cal cofi. 
@@ -506,12 +506,24 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head,
 
     
         cal_chla = np.zeros(N_cst)
+        ## The viirs data
         viirs_chla = np.zeros(N_cst)
         viirs_Rrs443 = np.zeros(N_cst)
         viirs_Rrs551 = np.zeros(N_cst)
         viirs_lat = np.zeros(N_cst)
         viirs_lon = np.zeros(N_cst)
-    
+
+        ## The Plymouth Marine Lab Data. 
+        pml_chla = np.zeros(N_cst)
+        pml_Rrs443 = np.zeros(N_cst)
+        pml_Rrs560 = np.zeros(N_cst)
+        ## Setting the cal cofi limits for the downloaded domain.
+        year_lims = [year[0], year[-1]]
+        julian_date_lims = [julian_day[0], julian_day[-1]]
+        lat_lims = [lat[0], lon[-1]]
+        lon_lims = [lon[0], lon[-1]]
+        ## Downloading the sub plymouth data set correspoding to the cal cofi domain.
+        pml_ds = plymouth_oc.Get_PML_OC_Data_Set(pml_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
         
         
         ## Now loop over the casts and calculate the irradiance chla each time.  
@@ -524,20 +536,31 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head,
                  c_chla = np.zeros(N) * np.nan
 
              cal_chla[k] = c_chla[-1]
-             ## getting the viirs chla
-             Rrs443, Rrs551, chla, v_lat, v_lon = viirs_calcofi_val.Viirs_Rrs_Chla(julian_day[k], year[k], lat[k], lon[k])
-             viirs_chla[k] = chla
-             viirs_Rrs443[k] = Rrs443
-             viirs_Rrs551[k] = Rrs551
-             viirs_lat[k] = v_lat
-             viirs_lon[k] = v_lon
-    
+             
+             ## Getting the viiirs data.
+#             v_Rrs443, v_Rrs551, v_chla, v_lat, v_lon = viirs_calcofi_val.Viirs_Rrs_Chla(julian_day[k], year[k], lat[k], lon[k])
+#             viirs_chla[k] = v_chla
+#             viirs_Rrs443[k] = v_Rrs443
+#             viirs_Rrs551[k] = v_Rrs551
+#             viirs_lat[k] = v_lat
+#             viirs_lon[k] = v_lon
+
+             ## Getting the PML data.
+             p_Rrs443, p_Rrs560, p_chla = plymouth_oc.Get_Point_PML_Dataset(pml_ds, year[k], julian_day[k], lat[k], lon[k]) 
+             pml_chla[k] = p_chla
+             pml_Rrs443[k] = p_Rrs443
+             pml_Rrs560[k] = p_Rrs560
+
+
         pickle.dump(cal_chla, open(f'{save_path}_cal_chla.p', "wb"))
-        pickle.dump(viirs_chla, open(f'{save_path}_viirs_chla.p', "wb"))
-        pickle.dump(viirs_Rrs443, open(f'{save_path}_viirs_Rrs_443.p', "wb"))
-        pickle.dump(viirs_Rrs551, open(f'{save_path}_viirs_Rrs_551.p', "wb"))
-        pickle.dump(viirs_lat, open(f'{save_path}_viirs_lat.p', "wb"))
-        pickle.dump(viirs_lon, open(f'{save_path}_viirs_lon.p', "wb"))
+#        pickle.dump(viirs_chla, open(f'{save_path}_viirs_chla.p', "wb"))
+#        pickle.dump(viirs_Rrs443, open(f'{save_path}_viirs_Rrs_443.p', "wb"))
+#        pickle.dump(viirs_Rrs551, open(f'{save_path}_viirs_Rrs_551.p', "wb"))
+#        pickle.dump(viirs_lat, open(f'{save_path}_viirs_lat.p', "wb"))
+#        pickle.dump(viirs_lon, open(f'{save_path}_viirs_lon.p', "wb"))
+        pickle.dump(pml_chla, open(f'{save_path}_pml_chla.p', 'wb'))
+        pickle.dump(pml_Rrs443, open(f'{save_path}_pml_Rrs443.p', 'wb'))
+        pickle.dump(pml_Rrs560, open(f'{save_path}_pml_Rrs551.p', 'wb'))
 
 
     elif os.path.exists(f'{save_path}_cal_chla.p') == True:
@@ -549,6 +572,9 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head,
         viirs_Rrs551 = pickle.load(open(f'{save_path}_viirs_Rrs_551.p', 'rb'))
         viirs_lat = pickle.load(open(f'{save_path}_viirs_lat.p', "rb"))
         viirs_lon = pickle.load(open(f'{save_path}_viirs_lon.p', "rb"))
+        pml_chla = pickle.load(open(f'{save_path}_pml_chla.p', 'rb'))
+        pml_Rrs443 = pickle.load(open(f'{save_path}_pml_Rrs443.p', 'rb'))
+        pml_Rrs560 = pickle.load(open(f'{save_path}_pml_Rrs551.p', 'rb'))
 
     ## The irradiance calculation of Rrs and chla
     cal_chla, irr_field, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Irr_Comp_Insitu(PI, 
@@ -612,12 +638,14 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head,
  
     
 
-    return cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551, irr_chla, irr_Rrs443, irr_Rrs551
+    return cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551, pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551
 
 
-def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, species): 
+def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, save_head, PI, N, wavelengths, species): 
     """
     """
+    ## The limits for the Rrs plots, in order [xlim, ylim].
+    Rrs_ax_lims = [[.014, .014], [.025, .025], [.035, .035], [.0225, .0225], [.014, .014]]
 
     fig, axes = plt.subplots(nrows=2, ncols=3)
     ## The zoomed in chla plot with different species.
@@ -627,7 +655,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, save_dir, s
     rrs_axes = axes_list[1:]
 
     for k, phy_type in enumerate(species):
-        cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
+        cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551, pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
         
         ## Plotting one to one comparison.
         chla_ax = Plot_Comparison(chla_ax, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
@@ -637,16 +665,32 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, save_dir, s
     
         ## Rrs Comparison
         rrs_ax = rrs_axes[k]
-        Plot_Comparison(rrs_ax, viirs_Rrs443, irr_Rrs443, f'{phy_type} Rrs', '443', 'VIIRS', 'Irr') 
-        Plot_Comparison(rrs_ax, viirs_Rrs551, irr_Rrs551, f'{phy_type} Rrs', '551', 'VIIRS', 'Irr') 
+        ## viirs Rrs
+        Plot_Comparison(rrs_ax, viirs_Rrs443, irr_Rrs443, f'{phy_type} Rrs', '443', 'VIIRS', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
+        Plot_Comparison(rrs_ax, viirs_Rrs551, irr_Rrs551, f'{phy_type} Rrs', '551', 'VIIRS', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
+        ## PML rrs
+        #Plot_Comparison(rrs_ax, pml_Rrs443, irr_Rrs443, f'{phy_type} Rrs', '443', 'CCI', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
+        #Plot_Comparison(rrs_ax, pml_Rrs560, irr_Rrs551, f'{phy_type} Rrs', '551', 'CCI', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
         rrs_ax.legend()  
  
-    chla_ax = Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla', marker='v', color='grey') 
-    ax_z = Plot_Comparison(ax_z, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla', marker='v', color='grey') 
+    chla_ax = Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
+    chla_ax = Plot_Comparison(chla_ax, cal_chla, pml_chla, 'Comparison to Cal Chla', 'CCI Chla', 'Calcofi Chla', 'Chla', marker='v', color='black') 
+    ax_z = Plot_Comparison(ax_z, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
+    ax_z = Plot_Comparison(ax_z, cal_chla, pml_chla, 'Comparison to Cal Chla', 'CCI Chla', 'Calcofi Chla', 'Chla', marker='v', color='black') 
     ax_z.legend()
     chla_ax.legend()
+    ## Adding the CCI data info to the figure
+    #text(0, .1, 'CCI = ESA CCI Ocean Colour Product Level-3 v5.0 Daily', figure=fig)
     fig_z.show()
     fig.show()
+
+    ## This plot shows a comparison between the CCI calculated chlor and the CCI chlor calculated using
+    ## the OCx algorithim from CCI Rrs values. 
+    fig, ax = plt.subplots()
+    pml_OCx_chla = OIR.OCx_alg(pml_Rrs443, pml_Rrs560)
+    ax = Plot_Comparison(ax, pml_chla, pml_OCx_chla, 'CCI Chla Compared to Chla Calculated Using OCx and CCI Rrs', 'CCI', 'CCI chla', 'Chla from CCI Rrs and OCx (VIIRS Params)', marker='v') 
+    fig.show()
+
 
 
     return
@@ -793,6 +837,11 @@ if __name__ == '__main__':
 
     ## The data from files. 
     chla_val_dat, cal_cast_dat, cal_bot_dat = Get_Data('chlor_a_validation.csv', 'cal_casts.csv', 'cal_bottles.csv')
+    
+    ## The url of the plymouth data
+    ## From the website : https://www.oceancolour.org/thredds/catalog-cci.html?dataset=CCI_ALL-v5.0-DAILY
+    ## time is in units of days since 1970-01-01 00:00:00
+    ply_dat_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
 
     ## getting the data with cal cruises only
     chla_val_cal_dat = chla_val_dat[chla_val_dat['cruise'].str.contains('cal', regex = False) ]
@@ -830,7 +879,7 @@ if __name__ == '__main__':
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
     #cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
-    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
+    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, ply_dat_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
 
     ## Running the comparison of viirs, calcofi, irr, and nomad
