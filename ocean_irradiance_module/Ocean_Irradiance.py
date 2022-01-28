@@ -856,6 +856,8 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     b_b = b_b_wat + b_b_phy
     b_f = b - b_b 
     
+    print('a:', a, 'b:', b)
+    print('b_f:', b_f, 'b_b:', b_b)
 
         
     Ed=np.copy(Ed1)
@@ -1728,12 +1730,12 @@ def Demo(method='shoot_up'):
     
     N = 200
     Nm1 = N-1 
-    lams = [410, 410]
+    lams = [443, 410]
     
     z = np.linspace(-1000,0,N)
 
     #phy_prof = artificial_phy_prof(z, -10, 20, 1, prof_type = 'gauss')
-    phy_prof = np.full(200, 1)
+    phy_prof = np.full(200, 1) * 0 
     #phy_prof = np.append(phy_prof1, np.full(100, 1))
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]

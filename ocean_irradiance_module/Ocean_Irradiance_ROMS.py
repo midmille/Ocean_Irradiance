@@ -18,9 +18,14 @@ from netCDF4 import Dataset
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
 from ocean_irradiance_module import Ocean_Irradiance
+import Wavelength_To_RGB
 import os
 import sys
 import pickle
+import matplotlib as mpl 
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 
 
 def CI_alg(R_rs_b, R_rs_g, R_rs_r, lam_b, lam_g, lam_r): 
@@ -314,7 +319,184 @@ def Irradiance_Run(R_nc, PI, nstp, N, save_dir, save_file, method, wavelengths):
 
     return irr_field_py
 
-def Plot_Irradiance_Field(irr_field):
+def Plot_Irradiance_Field(R_nc, irr_field, nstp, Ed0, Es0):
+    """
+    This function is to plot the irradiancee field and other values from an irradiance
+    run over a ROMS out put. The things it plots are as follows:
+    1) Log of Nanophytoplankton Concentration.
+    2) Log of Diatom Concentrations. 
+    3) The Rrs values from irradiance model for three given wavelengths.
+    4) The OCx Chl-a calculated from the Rrs.
+    """
+
+    ## Getting lat, lon, nano, and diat from R_nc.
+    ## The negative one is to get the surface value.
+    chla_diat = R_nc.chl_diatom[nstp,-1,:,:]
+    chla_nano = R_nc.chl_nanophyt[nstp,-1,:,:]
+    lat = R_nc.lat_rho
+    lon = R_nc.lon_rho
+    
+    ## The figure projection of lat/lon.
+    proj = ccrs.PlateCarree()
+    ## makes the color bar on plots a bit smaller if necessary.
+    cbar_shrink = 1 
+    
+    fig = plt.figure()
+    gs = mpl.gridspec.GridSpec(2,8)
+    ax00 = fig.add_subplot(gs[0, 0:2], projection=proj)
+    ax01 = fig.add_subplot(gs[0, 2:4], projection=proj)
+    ax02 = fig.add_subplot(gs[0, 4:6], projection=proj)
+    ax10 = fig.add_subplot(gs[1, 0:2], projection=proj)
+    ax11 = fig.add_subplot(gs[1, 2:4], projection=proj)
+    ax12 = fig.add_subplot(gs[1, 4:6], projection=proj)
+    ## This ax is for the rainbow legend plot.
+    ax_tall = fig.add_subplot(gs[0:2, 7])
+
+    ## The Rrs plots list. 
+    Rrs_axs = [ax10, ax11, ax12]
+
+    for k,lam in enumerate(wavelengths):
+         
+        ## Getting Eu at the surface
+        Eu_surf = irr_field[lam][-1, :,:, 2]
+        ## Calculating Rrs
+        Rrs = R_RS(Ed0, Es0, Eu_surf) 
+        if lam == 443:
+            Rrs_b = Rrs
+        if lam == 551:
+            Rrs_g = Rrs
+        
+        ## Plotting Rrs map
+        ax = Rrs_axs[k]
+        ## Plotting the land and other features to make pretty.
+        ax.add_feature(cfeature.COASTLINE)
+        ax.add_feature(cfeature.LAND, color='grey', alpha=.5)
+        #ax.gridlines()
+        im = ax.pcolormesh(lon, lat, Rrs, cmap='nipy_spectral', 
+                           transform=ccrs.PlateCarree())#, vmax=vmax, vmin=vmin )
+        fig.colorbar(im, ax=ax, shrink=cbar_shrink, label = r'Rrs [$\mathrm{sr}^{-1}$]')
+        ax.set_title(r'Rrs $\lambda=$ ' + f'{lam}')  
+        ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
+        ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
+        
+        ### Including the absorbtion/scat vals
+        #ab_wat = abscat(lam,'water')
+        #ab_diat = abscat(lam, 'Diat')
+        #ab_syn = abscat(lam, 'Syn')
+        ### Starting points for text.
+        #x = lon[int(lon.shape[1] * (2/3))]
+        #y = lat[int(lat.shape[0] * (2/3))]
+        ### Text sep is 1/10 of the total lat
+        #text_sep = lat[int(lat.shape[0] * (1/10))]
+        #font_size = 10
+        #ax.text(x,y,r'$a_{wat} = $ %.4f'%ab_wat[0], fontsize = font_size)
+        #y = y - text_sep
+        #ax.text(x,y, r'$b_{wat} = $ %.4f'%ab_wat[1], fontsize = font_size)
+        #y = y - text_sep
+        #ax.text(x,y, r'$a_{diat} = $ %.4f'%ab_diat[0], fontsize = font_size)
+        #y = y - text_sep
+        #ax.text(x,y, r'$b_{diat} = $ %.4f'%ab_diat[1], fontsize = font_size)
+        #y = y - text_sep
+        #ax.text(x,y, r'$a_{syn} = $ %.4f'%ab_syn[0], fontsize = font_size)
+        #y = y - text_sep
+        #ax.text(x,y, r'$b_{syn} = $ %.4f'%ab_syn[1], fontsize = font_size)
+    
+    ## The OCx calculation
+    chla_ocx = OCx_alg(Rrs_b, Rrs_g)
+    
+    ## list of different chla plots.
+    chla_axs = [ax00, ax01, ax02]
+    chla_list = [chla_ocx, chla_diat, chla_nano] 
+    chla_labels = ['OCx Chl-a from Irradiance Rrs', 'NEMURO Diatoms', 'NEMURO Nanophytoplankton']
+    for k, ax in enumerate(chla_axs):
+        ax.add_feature(cfeature.COASTLINE)
+        ax.add_feature(cfeature.LAND, color='grey', alpha=.5)
+        #ax.gridlines()
+        im = ax.pcolormesh(lon, lat, chla_list[k], cmap='nipy_spectral', 
+                           transform=ccrs.PlateCarree())#, vmax=vmax, vmin=vmin )
+        fig.colorbar(im, ax=ax, shrink=cbar_shrink, label = r'Chl-a [mg Chl-a $\mathrm{m}^{-3}$')
+        ax.set_title(chla_labels[k])  
+        ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
+        ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
+
+    ## Plotting the rainbow with wavelength indicators.
+    ## number of wavelength points.
+    ## The R stands for rainbow to differntiate between lams used for irradiance. 
+    R_Nlam = 750 - 380
+    R_lams = np.linspace(381, 750, R_Nlam)
+    R_lams_rgb = np.zeros((R_Nlam, 3))
+    for k, R_lam in enumerate(R_lams):
+        R_lams_rgb[k] = Wavelength_To_RGB.wavelength_to_rgb(R_lam)
+    len_x = 100 
+    ## The rgb matrix
+    R_rgb = np.zeros((R_Nlam, len_x, 3)) 
+    for k in range(len_x):
+        R_rgb[:,k,:] = R_lams_rgb
+    ## The actual plotting of the wavelength rainbow.
+    ax_tall.imshow(R_rgb, origin='lower', aspect=('auto'))
+    ## The indexes of the irr wavelengths.
+    indexes = []
+    for lam in wavelengths:
+        index = lam - 380
+        ax_tall.plot([0, len_x-1], [index, index], 'k') 
+        indexes.append(index)
+    ax_tall.set_yticks(indexes)
+    ax_tall.set_yticklabels(wavelengths)
+    ax_tall.set_xticks([])
+
+    ##plotting some date text. The date from ocean_time. 
+    #plt.figtext(.02,.95,'ROMS Date and Time: \n {}'.format(roms_date[0]))
+    ##plotting some units text for absorbtion and scattering
+    #plt.figtext(.02,.04, 'a_wat [m^-1] \nb_wat [m^-1] \na_phy [m^2 / mg Chl] \nb_phy [m^2 / mg Chl]')
+
+    fig.show()
+    ###The rainbow with markers of wavelengths used 
+    #plt.subplot(3,10,(10,30)) ##making it a small top thing at the top of the array
+    #NP = 750 - 380
+    #P = np.linspace(381,750,NP)
+    #P_rgb = np.zeros((NP,3))
+    #for k in range(NP): 
+        #P_rgb[k] = wavelength_to_rgb.wavelength_to_rgb(P[k])
+   # 
+    #len_x = 100
+    #len_y = len(P)
+    #T = np.zeros((len_y,len_x,3)) ##slightly confusing but matrix is oriented this way 
+    #for i in range(len_x):
+        #T[:,i,:] = P_rgb / 255
+   # 
+    #plt.imshow(T,origin = 'lower', aspect=('auto'))
+    ## plt.axis('off')
+    #indexes = []
+    #for lam in wavelengths: 
+        #index = lam - 380
+        #plt.plot([0,len_x-1], [index,index], 'k')
+        ## plt.tick_params(axis='y', which='both', labelleft='off', labelright='on')
+        #indexes.append(index)
+    #plt.yticks(indexes, wavelengths)
+    #plt.xticks([])
+    
+    ##Plotting the composite rgb_grid image 
+    #plt.subplot(3,5,2)
+    #plt.imshow(rgb_grid, origin=('lower'), aspect=('auto'))
+    #plt.title('True Color \n Wavelength Composite')
+    #plt.axis('off')
+    # plt.colorbar()
+    
+    #plt.pcolormesh(diatom, norm = mpl.colors.LogNorm())
+    #plt.title('Log Plot Diatom Surface Concentration \n [{}]'.format(diat_units))
+    #plt.colorbar()
+    #plt.axis('off')
+   # 
+    #plt.subplot(3,5,4)
+    #plt.pcolormesh(nanophyt, norm = mpl.colors.LogNorm())
+    #plt.title('Log Plot Nanophytoplankton(Syn) \n Surface Concentration \n [{}]'.format(nano_units))
+    #plt.colorbar()
+    #plt.axis('off')
+    
+    
+    return
+
+
     return
     
 if __name__ == '__main__':
@@ -338,7 +520,7 @@ if __name__ == '__main__':
     R_nc = ROMS_netcdf(args.file)
 
     ## updating default to wavelengths necessary for the OCx_algorithim
-    wavelengths = [
+    wavelengths = [443, 551, 638]
 
     ## settting time step index
     time_step_index = 1
@@ -347,7 +529,7 @@ if __name__ == '__main__':
     
     irr_field = Irradiance_Run(R_nc, PI, time_step_index, N, args.save_dir, args.save_file_name, args.method, wavelengths)
 
-
+    Plot_Irradiance_Field(R_nc, irr_field, time_step_index, PI.Ed0, PI.Es0)
     
     
     
