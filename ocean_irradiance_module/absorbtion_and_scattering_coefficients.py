@@ -63,12 +63,15 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default'):
     
     water = {}
 
-    water[410] = np.array((0.001,.007))
-    water[443] = np.array((0.01,.004))
+    ## These values were edited on 1/28/2022 with Chris and Jonathan. 
+    ## Absorption values edited to be values taken from a presentation in Mobley 1994
+    ## These changes need to be confirmed with the original source. 
+    water[410] = np.array((0.017,.007))  
+    water[443] = np.array((0.015,.004))
     water[486] = np.array((.02,.003))
-    water[551] = np.array((.07,.002))
-    water[638] = np.array((.3,.0015))
-    water[671] = np.array((.45,.001))
+    water[551] = np.array((.064,.002))
+    water[638] = np.array((.33,.0015))
+    water[671] = np.array((.43,.001))
     
     
     HLPro = {} 
