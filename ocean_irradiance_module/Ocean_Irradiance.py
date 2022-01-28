@@ -1734,8 +1734,8 @@ def Demo(method='shoot_up'):
     
     z = np.linspace(-1000,0,N)
 
-    #phy_prof = artificial_phy_prof(z, -10, 20, 1, prof_type = 'gauss')
-    phy_prof = np.full(200, 1) * 0 
+    phy_prof = artificial_phy_prof(z, -10, 20, 1, prof_type = 'gauss')
+    #phy_prof = np.full(200, 1) 
     #phy_prof = np.append(phy_prof1, np.full(100, 1))
     # ROMS_point = np.genfromtxt('ChrisData_good_point.csv', delimiter=',')
     # phy_prof = ROMS_point[1:,2]
