@@ -29,7 +29,7 @@ import ocean_irradiance_visualization.Plot_Comparison as PC
 from ocean_irradiance_module import Wavelength_To_RGB
 
 
-def Solve_Irradiance(save_file, wavelengths, species, chla_array, z): 
+def Solve_Irradiance(PI, N, save_file, wavelengths, species, chla_array, z): 
     """
     This function calculates the irradiance field for each species of phytoplankton
     """
@@ -51,7 +51,7 @@ def Solve_Irradiance(save_file, wavelengths, species, chla_array, z):
         ## Looping the species.
         for phy_type in species:
             ## The array in which to store all the irradiance solutions into. 
-            Rrs_arr = np.zeros(N_chla, N_lam)
+            Rrs_arr = np.zeros((N_chla, N_lam))
 
             ## Loop over chla profs 
             for k in range(N_chla):
@@ -109,11 +109,14 @@ def Plot_Rrs_Field_Species(Rrs_field_species, wavelengths, species, chlas):
             ax.plot(wavelengths, np.log(Rrs_arr[i, :]), label = chla)
 
         ax.legend(title='Chla Concentration')
-        ax.set_ylabel('Log(Rrs)')
+        if k == 0:
+            ax.set_ylabel('Log(Rrs)')
         ax.set_xlabel('Wavelength [nm]')
         ax.set_title(phy_type)
 
     fig.show()
+
+    return 
 
 if __name__ == '__main__':
 
@@ -140,5 +143,5 @@ if __name__ == '__main__':
 
     save_file = 'out/Rrs_field_species.p' 
 
-    Rrs_field_species = Solve_Irradiance(save_file, wavelengths, species, chla_array, z)
+    Rrs_field_species = Solve_Irradiance(PI, N, save_file, wavelengths, species, chla_array, z)
     Plot_Rrs_Field_Species(Rrs_field_species, wavelengths, species, chlas)
