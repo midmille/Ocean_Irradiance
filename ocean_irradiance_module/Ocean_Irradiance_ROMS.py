@@ -18,7 +18,7 @@ from netCDF4 import Dataset
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
 from ocean_irradiance_module import Ocean_Irradiance
-import Wavelength_To_RGB
+from ocean_irradiance_module import Wavelength_To_RGB
 import os
 import sys
 import pickle

@@ -856,8 +856,8 @@ def ocean_irradiance_shoot_up(hbot, Ed0, Es0, Euh, ab_wat, coefficients, phy = N
     b_b = b_b_wat + b_b_phy
     b_f = b - b_b 
     
-    print('a:', a, 'b:', b)
-    print('b_f:', b_f, 'b_b:', b_b)
+    #print('a:', a, 'b:', b)
+    #print('b_f:', b_f, 'b_b:', b_b)
 
         
     Ed=np.copy(Ed1)
