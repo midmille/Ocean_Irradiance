@@ -35,19 +35,32 @@ def Plot_Chla_vs_Rrs_Ratio(Rrs_field_species, wavelengths, species, chlas):
     """
 
     fig, ax = plt.subplots()
+    xlim = [min(chlas), max(chlas)]
     ## Looping the species.
-    for phy_type in species:
+    colors = ['g', 'b', 'r', 'm', 'c']
+    for k,phy_type in enumerate(species):
         ## Making the rrs ratio of rrs443/rrs551.
         Rrs_arr = Rrs_field_species[phy_type]
         ## 443 should be index 0, 551 index 1.
         Rrs_ratio = Rrs_arr[:, 0] / Rrs_arr[:,1]
+
         
         ## Now for the plotting.
-        ax.loglog(chlas, Rrs_ratio, label=phy_type)
-
+        ax.semilogx(chlas, Rrs_ratio, color=colors[k], label=phy_type)
+    
+    ## Plotting the OCx algorithim chla.
+    OCx_Rrs_ratio = np.linspace(0, 12, 100)
+    ## Setting the blue to be the ratio and Rrs for green to be 1, s.t. ratio is Rrsb. 
+    OCx_chla = OIR.OCx_alg(OCx_Rrs_ratio, np.ones(len(OCx_Rrs_ratio)))
+    ax.semilogx(OCx_chla, OCx_Rrs_ratio, '--', color='k', label='OCx')
+    
     ax.legend(title='Phy Species')
-    ax.set_ylabel(r'Log Rrs Ratio $\frac{\mathrm{Rrs}(443)}{\mathrm{Rrs}(551)}$') 
-    ax.set_xlabel('Log Chla')
+    ax.grid()
+    ax.set_xlim(xlim)
+    ax.set_ylim([0,12])
+    ax.set_ylabel(r'Rrs Ratio $\frac{\mathrm{Rrs}(443)}{\mathrm{Rrs}(551)}$') 
+    ax.set_xlabel(r'Chla [mg $\mathrm{m}^{-3}$]')
+    ax.set_title('UCSC Version of Dutkiewicz et al. (2015) \n Radiative Transfer Model with Uniform Chl-a Profiles')
 
     fig.show()
 
@@ -60,15 +73,13 @@ if __name__ == '__main__':
     PI = Param_Init()
     
     ## The number of chla values 
-    N_chla = 300
+    N_chla = 100
     ## The number of vertical levels.
     N = 200
 
     ## The chla values 
-    chlas = np.linspace(.01, 10, N_chla)
+    chlas = np.logspace(-1.7, 1, N_chla)
     ## The chla full array
-    chla_array = np.zeros((N, len(chlas)))
-    ## Making a full profile for each chla value. 
     chla_array = np.zeros((N, len(chlas)))
     for k, chla in enumerate(chlas):
         chla_array[:,k] = np.full(N,chla)
@@ -81,11 +92,8 @@ if __name__ == '__main__':
     ## The phytoplankton species
     species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
     
-    ## The pickle file
-    save_file = 'out/Rrs_field_species_Rrs_Ratio.p'
-
     ## Using the solve irradiance funtion from the file  reflectance_spectra.py
-    Rrs_field_species = reflectance_spectra.Solve_Irradiance(PI, N, save_file, wavelengths, species, chla_array, z)
+    Rrs_field_species = reflectance_spectra.Solve_Irradiance(PI, N,  wavelengths, species, chla_array, z)
 
     ## plotting the restult.
     Plot_Chla_vs_Rrs_Ratio(Rrs_field_species, wavelengths, species, chlas)

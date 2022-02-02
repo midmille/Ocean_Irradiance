@@ -29,7 +29,7 @@ import ocean_irradiance_visualization.Plot_Comparison as PC
 from ocean_irradiance_module import Wavelength_To_RGB
 
 
-def Solve_Irradiance(PI, N, save_file, wavelengths, species, chla_array, z): 
+def Solve_Irradiance(PI, N, wavelengths, species, chla_array, z): 
     """
     This function calculates the irradiance field for each species of phytoplankton
     """
@@ -42,53 +42,42 @@ def Solve_Irradiance(PI, N, save_file, wavelengths, species, chla_array, z):
     ## The number of wavelengths
     N_lam = len(wavelengths)
 
-    ## Checking if the save file exists.
-    ## If it doesn't then do the calculation.
-    ## The location of the save file.
-    save_path = f'{save_file}'
-    if os.path.exists(save_path) == False:
-
-        ## Looping the species.
-        for phy_type in species:
-            ## The array in which to store all the irradiance solutions into. 
-            Rrs_arr = np.zeros((N_chla, N_lam))
-
-            ## Loop over chla profs 
-            for k in range(N_chla):
-
-                ## Looping Wavelengths
-                for j,lam in enumerate(wavelengths): 
-
-                    ## The phy object creation
-                    phy = OI.Phy(z, chla_array[:,k], ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
-                    ocean_irr_sol = OI.ocean_irradiance_shoot_up(
-                                                                z[0],
-                                                                    PI.Ed0,
-                                                                PI.Es0,
-                                                                PI.Euh,
-                                                                abscat(lam, 'water'),
-                                                                PI.coefficients,
-                                                                phy=phy,
-                                                                CDOM=None,
-                                                                N=N,
-                                                                pt1_perc_zbot=True,
-                                                                pt1_perc_phy=True
-                                                                )
-                    Eu_surf = ocean_irr_sol[2][-1]
-                    Rrs_arr[k, j] = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf) 
-         
-
-            ## save irr_field into irr_field_species
-            Rrs_field_species[phy_type] = Rrs_arr
-    
-        ## save to pickle
-        pickle.dump(Rrs_field_species, open(save_path, "wb"))
-        print('Python calculation complete and saved')
-
-    ## If the save file does exist then load it. 
-    elif os.path.exists(save_path) == True:
-        Rrs_field_species = pickle.load(open(save_path,'rb'))
-        print('Yay, file loaded :)')
+    ## Looping the species.
+    for phy_type in species:
+        ## The array in which to store all the irradiance solutions into. 
+        Rrs_arr = np.zeros((N_chla, N_lam))
+        ## Loop over chla profs 
+        for k in range(N_chla):
+            ## Looping Wavelengths
+            for j,lam in enumerate(wavelengths): 
+                
+                ## Making a wavelength dependent surface bc
+                #if lam == 443: 
+                    #PI.Ed0 = 0.1
+                    #PI.Es0 = 0.9
+                #if lam==551:
+                    #PI.Ed0 = 0.9
+                    #PI.Es0 = 0.1
+                ## The phy object creation
+                phy = OI.Phy(z, chla_array[:,k], ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
+                ocean_irr_sol = OI.ocean_irradiance_shoot_up(
+                                                            z[0],
+                                                            PI.Ed0,
+                                                            PI.Es0,
+                                                            PI.Euh,
+                                                            abscat(lam, 'water'),
+                                                            PI.coefficients,
+                                                            phy=phy,
+                                                            CDOM=None,
+                                                            N=N,
+                                                            pt1_perc_zbot=True,
+                                                            pt1_perc_phy=True
+                                                            )
+                Eu_surf = ocean_irr_sol[2][-1]
+                Rrs_arr[k, j] = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf) 
+     
+        ## save irr_field into irr_field_species
+        Rrs_field_species[phy_type] = Rrs_arr
 
     return Rrs_field_species
 
@@ -143,5 +132,5 @@ if __name__ == '__main__':
 
     save_file = 'out/Rrs_field_species.p' 
 
-    Rrs_field_species = Solve_Irradiance(PI, N, save_file, wavelengths, species, chla_array, z)
+    Rrs_field_species = Solve_Irradiance(PI, N, wavelengths, species, chla_array, z)
     Plot_Rrs_Field_Species(Rrs_field_species, wavelengths, species, chlas)
