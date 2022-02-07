@@ -108,8 +108,16 @@ def R_RS(E_d_0, E_s_0, E_u_surface ) :
     
     ##We are assuming that Q =about 4 (Dut. 2015 Eqn. 6)
     Q = 4
-    R_rs = R / Q
+    ## This is Rrs sub surface. 
+    ## See the following paper by Dutkiewicz et al. 2015.
+    ## Modelling ocean -colour derived chlorophyll a 2018
+    ## biogeosciences, 15, 613-630, 2018
+    ## Rrs zero minus, subsurface
+    R_rs_0m = R / Q
     
+    ## HUGE AND IMPORTANT EDIT TO RRS
+    ## Edit following Stephanie's paper for  
+    R_rs = (0.52* R_rs_0m) / ( 1 - 1.7*R_rs_0m)
     return R_rs 
 
 
