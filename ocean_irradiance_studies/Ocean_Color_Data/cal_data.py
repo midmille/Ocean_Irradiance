@@ -551,11 +551,11 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
         
         ## Loading data from pickle.
         cal_chla = pickle.load(open(f'{save_path}_cal_chla.p', "rb"))
-        viirs_chla = pickle.load(open(f'{save_path}_viirs_chla.p', "rb"))
-        viirs_Rrs443 = pickle.load(open(f'{save_path}_viirs_Rrs_443.p', 'rb'))
-        viirs_Rrs551 = pickle.load(open(f'{save_path}_viirs_Rrs_551.p', 'rb'))
-        viirs_lat = pickle.load(open(f'{save_path}_viirs_lat.p', "rb"))
-        viirs_lon = pickle.load(open(f'{save_path}_viirs_lon.p', "rb"))
+    #    viirs_chla = pickle.load(open(f'{save_path}_viirs_chla.p', "rb"))
+    #    viirs_Rrs443 = pickle.load(open(f'{save_path}_viirs_Rrs_443.p', 'rb'))
+    #    viirs_Rrs551 = pickle.load(open(f'{save_path}_viirs_Rrs_551.p', 'rb'))
+    #    viirs_lat = pickle.load(open(f'{save_path}_viirs_lat.p', "rb"))
+    #    viirs_lon = pickle.load(open(f'{save_path}_viirs_lon.p', "rb"))
         pml_chla = pickle.load(open(f'{save_path}_pml_chla.p', 'rb'))
         pml_Rrs443 = pickle.load(open(f'{save_path}_pml_Rrs443.p', 'rb'))
         pml_Rrs560 = pickle.load(open(f'{save_path}_pml_Rrs551.p', 'rb'))
@@ -576,11 +576,11 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
 
     if plot:
         ## Plotting one to one comparison.
-        fig, ax = plt.subplots()
-        PC.Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla') 
+        #fig, ax = plt.subplots()
+        #PC.Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla') 
         #PC.Plot_Comparison(ax, cal_chla, irr_chla, 'Comparison to Cal Chla', 'Irradiance' , 'Calcofi Chla', 'Chla') 
         #ax.legend()
-        fig.show() 
+        #fig.show() 
     
         ## Rrs Comparison
         #fig, ax = plt.subplots()
@@ -627,14 +627,14 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
  
     
 
-    return cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551, pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551
+    return cal_chla,  pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551
 
 
 def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, save_head, PI, N, wavelengths, species): 
     """
     """
     ## The limits for the Rrs plots, in order [xlim, ylim].
-    Rrs_ax_lims = [[.014, .014], [.025, .025], [.035, .035], [.0225, .0225], [.014, .014]]
+    Rrs_ax_lims = [[.014, .014], [.014, .014], [.013, .013], [.0225, .0225], [.014, .014]]
 
     ncols = len(species)
     fig, axes = plt.subplots(nrows=1, ncols=ncols)
@@ -645,7 +645,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, pml_url, sa
     #rrs_axes = axes_list[1:]
 
     for k, phy_type in enumerate(species):
-        cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551, pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=True)
+        cal_chla, pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=True)
         
         ## Plotting one to one comparison.
         #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
@@ -824,8 +824,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ## The species that have coefficients.
-    species = ['Diat', 'Cocco']
-    #species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
+    #species = ['Diat', 'Cocco']
+    species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
     #species = ['HLPro', 'Cocco', 'Diat']
  
     ## The spread of different C2chla ratios. 
