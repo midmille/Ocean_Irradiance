@@ -252,7 +252,7 @@ def Demo():
     
         zbot = z[0]
 
-        Ed, Eu, zarr = ocean_irradiance_shubha(zbot, 1, ab_wat, PI.coefficients, phy=phy, CDOM=None, N=N, pt1_perc_zbot=False, pt1_perc_phy=False)
+        Ed, Eu, zarr = ocean_irradiance_shubha(zbot, 1, ab_wat, PI.coefficients, phy=phy, CDOM=None, N=N, pt1_perc_zbot=True, pt1_perc_phy=False)
        
         ## Dutkiewicz model.
         Ed_d, Es_d, Eu_d, z_d = OI.ocean_irradiance_shoot_up(zbot,1,0,PI.Euh,ab_wat, PI.coefficients, phy=phy, CDOM=None, N=N, pt1_perc_zbot = False, pt1_perc_phy=False)
@@ -272,8 +272,8 @@ def Demo():
             ax2.plot(Ed, zarr, label=f'Ed', color = Ed_c, ls=markers[k] )
             ax2.plot(Eu, zarr, label=f'Eu', color = Eu_c, ls= markers[k])
             ## plotting the dtukiewicz model also. 
-            ax2.plot(Ed_d + Es_d, z_d, label=f'Ed+Es Dut', color = Ed_c, ls=':' )
-            ax2.plot(Eu_d, z_d, label=f'Eu Dut', color = Eu_c, ls=':' )
+#            ax2.plot(Ed_d + Es_d, z_d, label=f'Ed+Es Dut', color = Ed_c, ls=':' )
+#            ax2.plot(Eu_d, z_d, label=f'Eu Dut', color = Eu_c, ls=':' )
             
             ## calculate chl-a
             Rrs443 = OIR.R_RS(PI.Ed0, PI.Es0, Eu[-1])
@@ -281,8 +281,8 @@ def Demo():
             ax3.plot(Ed, zarr, label=f'Ed', color = Ed_c, ls=markers[k] )
             ax3.plot(Eu, zarr, label=f'Eu', color = Eu_c, ls= markers[k])
             ## plotting the dtukiewicz model also. 
-            ax3.plot(Ed_d +Es_d, z_d, label=f'Ed+Es Dut', color = Ed_c, ls=':' )
-            ax3.plot(Eu_d, z_d, label=f'Eu Dut', color = Eu_c, ls=':' )
+#            ax3.plot(Ed_d +Es_d, z_d, label=f'Ed+Es Dut', color = Ed_c, ls=':' )
+#            ax3.plot(Eu_d, z_d, label=f'Eu Dut', color = Eu_c, ls=':' )
 
             Rrs551 = OIR.R_RS(PI.Ed0, PI.Es0, Eu[-1])
 

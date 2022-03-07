@@ -37,8 +37,10 @@ import pickle
 import datetime
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+import geopy.distance
 ## User made mod
 import ocean_irradiance_module.Ocean_Irradiance as OI
+import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
 import ocean_irradiance_baird.ocean_irradiance_baird as OIB
 import ocean_irradiance_module.Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module.PARAMS import Param_Init
@@ -368,6 +370,18 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                                                              pt1_perc_phy=True
                                                              )
                 ## Ed, Es, Eu, z 
+#                ocean_irr_sol = OIS.ocean_irradiance_shubha(z[0], 
+#                                                            PI.Ed0+PI.Es0,
+#                                                            abscat(lam, 'water'), 
+#                                                            PI.coefficients, 
+#                                                            phy=phy, 
+#                                                            CDOM=None, 
+#                                                            N=N, 
+#                                                            pt1_perc_zbot=True, 
+#                                                            pt1_perc_phy=True
+#                                                            )
+
+                                                            
                 irr_arr[:,k,0] = ocean_irr_sol[0]
                 irr_arr[:,k,1] = ocean_irr_sol[1]
                 irr_arr[:,k,2] = ocean_irr_sol[2]
@@ -485,25 +499,25 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
     
         cal_chla = np.zeros(N_cst)
         ## The viirs data
-        viirs_chla = np.zeros(N_cst)
-        viirs_Rrs443 = np.zeros(N_cst)
-        viirs_Rrs551 = np.zeros(N_cst)
-        viirs_lat = np.zeros(N_cst)
-        viirs_lon = np.zeros(N_cst)
+        #viirs_chla = np.zeros(N_cst)
+        #viirs_Rrs443 = np.zeros(N_cst)
+        #viirs_Rrs551 = np.zeros(N_cst)
+        #viirs_lat = np.zeros(N_cst)
+        #viirs_lon = np.zeros(N_cst)
 
         ## The Plymouth Marine Lab Data. 
-        pml_chla = np.zeros(N_cst)
-        pml_Rrs443 = np.zeros(N_cst)
-        pml_Rrs560 = np.zeros(N_cst)
-        pml_lat = np.zeros(N_cst)
-        pml_lon = np.zeros(N_cst)
+        #pml_chla = np.zeros(N_cst)
+        #pml_Rrs443 = np.zeros(N_cst)
+        #pml_Rrs560 = np.zeros(N_cst)
+        #pml_lat = np.zeros(N_cst)
+        #pml_lon = np.zeros(N_cst)
         ## Setting the cal cofi limits for the downloaded domain.
         year_lims = [year[0], year[-1]]
         julian_date_lims = [julian_day[0], julian_day[-1]]
         lat_lims = [lat[0], lon[-1]]
         lon_lims = [lon[0], lon[-1]]
         ## Downloading the sub plymouth data set correspoding to the cal cofi domain.
-        pml_ds = plymouth_oc.Get_PML_OC_Data_Set(pml_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
+        #pml_ds = plymouth_oc.Get_PML_OC_Data_Set(pml_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
         
         
         ## Now loop over the casts and calculate the irradiance chla each time.  
@@ -526,12 +540,12 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
 #             viirs_lon[k] = v_lon
 
              ## Getting the PML data.
-             p_Rrs443, p_Rrs560, p_chla, p_lat, p_lon = plymouth_oc.Get_Point_PML_Dataset(pml_ds, year[k], julian_day[k], lat[k], lon[k]) 
-             pml_chla[k] = p_chla
-             pml_Rrs443[k] = p_Rrs443
-             pml_Rrs560[k] = p_Rrs560
-             pml_lat[k] = p_lat
-             pml_lon[k] = p_lon
+             #p_Rrs443, p_Rrs560, p_chla, p_lat, p_lon = plymouth_oc.Get_Point_PML_Dataset(pml_ds, year[k], julian_day[k], lat[k], lon[k]) 
+             #pml_chla[k] = p_chla
+             #pml_Rrs443[k] = p_Rrs443
+             #pml_Rrs560[k] = p_Rrs560
+             #pml_lat[k] = p_lat
+             #pml_lon[k] = p_lon
 
 
         pickle.dump(cal_chla, open(f'{save_path}_cal_chla.p', "wb"))
@@ -540,11 +554,11 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
 #        pickle.dump(viirs_Rrs551, open(f'{save_path}_viirs_Rrs_551.p', "wb"))
 #        pickle.dump(viirs_lat, open(f'{save_path}_viirs_lat.p', "wb"))
 #        pickle.dump(viirs_lon, open(f'{save_path}_viirs_lon.p', "wb"))
-        pickle.dump(pml_chla, open(f'{save_path}_pml_chla.p', 'wb'))
-        pickle.dump(pml_Rrs443, open(f'{save_path}_pml_Rrs443.p', 'wb'))
-        pickle.dump(pml_Rrs560, open(f'{save_path}_pml_Rrs551.p', 'wb'))
-        pickle.dump(pml_lat, open(f'{save_path}_pml_lat.p', 'wb'))
-        pickle.dump(pml_lon, open(f'{save_path}_pml_lon.p', 'wb'))
+        #pickle.dump(pml_chla, open(f'{save_path}_pml_chla.p', 'wb'))
+        #pickle.dump(pml_Rrs443, open(f'{save_path}_pml_Rrs443.p', 'wb'))
+        #pickle.dump(pml_Rrs560, open(f'{save_path}_pml_Rrs551.p', 'wb'))
+        #pickle.dump(pml_lat, open(f'{save_path}_pml_lat.p', 'wb'))
+        #pickle.dump(pml_lon, open(f'{save_path}_pml_lon.p', 'wb'))
 
 
     elif os.path.exists(f'{save_path}_cal_chla.p') == True:
@@ -608,11 +622,11 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
         im = ax.scatter(lon, lat, c=cal_chla, s=s, cmap='nipy_spectral', 
                          transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='calcofi' )
         ## The viirs data.
-        #im = ax.scatter(pml_lon, pml_lat, c=pml_chla, s=s, cmap='nipy_spectral', 
-                         #transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='CCI', marker='v')
+        im = ax.scatter(pml_lon, pml_lat, c=pml_chla, s=s, cmap='nipy_spectral', 
+                         transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='CCI', marker='v')
         ## plotting the lins between corresponding points. 
-        #for k in range(N_cst):
-            #plt.plot([lon[k], pml_lon[k]], [lat[k], pml_lat[k]],linewidth=.5, c ='k')
+        for k in range(N_cst):
+            plt.plot([lon[k], pml_lon[k]], [lat[k], pml_lat[k]],linewidth=.5, c ='k')
     
         fig.colorbar(im, ax=ax, shrink=cbar_shrink, label = cbar_label)
         ax.set_title('CalCOFI Profile Positions')  
@@ -626,6 +640,66 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
         fig.show()
  
     
+    for k in range(N_cst): 
+        dist = geopy.distance.distance((lat[k], lon[k]), (pml_lat[k], pml_lon[k])).miles
+        if dist > 5:
+            pml_chla[k] = np.NaN
+            pml_Rrs443[k] = np.NaN
+            pml_Rrs560[k] = np.NaN
+            pml_lat[k] = np.NaN
+            pml_lon[k] = np.NaN
+
+    if plot:
+        ## Plotting one to one comparison.
+        #fig, ax = plt.subplots()
+        #PC.Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla') 
+        #PC.Plot_Comparison(ax, cal_chla, irr_chla, 'Comparison to Cal Chla', 'Irradiance' , 'Calcofi Chla', 'Chla') 
+        #ax.legend()
+        #fig.show() 
+    
+        ## Rrs Comparison
+        #fig, ax = plt.subplots()
+        #PC.Plot_Comparison(ax, viirs_Rrs443, irr_Rrs443, 'Comparison of VIIRS to Irradiance Rrs', '443', 'VIIRS', 'Irr') 
+        #PC.Plot_Comparison(ax, viirs_Rrs551, irr_Rrs551, 'Comparison of VIIRS to Irradiance Rrs', '551', 'VIIRS', 'Irr') 
+        #ax.legend()  
+        #fig.show() 
+    
+    
+        ## Plotting Comparison of chla and location
+        fig = plt.figure()
+        
+        ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+        ax.add_feature(cfeature.COASTLINE)
+        ax.add_feature(cfeature.LAND, color='grey', alpha=.5)
+        #ax.gridlines()
+        ## size of scatter points.
+        s = 15
+        vmin = 0
+        vmax = 3
+        cbar_shrink = 1
+        cbar_label = 'chla [mg chla m^-3]'
+    
+        ## Plotting the cal cofi
+        im = ax.scatter(lon, lat, c=cal_chla, s=s, cmap='nipy_spectral', 
+                         transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='calcofi' )
+        ## The viirs data.
+        im = ax.scatter(pml_lon, pml_lat, c=pml_chla, s=s, cmap='nipy_spectral', 
+                         transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='CCI', marker='v')
+        ## plotting the lins between corresponding points. 
+        for k in range(N_cst):
+            plt.plot([lon[k], pml_lon[k]], [lat[k], pml_lat[k]],linewidth=.5, c ='k')
+    
+        fig.colorbar(im, ax=ax, shrink=cbar_shrink, label = cbar_label)
+        ax.set_title('CalCOFI Profile Positions After Location Filter')  
+        ylims = ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
+        ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
+        gl = ax.gridlines(draw_labels=True)
+        gl.top_labels=False
+        gl.right_labels=False
+        #ax.legend(title=r'mg Chl-a $\mathrm{m}^-1$,)
+
+        fig.show()
+ 
 
     return cal_chla,  pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551
 

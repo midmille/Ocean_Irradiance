@@ -29,7 +29,7 @@ from ocean_irradiance_module import Wavelength_To_RGB
 import reflectance_spectra
 
 
-def Plot_Chla_vs_Rrs_Ratio(Rrs_field_species, wavelengths, species, chlas):
+def Plot_Chla_vs_Rrs_Ratio(Rrs_field_species, wavelengths, species, chlas, method='shubha'):
     """
     This is to create the plot as suggested by Shubha as described in the file dcostring above.
     """
@@ -60,7 +60,10 @@ def Plot_Chla_vs_Rrs_Ratio(Rrs_field_species, wavelengths, species, chlas):
     ax.set_ylim([0,12])
     ax.set_ylabel(r'Rrs Ratio $\frac{\mathrm{Rrs}(443)}{\mathrm{Rrs}(551)}$') 
     ax.set_xlabel(r'Chla [mg $\mathrm{m}^{-3}$]')
-    ax.set_title('UCSC Version of Dutkiewicz et al. (2015) \n Radiative Transfer Model with Uniform Chl-a Profiles')
+    if method == 'shoot_up':
+        ax.set_title('UCSC Version of Dutkiewicz et al. (2015) \n Radiative Transfer Model with Uniform Chl-a Profiles')
+    if method  == 'shubha': 
+        ax.set_title('UCSC Version of Sathyendranath et al. (1997) \n Two Stream Radiative Transfer Model with Uniform Chl-a Profiles')
 
     fig.show()
 
@@ -91,12 +94,15 @@ if __name__ == '__main__':
     
     ## The phytoplankton species
     species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
+
+    ## The irradiance method to use. 
+    method = 'shubha'
     
     ## Using the solve irradiance funtion from the file  reflectance_spectra.py
-    Rrs_field_species = reflectance_spectra.Solve_Irradiance(PI, N,  wavelengths, species, chla_array, z)
+    Rrs_field_species = reflectance_spectra.Solve_Irradiance(PI, N,  wavelengths, species, chla_array, z, method=method)
 
     ## plotting the restult.
-    Plot_Chla_vs_Rrs_Ratio(Rrs_field_species, wavelengths, species, chlas)
+    Plot_Chla_vs_Rrs_Ratio(Rrs_field_species, wavelengths, species, chlas, method=method)
 
 
 
