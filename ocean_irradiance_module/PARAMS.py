@@ -27,7 +27,9 @@ class Param_Init:
         
         ## Wavelengths taken from John Wilkin email regarding satelite wavelengths.
         self.wavelengths = [410,443,486,551,638,671] 
+
         ## The Chlorophyll to Nitrogen unit change. 
+        #-------------------------------------------------------------
         """
         Unit Change Information:
         -----------------------
@@ -48,8 +50,23 @@ class Param_Init:
         NL2Chl = (106/16) * (12/1) * (1/50) = 1.59
         NS2chl = (106/16) * (12/1) * (1/100) = 0.795
         """
-        self.NL2Chl = 1.59
-        self.NS2Chl = .7950
+        #self.NL2Chl = 1.59
+        #self.NS2Chl = .7950
+        ## [The C2chla ratio should be included in the PARAMS file.]
+        ## Large phytoplankton ie diatoms 
+        self.LC2chla = 100
+        ## Small phytoplankton ie nanophytoplankton
+        self.SC2chla = 50
+        ## the rest of the species will be somewhere in between. 
+        self.C2chla = 75
+ 
+        ## [Nitrogen to chla for large phytoplankton.]
+        self.NL2Chl = (106/16) * (12/1) * (1/self.LC2chla)  
+        ## [Nitrogen to chla for small phytoplankton.]
+        self.NS2Chl = (106/16) * (12/1) * (1/self.SC2chla)  
+
+        ## End of Chlorophyll to Nitrogen unit change.
+        #-------------------------------------------------------------
         
         ## Average cosines and such taken from Dutkiewicz 2015. 
         self.r_s = 1.5 

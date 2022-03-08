@@ -23,6 +23,7 @@ plankton as the key, and its wavelength dictionary as the value.
 ## HLPro 
 
 import numpy as np
+from ocean_irradiance_module import PARAMS
 
 def absorbtion_scattering(wavelength, constituent, C2chla = 'default'):
     """
@@ -44,23 +45,22 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default'):
 
     """
     
-    ## Necessary unit change 
-    ## ----------------------
-    ## unit change for back scattering coefficients
-    ## from units of Carbon to units of chl-a
-    ## if the unit change is default then
     if C2chla == 'default':
-        ## Large phytoplankton ie diatoms 
-        LC2chla = 100
-        ## Small phytoplankton ie nanophytoplankton
-        SC2chla = 50
-        ## the rest of the species will be somewhere in between. 
-        C2chla = 75
+        ## [Import the Carbon to Chla from the PARAMS.py file.] 
+        PI = PARAMS.Param_Init()
+        ## [Large phytoplankton C2Chla ratio.] 
+        LC2chla = PI.LC2chla
+        ## [Small phytoplankton C2Chla ration.]
+        SC2chla = PI.SC2chla
+        ## [Medium phytoplankton C2Chla ration.]
+        C2chla = PI.C2chla
     else: 
         LC2chla = C2chla
         SC2chla = C2chla
-    
-    
+
+
+
+    ## [The start of the different coefficient dictionaries.]
     water = {}
 
     ## These values were edited on 1/28/2022 with Chris and Jonathan. 
