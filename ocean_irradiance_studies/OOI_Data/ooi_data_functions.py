@@ -80,6 +80,34 @@ def Create_Profiles(depth, date_time, val, dz_max):
     return depth_profs, date_time_profs, val_profs   
             
 
+def Get_SPKIR_Wavelengths(spkir_dat):
+    """
+    This gets the wavelengths used in the ooi spkir data set from the attributes comment
+
+    Parameters
+    ----------
+    spkir_dat: ooi data_request object
+        The spkir data set. 
+
+    Returns
+    -------
+    spkir_wavelengths: List, Integer
+        The list of the wavelengths from the given SPKIR data set. 
+    """
+
+    ## [Get the wavelengths from the comment for the spkir data.]
+    spkir_comment =  spkir_dat.attrs['comment']
+    ## [Find the locations of the 'nm' units in the comment.]
+    wavelength_i = [_.start() for _ in re.finditer('nm', spkir_comment)] 
+    ## [The wavelengths list init.]
+    spkir_wavelengths = []
+    ## [Loop over the 'nm' instances adn get the wavelengths']
+    for k in wavelength_i: 
+        spkir_wavelengths.append(int(spkir_comment[k-3:k]))
+        
+    return spkir_wavelengths
+
+
 def Plot_SPKIR_Profile(prof_index, spkir_data, site, assembly, instrument, method): 
     """
 
@@ -100,15 +128,7 @@ def Plot_SPKIR_Profile(prof_index, spkir_data, site, assembly, instrument, metho
     date_time = date_time_profs[prof_index]
     spkir = spkir_profs[prof_index]
 
-    ## [Get the wavelengths from the comment for the spkir data.]
-    spkir_comment =  spkir_dat.attrs['comment']
-    ## [Find the locations of the 'nm' units in the comment.]
-    wavelength_i = [_.start() for _ in re.finditer('nm', spkir_comment)] 
-    ## [The wavelengths list init.]
-    wavelengths = []
-    ## [Loop over the 'nm' instances adn get the wavelengths']
-    for k in wavelength_i: 
-        wavelengths.append(int(spkir_comment[k-3:k]))
+    wavelengths = Get_SPKIR_Wavelengths(spkir_dat)
     
     ## [Plot the profile for th egiven prof_index.]
     fig, ax = plt.subplots()

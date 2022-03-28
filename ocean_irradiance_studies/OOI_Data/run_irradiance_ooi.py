@@ -18,6 +18,7 @@ import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as esd
+from ocean_irradiance_module import Wavelength_To_RGB
 
 ## [External Modules]
 import numpy as np
@@ -142,7 +143,58 @@ def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs):
         irr_field[lam] = irr_arr
 
     return irr_field
-                                            
+
+
+def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, irr_field, spkir_depth_profs, spkir_dt_profs, spkir_profs): 
+    """
+    This function plots downwelling irradiance stream solved for using the chla profiles
+    from ooi. Then it plots the spkir data that corresponds to the solved irradiance profiles.
+
+    Parameters
+    ----------
+    prof_index: Integer
+        The index of the profile to be plotted. 
+    wavelengths: List, Integer
+        The list of wavelengths, the wavelengths of the ooi SPKIR might differ from the
+        wavelengths used for the coefficients in the irradiance model. Might has to pass
+        the spkir wavelengths eventually. 
+    irr_field: Dictionary, 4-D Array
+        The irradiance field dictionary with wavelengths as keys and the 4-D irradiance array
+        as the values.
+    spkir_depth_profs: List, 1-D Array
+        The list of spkir depth profiles. The depth profiles are positive with the bottom most
+        depth at index 0 and the surface at index -1. 
+    spkir_dt_profs: List, 1-D Array
+        The list of the times associated with each depth and spkir data point. 
+    spkir_profs: List, 2-D Array
+        The list of spkir profiles. The first index of each lsit value is the profile and the
+        second index corresponds to the wavelenth.
+    """
+
+    ## [The number of wavelengths.]    
+    N_lam = len(wavelengths)
+
+    ## [The spkir data for the given index.]
+    depth = -spkir_depth_profs[prof_index]
+    dt = spkir_dt_profs[prof_index]
+    spkir = spkir_profs[prof_index]
+
+    fig, ax = plt.subplots()
+    ## [Get the colors such that they match the wavelengths.] 
+    colors = [Wavelength_To_RGB.wavelength_to_rgb(wavelength) for wavelength in wavelengths]
+    
+    ## [Loop over the irradiance wavelengths.]
+    for k, lam in enumerate(wavelengths): 
+        irr_arr = irr_field[lam]
+        ## [ Plotting the downward direct profile. 0 is downward irradiance, 3 is depth.]
+        ax.plot(irr_arr[:, prof_index, 0], irr_arr[:, prof_index, 0], ':', label=f'Irr {lam}', color=colors[k])
+
+    for k, lam in enumerate(spkir_wavelengths):
+        ## [Plotting the spkir profile.]
+        
+    
+
+    
 
 if __name__ == '__main__':
 
@@ -191,6 +243,9 @@ if __name__ == '__main__':
     depth_profs, dt_profs, chla_profs = Get_Chla_Profiles(flort_dat)
     ## [Get the spkir profile lists.]
     spkir_depth_profs, spkir_dt_profs, spkir_profs = Get_Spkir_Profiles(spkir_dat)
+
+    ## [Get the spkir wavelengths.]
+    spkir_wavelengths = ODF.Get_SPKIR_Wavelengths(spkir_dat.variables['spkir_abj_cspp_downwelling_vector'])
 
     ## [Run the irradiance model using the profiles, over all profiles.]
     N=100
