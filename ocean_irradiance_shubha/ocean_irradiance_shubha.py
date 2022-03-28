@@ -10,7 +10,7 @@ from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
 from ocean_irradiance_module import Ocean_Irradiance as OI
-from ocean_irradiance_module import Ocean_Irradiance_ROMS as OIR
+#from ocean_irradiance_module import Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module import Wavelength_To_RGB
 #import os
 #import sys
@@ -276,7 +276,7 @@ def Demo():
 #            ax2.plot(Eu_d, z_d, label=f'Eu Dut', color = Eu_c, ls=':' )
             
             ## calculate chl-a
-            Rrs443 = OIR.R_RS(PI.Ed0, PI.Es0, Eu[-1])
+            #Rrs443 = OIR.R_RS(PI.Ed0, PI.Es0, Eu[-1])
         if lam == 551:
             ax3.plot(Ed, zarr, label=f'Ed', color = Ed_c, ls=markers[k] )
             ax3.plot(Eu, zarr, label=f'Eu', color = Eu_c, ls= markers[k])
@@ -284,7 +284,7 @@ def Demo():
 #            ax3.plot(Ed_d +Es_d, z_d, label=f'Ed+Es Dut', color = Ed_c, ls=':' )
 #            ax3.plot(Eu_d, z_d, label=f'Eu Dut', color = Eu_c, ls=':' )
 
-            Rrs551 = OIR.R_RS(PI.Ed0, PI.Es0, Eu[-1])
+            #Rrs551 = OIR.R_RS(PI.Ed0, PI.Es0, Eu[-1])
 
     ax1.plot(phy_prof, z)
     ax1.set_xlabel('Concentration [mg Chl-a m^-3]')
@@ -307,7 +307,7 @@ def Demo():
     fig.show()
     
     ## caclulate chla
-    chla = OIR.OCx_alg(Rrs443, Rrs551)
+    #chla = OIR.OCx_alg(Rrs443, Rrs551)
     print('chla', chla)
     
     return zarr, Ed, Eu
