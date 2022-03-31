@@ -161,6 +161,48 @@ def Plot_SPKIR_Profile(prof_index, spkir_data, site, assembly, instrument, metho
     return 
 
 
+def Plot_OOI_Profile(prof_index, data_set, var_name, site, assembly, instrument, method): 
+    """
+
+    """
+
+    ## [Read in the diffferent variables for spkir data set.]
+    depth_dat = data_set.variables['depth']
+    dt_dat = data_set.variables['time']
+    var_dat = data_set.variables[var_name]
+
+    ## [Get the corresponding data in profile list form.]
+    dz_max = 1
+    depth_profs, dt_profs, var_profs = Create_Profiles(depth_dat.data, dt_dat.data, var_dat.data, dz_max)
+    ## [Make the given profs theri own variables.]
+    depth = -depth_profs[prof_index]
+    dt = dt_profs[prof_index]
+    var = var_profs[prof_index]
+
+    ## [Plot the profile for th egiven prof_index.]
+    fig, ax = plt.subplots()
+    ax.plot(var, depth)
+    ## [Labels.]
+    ax.set_ylabel(f"Z [{depth_dat.attrs['units']}]")
+    ax.set_xlabel(f"{var_name} {var_dat.attrs['units']}")
+    ax.set_title(f"OOI {var_name} from \n {dt[0]} to {dt[-1]}")
+    ## [Putting some identifying text on the figure.]
+    ## [10% up the vertical location]
+    txt_y = ax.get_ylim()[1] + 0.5 * ax.get_ylim()[0] 
+    ## [10% of the horizontal location.]
+    txt_x = ax.get_xlim()[0] + 0.2 * ax.get_xlim()[1]
+    ## [The change in txt location in vertical.]
+    txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
+    ## [Adding the txt.]
+    ax.text(txt_x, txt_y, f'SITE: {site}')   
+    ax.text(txt_x, txt_y+txt_dz, f'ASSEMBLY: {assembly}')   
+    ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: {instrument}')   
+    ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
+
+    ax.grid()
+
+    fig.show()
+
 def Plot_Chla_Hoffmuller(flort_data, site, assembly, instrument, method): 
     """
 

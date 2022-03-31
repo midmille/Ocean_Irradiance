@@ -24,6 +24,7 @@ from ocean_irradiance_module import Wavelength_To_RGB
 import numpy as np
 import pickle
 from ooi_data_explorations.data_request import data_request
+import matplotlib.pyplot as plt
 
 def Download_Data(site_name, assembly, instrument, method, start, stop):
     """
@@ -145,7 +146,8 @@ def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs):
     return irr_field
 
 
-def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, irr_field, spkir_depth_profs, spkir_dt_profs, spkir_profs): 
+def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index, irr_field, spkir_depth_profs, spkir_dt_profs, spkir_profs, site, assembly, method): 
+
     """
     This function plots downwelling irradiance stream solved for using the chla profiles
     from ooi. Then it plots the spkir data that corresponds to the solved irradiance profiles.
@@ -187,10 +189,39 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, irr_field
     for k, lam in enumerate(wavelengths): 
         irr_arr = irr_field[lam]
         ## [ Plotting the downward direct profile. 0 is downward irradiance, 3 is depth.]
-        ax.plot(irr_arr[:, prof_index, 0], irr_arr[:, prof_index, 0], ':', label=f'Irr {lam}', color=colors[k])
+        ## [Also must multiply by surface value of spkir prof, since irr_arr is normalized.]
+        ax.plot(spkir[:,spkir_wavelength_index[k]].data[-1] * irr_arr[:, prof_index, 0], irr_arr[:, prof_index, 3], ':', label=f'Irr {lam}', color=colors[k])
 
-    for k, lam in enumerate(spkir_wavelengths):
+    for k,i in enumerate(spkir_wavelength_index):
         ## [Plotting the spkir profile.]
+        ax.plot(spkir.data[:, i], depth, '--', label=f'Irr {lam}', color=colors[k])
+
+    ## [Labels.]
+    #ax.set_ylabel(f"Z [{depth_dat.attrs['units']}]")
+    ax.set_ylabel(f"Z [m]")
+    #ax.set_xlabel(f"Downwelling Spectral Irradiance {spkir_dat.attrs['units']}")
+    ax.set_xlabel(f"Downwelling Spectral Irradiance")
+    #ax.set_title(f"OOI SPKIR Profile and Irradiance Model \n OOI SPKIR Profile Date: {date_time[0]} to {date_time[-1]}")
+    ax.set_title(f"OOI SPKIR Profile and Irradiance Model")
+    ## [Putting some identifying text on the figure.]
+    ## [10% up the vertical location]
+    txt_y = ax.get_ylim()[1] + 0.5 * ax.get_ylim()[0] 
+    ## [10% of the horizontal location.]
+    txt_x = ax.get_xlim()[0] + 0.2 * ax.get_xlim()[1]
+    ## [The change in txt location in vertical.]
+    txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
+    ## [Adding the txt.]
+    ax.text(txt_x, txt_y, f'SITE: {site}')   
+    ax.text(txt_x, txt_y+txt_dz, f'ASSEMBLY: {assembly}')   
+    ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: SPKIR')   
+    ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
+
+    ax.legend(title='Wavelengths [nm]')
+    ax.grid()
+
+    fig.show()
+
+
         
     
 
@@ -205,6 +236,8 @@ if __name__ == '__main__':
 #                                               ' download the ooi data. The keys to the dictionary'\
 #                                               ' should be the following: [site, assembly, instrument,'\
 #                                               ' method, start, stop]')
+    parser.add_argument('--download', action='store_true', help='Download the data from OOI [This takes time], must specify file head')
+    parser.add_argument('--load', action='store_true', help='Load the data from pickle, must specify file head.')
     parser.add_argument('--site_name', help='site name')
     parser.add_argument('--assembly', help= 'assembly')
     parser.add_argument('--method', help = 'method')
@@ -222,22 +255,27 @@ if __name__ == '__main__':
     ## [The savefile names for each ooi data set.]
     spkir_savefile = args.ooi_savefile_head + '_spkir.p'
     flort_savefile = args.ooi_savefile_head + '_flort.p'
+    optaa_savefile = args.ooi_savefile_head + '_optaa.p'
 
     ## [Download OOI data.]
-    if args.site_name: 
+    if args.download: 
         ## [Download the data.]
         ## [The Chla data.]
         flort_dat = Download_Data(args.site_name, args.assembly, 'FLORT', args.method, args.start, args.stop)
         ## [The spkir data.]
         spkir_dat = Download_Data(args.site_name, args.assembly, 'SPKIR', args.method, args.start, args.stop)
+        ## [The OPTAA data.]
+        optaa_dat = Download_Data(args.site_name, args.assembly, 'OPTAA', args.method, args.start, args.stop)
         ## [Save the ooi data into the pickle file.]
         pickle.dump(flort_dat, open(flort_savefile, 'wb'))
         pickle.dump(spkir_dat, open(spkir_savefile, 'wb'))
+        pickle.dump(optaa_dat, open(optaa_savefile, 'wb'))
 
     ## [Load the data from pickle.]
-    else:
+    elif args.load:
         flort_dat = pickle.load(open(flort_savefile, 'rb'))
         spkir_dat = pickle.load(open(spkir_savefile, 'rb'))
+        optaa_dat = pickle.load(open(optaa_savefile, 'rb'))
 
     ## [Get the chla profile lists.]
     depth_profs, dt_profs, chla_profs = Get_Chla_Profiles(flort_dat)
@@ -252,4 +290,12 @@ if __name__ == '__main__':
     wavelengths = [443]
     phy_type = 'Diat'
     irr_field = Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs)
+
+    ## [Some params for plotting.]
+    prof_index = 0 
+    ## [The index of the spkir wavelengths that most closely matches the given irradiance wavcelengths.]
+    spkir_wavelength_index = [1]
+    ## [Plot the OOI SPKIR against the irradiance model.]
+    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index, irr_field, spkir_depth_profs, spkir_dt_profs, spkir_profs, args.site_name, args.assembly, args.method)
+
 
