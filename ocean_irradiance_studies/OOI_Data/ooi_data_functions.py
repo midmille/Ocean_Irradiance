@@ -108,6 +108,47 @@ def Get_SPKIR_Wavelengths(spkir_dat):
     return spkir_wavelengths
 
 
+def Grid_Average_Profile(x_dat, y_dat, x_avg): 
+    """
+    This function calculates the average y-values between the cells in the x_avg grid. 
+    This will help to smooth out noisy profiles. Its purpose is for plotting not for a sounds
+    interpolation method. 
+
+    x_dat and x_avg should both be increasing in value. 
+
+    Parameters
+    ----------
+    x_dat: 1-D Array
+        The c-coordinates of original grid the y-coordinates are on. 
+    y_dat: 1-D Array
+        The input data values to be smoothed out. 
+    x_avg: 1-D Array
+        The new grid the average values should be put on. 
+
+    Returns
+    -------
+    y_avg: 1-D Array
+        The average of the y-values located between cells of the x_avg grid.  
+    """
+
+    ## [Empty y_avg array.]
+    y_avg = np.zeros(len(x_avg))
+    ## [Loop over the x_avg grid.]
+    for k in range(len(x_avg)-1): 
+        ## [y-vals when x-vals larger than the lower bound cell.]
+        y_lbnd = y_dat[x_dat>x_avg[k]]
+        x_lbnd = x_dat[x_dat>x_avg[k]]
+        ## [y-vals smaller than the upper bound cell.]
+        y_bnd = y_lbnd[x_lbnd<x_avg[k+1]]
+        ## [Set the y-val avg]
+        y_avg[k] = np.average(y_bnd)
+    
+    ## [Duplicate the last entry of y_avg.]
+    y_avg[-1] = y_avg[-2]
+
+    return y_avg
+
+
 def Plot_SPKIR_Profile(prof_index, spkir_data, site, assembly, instrument, method): 
     """
 
@@ -179,9 +220,13 @@ def Plot_OOI_Profile(prof_index, data_set, var_name, site, assembly, instrument,
     dt = dt_profs[prof_index]
     var = var_profs[prof_index]
 
+    ## [Make the 1m avg grid.]
+    x_avg = np.arange(depth[0], depth[-1], 1)
+
     ## [Plot the profile for th egiven prof_index.]
     fig, ax = plt.subplots()
-    ax.plot(var, depth)
+    ax.plot(var, depth, '--', lw=0.5)
+    ax.plot(Grid_Average_Profile(depth, var, x_avg), x_avg)
     ## [Labels.]
     ax.set_ylabel(f"Z [{depth_dat.attrs['units']}]")
     ax.set_xlabel(f"{var_name} {var_dat.attrs['units']}")
@@ -203,54 +248,54 @@ def Plot_OOI_Profile(prof_index, data_set, var_name, site, assembly, instrument,
 
     fig.show()
 
-def Plot_Chla_Hoffmuller(flort_data, site, assembly, instrument, method): 
+    return 
+
+
+def Plot_Hoffmuller(data_set, var_name, site, assembly, instrument, method): 
     """
 
     """
 
     ## [Read in the diffferent variables for spkir data set.]
-    depth_dat = flort_data.variables['depth']
-    date_time_dat = flort_data.variables['time']
-    chla_dat = flort_data.variables['fluorometric_chlorophyll_a']
+    depth_dat = data_set.variables['depth']
+    dt_dat = data_set.variables['time']
+    var_dat = data_set.variables[var_name]
 
     ## [Get the corresponding data in profile list form.]
     dz_max = 1
-    depth_profs, date_time_profs, chla_profs = Create_Profiles(depth_dat.data, date_time_dat.data, chla_dat.data, dz_max)
+    depth_profs, dt_profs, var_profs = Create_Profiles(depth_dat.data, dt_dat.data, var_dat.data, dz_max)
 
     ## [Create the hoffmuller diagram.]
     ## [First find the largest size profile in the list of profiles.]
     ## [This largest size will set the vertical size of the mesh.]
-    sizes = np.zeros(len(chla_profs))
-    for k,chla_prof in enumerate(chla_profs): 
-        sizes[k] = len(chla_prof)
+    sizes = np.zeros(len(var_profs))
+    for k,var_prof in enumerate(var_profs): 
+        sizes[k] = len(var_prof)
     size = max(sizes)
         
     ## [Constructing the mesh.]
-    chla_mesh = np.NaN * np.zeros((int(size), len(chla_profs)))
+    var_mesh = np.NaN * np.zeros((int(size), len(var_profs)))
     ## [The start times of each prof for x-coords.]
-    t_coord = np.zeros(len(date_time_profs))
+    t_coord = np.zeros(len(dt_profs))
 
     ## [Filling the mesh with profiles, notes they are note interpolated
     ##  so this method is incorrect, but it will work for now.]
-    for k, chla_prof in enumerate(chla_profs):
-        prof_len = len(chla_prof)
-        chla_mesh[:prof_len, k] = chla_prof
-        t_coord[k] = date_time_profs[k][0] 
-        if len(chla_prof) == size: 
+    for k, var_prof in enumerate(var_profs):
+        var_len = len(var_prof)
+        var_mesh[:var_len, k] = var_prof
+        t_coord[k] = dt_profs[k][0] 
+        if len(var_prof) == size: 
             z_coord =  depth_profs[k]
 
     ## [Plotting the Hovmuller disgram.]
     fig, ax=plt.subplots()
     tt, zz = np.meshgrid(t_coord, z_coord)
-    im = ax.pcolormesh(tt, zz, chla_mesh, cmap='nipy_spectral')
+    im = ax.pcolormesh(tt, zz, var_mesh, cmap='nipy_spectral')
     fig.colorbar(im, ax=ax)
 
     fig.show()
 
     return 
-
-
-
 
 
 
