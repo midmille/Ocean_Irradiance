@@ -197,7 +197,67 @@ def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None
  
 
     return Ed, Eu, z
+
+
+def ocean_irradiance_shubha_ab(hbot, Ed0, coefficients, z_a, a, z_b, b, CDOM=None, N=30, pt1_perc_zbot=True):
+
+    """
+    The implementation of the two stream model of Shubha 1997, 1998. 
+    
+    This implementation is different from the function above mainly because it does not calculate the 
+    absorption and scattering on its own. It has the absorption and scattering arrays as input. 
+    
+    This was created to be used with the ooi data set which gives the absorption and scattering arrays. 
+    """
+
+    ## PARAMS FROM DUTKIEWICZ 2015 
+    r_s, r_u, v_d, v_s, v_u = coefficients
+    
+    ##N centers
+    Nm1 = N - 1  
+
+    Ed1 = np.zeros(N)
+    Eu1 = np.zeros(N) 
+    
+    ## BC
+    Ed1[Nm1] = Ed0 ##surface 
+    Eu1[0] = 0 ##bottom
+    
+    ## Irradiance Grid Stuff
+    ## If pt1_perc_zbot is True
+    if pt1_perc_zbot == True :
+        c_d = (a+b)/v_d
+        zbot_pt1perc = OI.zbot_func(Ed0, a, b, v_d, phy=True, z=z_phy) 
+        if zbot_pt1perc == None:
+            print('bad pt1 perc light level')
+            zbot_pt1perc = -100
+        zbot = -min(abs(hbot), abs(zbot_pt1perc))
+    elif pt1_perc_zbot == False: 
+        zbot = hbot 
+
+    ## log transformed z grid.
+    z = OI.Log_Trans(zbot, N) 
+    ## linear z 
+    #z = np.linspace(zbot, 0, N)
+    
+    ## Interpolating a,b vectors from z_phy to z.
+    ## Should I create another z_grid that denotes the centers for the a,b below
+    a = np.interp(z,z_a,a)
+    b = np.interp(z,z_b,b)
         
+    ## This is wrong for now.
+    b_b = .551*b
+    b_f = b - b_b 
+    
+    Ed=np.copy(Ed1)
+    Eu=np.copy(Eu1)
+
+    Ed = numerical_Ed(z, a, b_b, v_d, Ed0)
+
+    Eu = numerical_Eu(z, Ed, a, b_b, v_u, v_d)
+
+    return Ed, Eu, z
+           
         
 def Demo(): 
     ## Demonstration of finding the irradiance profiles for an artificial 

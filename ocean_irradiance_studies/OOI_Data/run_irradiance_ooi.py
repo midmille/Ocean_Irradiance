@@ -48,9 +48,9 @@ def Download_Data(site_name, assembly, instrument, method, start, stop):
     return ooi_dat
 
 
-def Get_Chla_Profiles(ooi_dat):
+def Get_Flort_Profiles(ooi_dat):
     """
-    This function retrieves list of profiles for depth, datetime, and chla. 
+    This function retrieves list of profiles for depth, datetime, chla, and opticalbackcatter.
 
     Parameters
     ----------
@@ -63,13 +63,15 @@ def Get_Chla_Profiles(ooi_dat):
     depth_dat = ooi_dat.variables['depth']
     dt_dat = ooi_dat.variables['time']
     chla_dat = ooi_dat.variables['fluorometric_chlorophyll_a']
+    opt_backscatter_dat = ooi_dat.variables['optical_backscatter']
 
     ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
     dz_max = 1
     depth_profs, dt_profs, chla_profs = ODF.Create_Profiles(depth_dat, dt_dat, chla_dat, dz_max)    
+    depth_profs, dt_profs, opt_bs_profs = ODF.Create_Profiles(depth_dat, dt_dat, opt_backscatter_dat, dz_max)    
 
     ## [Return the profiles.]
-    return depth_profs, dt_profs, chla_profs
+    return depth_profs, dt_profs, chla_profs, opt_bs_profs
 
 
 def Get_Spkir_Profiles(ooi_dat):
@@ -96,8 +98,39 @@ def Get_Spkir_Profiles(ooi_dat):
     return depth_profs, dt_profs, spkir_profs
 
 
+def Get_Optaa_Profiles(optaa_dat): 
+    """
+    This function retireves the profiles OPTAA absorption data.
+    """
+    ## [First get the depth, dt, and chla arrays from ooi_dat.]
+    depth_dat = optaa_dat.variables['depth']
+    dt_dat = optaa_dat.variables['time']
+    abs_dat = optaa_dat.variables['optical_absorption']
+    wavelength_dat = optaa_dat.variables['wavelength_a']
 
-def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs):
+    ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
+    dz_max = 1
+    depth_profs, dt_profs, abs_profs = ODF.Create_Profiles(depth_dat, dt_dat, abs_dat, dz_max)    
+    depth_profs, dt_profs, wavelength_profs = ODF.Create_Profiles(depth_dat, dt_dat, wavelength_dat, dz_max)    
+
+    ## [Return the profiles.]
+    return depth_profs, dt_profs, abs_profs, wavelength_profs
+ 
+
+def Get_Wavelength_Index(var_wavelengths, wavelength):
+    """
+    This function returns the wavelength index where the desired input wavelength is closest to the wavelength
+    in the var_wavelengths array/list. 
+    """
+
+    diff = abs(var_wavelengths - wavelength)
+    wavelength_i = np.where(diff == diff.min())[0][0]
+
+    return wavelength_i
+ 
+
+def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs,
+                   optaa_depth_profs, abs_profs, optaa_wavelength_profs):
     """
     This function runs the irradiance model over all the different chla profiles.
 
@@ -110,12 +143,14 @@ def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs):
 
     ## [Irradiance field dictionary.]
     irr_field = {}
-
-    ## [The irradiance array.]
-    irr_arr = np.zeros((N, N_profs, 4))
+    irr_field_ab = {}
 
     ## [Loop over the wavelengths.]
     for lam in wavelengths:
+        ## [The irradiance array.]
+        irr_arr = np.zeros((N, N_profs, 4))
+        irr_arr_ab = np.zeros((N, N_profs, 4))
+
         ## [Loop over the OOI profiles.]
         for k in range(N_profs):
             ## [Make the depth negative.]
@@ -139,14 +174,46 @@ def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs):
             irr_arr[:,k,0] = ocean_irr_sol[0]
             irr_arr[:,k,2] = ocean_irr_sol[1]
             irr_arr[:,k,3] = ocean_irr_sol[2] 
+
+            optaa_depth = -optaa_depth_profs[k]
+            optaa_wavelengths = optaa_wavelength_profs[k]
+            ## [Must get the wavelength index.]
+            lam_i = Get_Wavelength_Index(optaa_wavelengths[0,:], lam)
+            print(lam_i)
+            a = np.squeeze(abs_profs[k][:, lam_i])
+            b = opt_bs_profs[k]
+
+            print(a)
+            print(a.shape)
+            print(optaa_depth)
+            print(optaa_depth.shape)
+
+            ## [Now running the irr model using abs and scat from ooi.]
+            ocean_irr_sol_ab = OIS.ocean_irradiance_shubha_ab(depth[0], 
+                                                              PI.Ed0+PI.Es0, 
+                                                              PI.coefficients, 
+                                                              optaa_depth.data,  ## [The z_a is optta depth.]
+                                                              a.data, 
+                                                              depth.data, ## [The z_b is the flort depth.]
+                                                              b.data,
+                                                              CDOM=None, 
+                                                              N=N, 
+                                                              pt1_perc_zbot=False)
+
+
+            ## [Storing output into array.]
+            irr_arr_ab[:,k,0] = ocean_irr_sol[0]
+            irr_arr_ab[:,k,2] = ocean_irr_sol[1]
+            irr_arr_ab[:,k,3] = ocean_irr_sol[2] 
         
         ## [Store array to dictionary.]
         irr_field[lam] = irr_arr
+        irr_field_ab[lam] = irr_arr_ab
 
-    return irr_field
+    return irr_field, irr_field_ab
 
 
-def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index, irr_field, spkir_depth_profs, spkir_dt_profs, spkir_profs, site, assembly, method): 
+def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index, irr_field, irr_field_ab, spkir_depth_profs, spkir_dt_profs, spkir_profs, site, assembly, method): 
 
     """
     This function plots downwelling irradiance stream solved for using the chla profiles
@@ -191,6 +258,7 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wav
         ## [ Plotting the downward direct profile. 0 is downward irradiance, 3 is depth.]
         ## [Also must multiply by surface value of spkir prof, since irr_arr is normalized.]
         ax.plot(spkir[:,spkir_wavelength_index[k]].data[-1] * irr_arr[:, prof_index, 0], irr_arr[:, prof_index, 3], ':', label=f'Irr {lam}', color=colors[k])
+        ax.plot(spkir[:,spkir_wavelength_index[k]].data[-1] * irr_arr_ab[:, prof_index, 0], irr_arr_ab[:, prof_index, 3], '-', label=f'Irr ooi ab {lam}', color=colors[k])
 
     for k,i in enumerate(spkir_wavelength_index):
         ## [Plotting the spkir profile.]
@@ -278,9 +346,11 @@ if __name__ == '__main__':
         optaa_dat = pickle.load(open(optaa_savefile, 'rb'))
 
     ## [Get the chla profile lists.]
-    depth_profs, dt_profs, chla_profs = Get_Chla_Profiles(flort_dat)
+    depth_profs, dt_profs, chla_profs, opt_bs_profs = Get_Flort_Profiles(flort_dat)
     ## [Get the spkir profile lists.]
     spkir_depth_profs, spkir_dt_profs, spkir_profs = Get_Spkir_Profiles(spkir_dat)
+    ## [Get the optical absorption from the OPTAA data.]
+    optaa_depth_profs, optaa_dt_profs, abs_profs, optaa_wavelength_profs = Get_Optaa_Profiles(optaa_dat)
 
     ## [Get the spkir wavelengths.]
     spkir_wavelengths = ODF.Get_SPKIR_Wavelengths(spkir_dat.variables['spkir_abj_cspp_downwelling_vector'])
@@ -289,13 +359,15 @@ if __name__ == '__main__':
     N=100
     wavelengths = [443]
     phy_type = 'Diat'
-    irr_field = Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs)
+    irr_field, irr_field_ab = Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs,
+                                             opt_bs_profs, optaa_depth_profs, abs_profs, optaa_wavelength_profs)
 
     ## [Some params for plotting.]
     prof_index = 0 
     ## [The index of the spkir wavelengths that most closely matches the given irradiance wavcelengths.]
+    ## [This wavelength index should be automated soon.]
     spkir_wavelength_index = [1]
     ## [Plot the OOI SPKIR against the irradiance model.]
-    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index, irr_field, spkir_depth_profs, spkir_dt_profs, spkir_profs, args.site_name, args.assembly, args.method)
+    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index, irr_field, irr_field_ab, spkir_depth_profs, spkir_dt_profs, spkir_profs, args.site_name, args.assembly, args.method)
 
 
