@@ -108,6 +108,38 @@ def Get_SPKIR_Wavelengths(spkir_dat):
     return spkir_wavelengths
 
 
+def Get_Wavelength_Index(var_wavelengths, wavelength):
+    """
+    This function returns the wavelength index where the desired input wavelength is closest to the wavelength
+    in the var_wavelengths array/list. 
+    """
+
+    diff = abs(var_wavelengths - wavelength)
+    print('diff', diff)
+    wavelength_i = np.nanargmin(diff)
+
+    return wavelength_i
+
+
+def OOI_Dat_Time_Prof_Mask(dt_lbnd, dt_ubnd, var_dt): 
+    """
+    This function indexes the given data using the given time bounds.
+
+    Parameters
+    ----------
+    
+    """
+    
+    ## [The lower bound logic array.]
+    lb = dt_lbnd < var_dt
+    ## [Upper bound.]
+    ub = dt_ubnd > var_dt
+    ## [Total bound.]
+    b = np.logical_and(lb,ub)
+
+    return b 
+
+
 def Grid_Average_Profile(x_dat, y_dat, x_avg): 
     """
     This function calculates the average y-values between the cells in the x_avg grid. 
@@ -202,7 +234,7 @@ def Plot_SPKIR_Profile(prof_index, spkir_data, site, assembly, instrument, metho
     return 
 
 
-def Plot_OOI_Profile(prof_index, data_set, var_name, site, assembly, instrument, method): 
+def Plot_OOI_Profile(prof_index, data_set, var_name, site, assembly, instrument, method, lam=None): 
     """
 
     """
@@ -212,13 +244,27 @@ def Plot_OOI_Profile(prof_index, data_set, var_name, site, assembly, instrument,
     dt_dat = data_set.variables['time']
     var_dat = data_set.variables[var_name]
 
-    ## [Get the corresponding data in profile list form.]
     dz_max = 1
-    depth_profs, dt_profs, var_profs = Create_Profiles(depth_dat.data, dt_dat.data, var_dat.data, dz_max)
-    ## [Make the given profs theri own variables.]
-    depth = -depth_profs[prof_index]
-    dt = dt_profs[prof_index]
-    var = var_profs[prof_index]
+
+    ## [Get the wavelengths for optaa]
+    if var_name == 'optical_absorption': 
+        assert lam != None
+        wavelength_dat = data_set.variables['wavelength_a']
+        depth_profs, dt_profs, wavelength_profs = Create_Profiles(depth_dat.data, dt_dat.data, wavelength_dat.data, dz_max)
+        depth_profs, dt_profs, var_profs = Create_Profiles(depth_dat.data, dt_dat.data, var_dat.data, dz_max)
+        abs_wavelengths = wavelength_profs[prof_index][0,:]
+        lam_i = Get_Wavelength_Index(abs_wavelengths, lam)
+        depth = -depth_profs[prof_index]
+        dt = dt_profs[prof_index]
+        var = np.squeeze(var_profs[prof_index][:,lam_i])
+
+    else: 
+        ## [Get the corresponding data in profile list form.]
+        depth_profs, dt_profs, var_profs = Create_Profiles(depth_dat.data, dt_dat.data, var_dat.data, dz_max)
+        ## [Make the given profs theri own variables.]
+        depth = -depth_profs[prof_index]
+        dt = dt_profs[prof_index]
+        var = var_profs[prof_index]
 
     ## [Make the 1m avg grid.]
     x_avg = np.arange(depth[0], depth[-1], 1)
@@ -229,13 +275,15 @@ def Plot_OOI_Profile(prof_index, data_set, var_name, site, assembly, instrument,
     ax.plot(Grid_Average_Profile(depth, var, x_avg), x_avg)
     ## [Labels.]
     ax.set_ylabel(f"Z [{depth_dat.attrs['units']}]")
-    ax.set_xlabel(f"{var_name} {var_dat.attrs['units']}")
-    ax.set_title(f"OOI {var_name} from \n {dt[0]} to {dt[-1]}")
+    ax.set_xlabel(f"{var_name} [{var_dat.attrs['units']}]")
+    ## [The date time array in seconds.]
+    dt_sec = dt.astype('datetime64[s]')
+    ax.set_title(f"OOI {var_name} from \n {dt_sec[0]} to {dt_sec[-1]}")
     ## [Putting some identifying text on the figure.]
     ## [10% up the vertical location]
     txt_y = ax.get_ylim()[1] + 0.5 * ax.get_ylim()[0] 
     ## [10% of the horizontal location.]
-    txt_x = ax.get_xlim()[0] + 0.2 * ax.get_xlim()[1]
+    txt_x = ax.get_xlim()[0] + 0.7 * ax.get_xlim()[1]
     ## [The change in txt location in vertical.]
     txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
     ## [Adding the txt.]
@@ -243,6 +291,8 @@ def Plot_OOI_Profile(prof_index, data_set, var_name, site, assembly, instrument,
     ax.text(txt_x, txt_y+txt_dz, f'ASSEMBLY: {assembly}')   
     ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: {instrument}')   
     ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
+    if lam: 
+        ax.text(txt_x, txt_y+4*txt_dz, f'WAVELENGTH: {abs_wavelengths[lam_i]}')   
 
     ax.grid()
 

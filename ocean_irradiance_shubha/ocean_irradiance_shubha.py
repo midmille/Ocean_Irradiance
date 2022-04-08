@@ -99,7 +99,7 @@ def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None
     b_b_phy = 0
     ## If phytoplankton, otherwise just water in column.
     if phy: 
-        
+        print('HERE')
         ## unpacking the phytoplankton object
         z_phy = phy.z
         Nphy = phy.Nphy
@@ -107,6 +107,7 @@ def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None
         ## array for different phy
         phy_prof = phy.phy
         
+        print('phy_prof:', phy_prof)
         ## coefficients
         a_phy = phy.a
         b_phy = phy.b
@@ -171,7 +172,11 @@ def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None
     ## Interpolating a,b vectors from z_phy to z.
     ## Should I create another z_grid that denotes the centers for the a,b below
     if phy: 
+        print('a_interp_pre:', a)
+        print('z-phy_interp:', z_phy)
+        print('z_interp:', z)
         a = np.interp(z,z_phy,a)
+        print('a_interp_post:', a)
         b = np.interp(z,z_phy,b)
         b_b_phy = np.interp(z, z_phy, b_b_phy)
     elif CDOM: 
@@ -194,12 +199,12 @@ def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None
 
     Eu = numerical_Eu(z, Ed, a, b_b, v_u, v_d)
 
- 
+    print('a:', a) 
 
-    return Ed, Eu, z
+    return Ed, Eu, z, a, b_b
 
 
-def ocean_irradiance_shubha_ab(hbot, Ed0, coefficients, z_a, a, z_b, b, CDOM=None, N=30, pt1_perc_zbot=True):
+def ocean_irradiance_shubha_ab(hbot, Ed0, coefficients, z_a, a, z_b_b, b_b, CDOM=None, N=30, pt1_perc_zbot=True):
 
     """
     The implementation of the two stream model of Shubha 1997, 1998. 
@@ -243,12 +248,8 @@ def ocean_irradiance_shubha_ab(hbot, Ed0, coefficients, z_a, a, z_b, b, CDOM=Non
     ## Interpolating a,b vectors from z_phy to z.
     ## Should I create another z_grid that denotes the centers for the a,b below
     a = np.interp(z,z_a,a)
-    b = np.interp(z,z_b,b)
+    b_b = np.interp(z,z_b_b,b_b)
         
-    ## This is wrong for now.
-    b_b = .551*b
-    b_f = b - b_b 
-    
     Ed=np.copy(Ed1)
     Eu=np.copy(Eu1)
 
