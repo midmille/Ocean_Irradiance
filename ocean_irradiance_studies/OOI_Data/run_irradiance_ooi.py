@@ -263,10 +263,10 @@ def Abs_Est_Species(PI, N, lam, prof_index, phy_species, depth_profs, dt_profs, 
     for k in range(N_phy): 
         ## [Each column of a is the single effective abs/scat coefficient of a species, 
         ##  each column corresponds to a different species.]
-        A[:,k] = abscat(lam, phy_species[k], C2chla='default')[1]
+        A[:,k] = (abscat(lam, phy_species[k], C2chla='default')[1] * chla)
 
     ## [The rhs b, is simply the a_ooi divided by chla minus the a_wat from Dut.]
-    b = bb_ooi/chla - abscat(lam, 'water', C2chla='default')[1]
+    b = bb_ooi - abscat(lam, 'water', C2chla='default')[1]
         
     ## [Solving the least square system for the phy ratios.]
     #x = np.linalg.lstsq(A, b)
@@ -279,7 +279,17 @@ def Abs_Est_Species(PI, N, lam, prof_index, phy_species, depth_profs, dt_profs, 
     #CDOM2C = 0
     #CDOM_dens = OI.CDOM_dens(depth, cdom_profs[k], CDOM2C, lam)
 
-    return x 
+    ## [Plot the resulting absorption from the calculated ratios of phytoplankton.]
+    fig, ax = plt.subplots()
+
+    ## [Plot the 
+    a_fit = A[0,:]@x[0]
+    for k in range(N_phy): 
+        a_f = a_fit[k] * chla
+    ax.plot(
+
+
+    return A, b, x 
 
 
 def Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
@@ -609,7 +619,7 @@ if __name__ == '__main__':
     phy_type = phy_types[2]
     #irr_field, irr_field_ab = Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs, optaa_dat)
 
-    prof_index = 0 
+    prof_index = 1
     ## [The index of the spkir wavelengths that most closely matches the given irradiance wavcelengths.]
     ## [This wavelength index should be automated soon.]
     #spkir_wavelength_index = [ODF.Get_Wavelength_Index(spkir_wavelengths, wavelengths[0])]
@@ -622,4 +632,4 @@ if __name__ == '__main__':
 
 
     ## [Running the least square estimation of the ratio of phytoplankton.]
-    x = Abs_Est_Species(PI, N, 443, prof_index, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat)
+    A, b, x = Abs_Est_Species(PI, N, 443, prof_index, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat)
