@@ -70,26 +70,19 @@ def numerical_Eu(z, Ed, a, b_b, v_u, v_d):
     return Eu
 
 
-def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None, N=30, 
-                            pt1_perc_zbot=True, pt1_perc_phy=True):
+def ocean_irradiance_two_stream_ab(hbot, ab_wat, N, phy=None, CDOM_sal=None, CDOM_dens=None, pt1_perc_zbot=True, pt1_perc_phy=True):
 
     """
-    The implementation of the two stream model of Shubha 1997, 1998. 
+    This function calculates the irradiance grid, calculates the absorption, scattering, and backscatter 
+    profiles and then interpolates those onto the irradiance grid
+
+    Parameters
+    ----------
+
+    Returns
+    -------
     """
 
-    ## PARAMS FROM DUTKIEWICZ 2015 
-    r_s, r_u, v_d, v_s, v_u = coefficients
-    
-    ##N centers
-    Nm1 = N - 1  
-
-    Ed1 = np.zeros(N)
-    Eu1 = np.zeros(N) 
-    
-    ## BC
-    Ed1[Nm1] = Ed0 ##surface 
-    Eu1[0] = 0 ##bottom
-    
     ##unpacking the ab_wat_tuple 
     a_wat,b_wat = ab_wat 
     a = a_wat
@@ -133,17 +126,42 @@ def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None
                 b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * bb_r
 
     ## Inclusion of CDOM
-    if CDOM: 
+    if CDOM_sal: 
         ## unpacking the object
         ## For now it is assumed that phy and cdom share same grid.
         if phy:
-            a_cdom = CDOM.a
+            a_cdom = CDOM_sal.a
             a = a + a_cdom 
         ## This is for only CDOM no phy
         else:
-            a_cdom = CDOM.a
-            z_cdom = CDOM.z 
+            a_cdom = CDOM_sal.a
+            z_cdom = CDOM_sal.z 
             a = a + a_cdom 
+
+    ## [Inclusion of CDOM via its observed concentration.]
+    if CDOM_dens: 
+        ## [Unpack the object.]
+        z_cdom = CDOM_dens.z 
+        cdom = CDOM_dens.cdom
+        cdom_a =  CDOM_dens.a 
+        CDOM2C = CDOM_dens.CDOM2C
+
+        ## [Interpolate CDOM to the phytoplankton grid.]
+        if phy: 
+            ## [Now cdom is on the phy grid.]
+            a_cdom = cdom_a * CDOM2C * np.interp(z_phy, z_cdom, cdom)
+            a += a_cdom
+        ## [If there is not phy.]
+        else: 
+            ## [On the cdom grid.]
+            a_cdom = cdom_a * CDOM2C * cdom 
+            a += a_cdom
+
+            
+
+    ## [One estimation of CDOM at a time.]
+    if CDOM_sal and CDOM_dens:
+        raise Exception("Can't have both CDOM versions at same time")
 
     
     ## Irradiance Grid Stuff
@@ -179,7 +197,7 @@ def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None
         print('a_interp_post:', a)
         b = np.interp(z,z_phy,b)
         b_b_phy = np.interp(z, z_phy, b_b_phy)
-    elif CDOM: 
+    elif CDOM_sal or CDOM_dens: 
         a = np.interp(z,z_cdom,a)
         ## no scattering for cdom, thus just water scattering.
         b = np.full(N, b)
@@ -190,21 +208,46 @@ def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None
     b_b_wat = .551*b_wat
 
     b_b = b_b_wat + b_b_phy
-    b_f = b - b_b 
+
+    return z, a, b, b_b
+ 
+def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None, N=30, 
+                            pt1_perc_zbot=True, pt1_perc_phy=True, a=None, b_b=None):
+
+    """
+    The implementation of the two stream model of Shubha 1997, 1998. 
+    """
+
+    ## PARAMS FROM DUTKIEWICZ 2015 
+    r_s, r_u, v_d, v_s, v_u = coefficients
     
+    ##N centers
+    Nm1 = N - 1  
+
+    Ed1 = np.zeros(N)
+    Eu1 = np.zeros(N) 
+    
+    ## BC
+    Ed1[Nm1] = Ed0 ##surface 
+    Eu1[0] = 0 ##bottom
+   
     Ed=np.copy(Ed1)
     Eu=np.copy(Eu1)
+
+    ## [Calculate the irradiance grid, a, b, b_b.]
+    z, a, b, b_b = ocean_irradiance_two_stream_ab(hbot, ab_wat, N, phy=phy, CDOM=CDOM, 
+                                                  pt1_perc_zbot=pt1_perc_zbot,
+                                                  pt1_perc_phy=pt1_perc_phy)
+
 
     Ed = numerical_Ed(z, a, b_b, v_d, Ed0)
 
     Eu = numerical_Eu(z, Ed, a, b_b, v_u, v_d)
 
-    print('a:', a) 
-
     return Ed, Eu, z, a, b_b
 
 
-def ocean_irradiance_shubha_ab(hbot, Ed0, coefficients, z_a, a, z_b_b, b_b, CDOM=None, N=30, pt1_perc_zbot=True):
+def ocean_irradiance_shubha_ooi(hbot, Ed0, coefficients, z_a, a, z_b_b, b_b, CDOM=None, N=30, pt1_perc_zbot=True):
 
     """
     The implementation of the two stream model of Shubha 1997, 1998. 

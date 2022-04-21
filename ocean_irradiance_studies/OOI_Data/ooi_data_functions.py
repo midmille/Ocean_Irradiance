@@ -14,6 +14,26 @@ import numpy as np
 from ocean_irradiance_module import Wavelength_To_RGB
 
 
+def Download_Data(site_name, assembly, instrument, method, start, stop):
+    """
+    This file is to download the ooi data from source using the ooi_data_explorations.data_request module. 
+    
+    Parameters
+    ----------
+    ooi_paramdict: Dict
+        This is a dictionary containing the required arguments for the OOI data download. 
+        The keys are as follows: [site, assembly, instrument, method, start, stop]. 
+    Returns
+    -------
+    ooi_dat: 
+
+    """
+
+    ooi_dat = data_request(site_name, assembly, instrument, method, start=start, stop=stop)
+
+    return ooi_dat
+
+
 def Create_Profiles(depth, date_time, val, dz_max): 
     """
     This seperates the 1-D Array for the depth and corresponding value 
@@ -78,7 +98,124 @@ def Create_Profiles(depth, date_time, val, dz_max):
             
                 
     return depth_profs, date_time_profs, val_profs   
-            
+
+
+def Get_Flort_Dat(flort_dat): 
+    """
+    This retrieves all the useful flort data. 
+    """
+
+    ## [Make the depth negative.]
+    depth_dat = - flort_dat.variables['depth']
+    dt_dat = flort_dat.variables['time']
+    chla_dat = flort_dat.variables['fluorometric_chlorophyll_a']
+    cdom_dat = flort_dat.variables['fluorometric_cdom']
+    opt_bs_dat = flort_dat.variables['optical_backscatter']
+
+    return depth_dat, dt_dat, chla_dat, cdom_dat, opt_bs_dat
+
+
+def Get_Flort_Profiles(flort_dat):
+    """
+    This function retrieves list of profiles for depth, datetime, chla, and opticalbackcatter.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
+
+    ## [Retrieve the data.]
+    depth_dat, dt_dat, chla_dat, cdom_dat, opt_bs_dat = Get_Flort_Dat(flort_dat)
+
+    ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
+    dz_max = 1
+    depth_profs, dt_profs, chla_profs = Create_Profiles(depth_dat, dt_dat, chla_dat, dz_max)    
+    depth_profs, dt_profs, cdom_profs = Create_Profiles(depth_dat, dt_dat, cdom_dat, dz_max)    
+    depth_profs, dt_profs, opt_bs_profs = Create_Profiles(depth_dat, dt_dat, opt_bs_dat, dz_max)    
+
+    ## [Return the profiles.]
+    return depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs
+
+
+def Get_Spkir_Data(spkir_dat):
+    """
+    This retrives all the useful SPKIR data.
+    """
+    
+    ## [This gets all the useful data.]
+    ## [Depth is made negative.]
+    depth_dat = - spkir_dat.variables['depth']
+    dt_dat = spkir_dat.variables['time']
+    spkir_dat = spkir_dat.variables['spkir_abj_cspp_downwelling_vector']
+
+    return depth_dat, dt_dat, spkir_dat
+
+
+def Get_Spkir_Profiles(spkir_dat):
+    """
+    This function retrieves list of profiles for depth, datetime, and chla. 
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
+
+    depth_dat, dt_dat, spkir_dat = Get_Spkir_Data(spkir_dat)
+
+    ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
+    dz_max = 1
+    depth_profs, dt_profs, spkir_profs = Create_Profiles(depth_dat, dt_dat, spkir_dat, dz_max)    
+
+    ## [Return the profiles.]
+    return depth_profs, dt_profs, spkir_profs
+
+
+def Get_Optaa_Dat(optaa_dat, abs_cor=False): 
+    """
+    This function gets the important optaa data.
+
+    Parameters
+    ---------- 
+    optaa_dat: ooi_data_request data object. 
+        Instrument: OPTAA, 
+    abs_cor: Boolean 
+        The absorption correction flag. If true the correction algorithm is implemented
+        and the edited array is returned.
+    """
+        
+    ## [The depth should be made negative.]
+    depth_dat = - optaa_dat.variables['depth']
+    dt_dat = optaa_dat.variables['time']
+    abs_dat = optaa_dat.variables['optical_absorption']
+    wavelength_dat = optaa_dat.variables['wavelength_a']
+
+    if abs_cor: 
+        wavelengths = wavelength_dat.data[0,:] 
+        OPTAA_Abs_Correction_G(abs_dat, wavelengths) 
+
+    return depth_dat, dt_dat, abs_dat, wavelength_dat
+
+
+def Get_Optaa_Profiles(optaa_dat, abs_cor=False): 
+    """
+    This function retireves the profiles OPTAA absorption data.
+    """
+
+    ## [Get the optaa data.]
+    depth_dat, dt_dat, abs_dat, wavelength_dat = Get_Optaa_Dat(optaa_dat, abs_cor=abs_cor)
+
+    ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
+    dz_max = 1
+    depth_profs, dt_profs, abs_profs = ODF.Create_Profiles(depth_dat, dt_dat, abs_dat, dz_max)    
+    depth_profs, dt_profs, wavelength_profs = ODF.Create_Profiles(depth_dat, dt_dat, wavelength_dat, dz_max)    
+
+    ## [Return the profiles.]
+    return depth_profs, dt_profs, abs_profs, wavelength_profs
+
 
 def Get_SPKIR_Wavelengths(spkir_dat):
     """
@@ -138,6 +275,88 @@ def OOI_Dat_Time_Prof_Mask(dt_lbnd, dt_ubnd, var_dt):
     b = np.logical_and(lb,ub)
 
     return b 
+
+
+def OPTAA_Abs_Correction_G(optical_absorption, wavelengths):
+    """
+    This function implements the correction to all absorption values in a given OPTAA
+    data set. It implements the method suggested by Chris Wingard in an email on
+    April 8th, 2022.
+
+    This function implements the 715nm correction to all values of absorption in the
+    data set and does not use profiles. It takes the smallest absorbtion at 715 and 
+    corrects off of that value.
+
+    Parameters
+    -----------
+    optical_absorption: 2-D Array, [N,M]
+        optical_absorption values to be corrected. 
+    wavelengths: 1-D Array, [M]
+        
+
+    Returns 
+    --------
+    optical_absorption: 2-D Array, [N,M]
+        The optical_absorption corrected via the 715nm wavelength.
+        This is the optaa data set. This is the data set with absorption corrected for
+        negative values using 715nm.
+
+    """
+
+    ## [The 715 nm index.]
+    lam_i = Get_Wavelength_Index(wavelengths, 715)
+
+    ## [Finding all the absorption values at 715nm at all depths at all time.]
+    a_715 = optical_absorption[:, lam_i]   
+    
+    ## [Finding the minimum at 715nm and setting that as the correction value.]
+    a_cor = np.min(a_715) 
+
+    ## [Correcting the absorption in the data set to reflect this correction.]
+    optical_absorption = optical_absorption - a_cor
+
+    return optical_absorption
+
+
+def OPTAA_Abs_Correction_L(abs_profs, wavelengths):
+    """
+    This function implements the correction to all absorption values in a given OPTAA
+    data set. It implements the method suggested by Chris Wingard in an email on
+    April 8th, 2022.
+
+    This function implements the 715nm correction to all values of absorption in the
+    data set and does not use profiles. It takes the smallest absorbtion at 715 and 
+    corrects off of that value.
+
+    Parameters
+    -----------
+    optical_absorption: 2-D Array, [N,M]
+        optical_absorption values to be corrected. 
+    wavelengths: 1-D Array, [M]
+        
+
+    Returns 
+    --------
+    optical_absorption: 2-D Array, [N,M]
+        The optical_absorption corrected via the 715nm wavelength.
+        This is the optaa data set. This is the data set with absorption corrected for
+        negative values using 715nm.
+
+    """
+
+    ## [The 715 nm index.]
+    lam_i = Get_Wavelength_Index(wavelengths, 715)
+
+    ## [Finding all the absorption values at 715nm at all depths at all time.]
+    a_715 = optical_absorption[:, lam_i]   
+    
+    ## [Finding the minimum at 715nm and setting that as the correction value.]
+    a_cor = np.min(a_715) 
+
+    ## [Correcting the absorption in the data set to reflect this correction.]
+    optical_absorption = optical_absorption - a_cor
+
+    return optical_absorption
 
 
 def Grid_Average_Profile(x_dat, y_dat, x_avg): 

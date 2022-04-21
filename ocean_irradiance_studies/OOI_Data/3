@@ -25,7 +25,98 @@ import numpy as np
 import pickle
 from ooi_data_explorations.data_request import data_request
 import matplotlib.pyplot as plt
-import scipy
+
+def Download_Data(site_name, assembly, instrument, method, start, stop):
+    """
+    This file is to download the ooi data from source using the ooi_data_explorations.data_request module. 
+    
+    Parameters
+    ----------
+    ooi_paramdict: Dict
+        This is a dictionary containing the required arguments for the OOI data download. 
+        The keys are as follows: [site, assembly, instrument, method, start, stop]. 
+    Returns
+    -------
+    ooi_dat: 
+
+    """
+
+    print('HERE')
+    print(site_name)
+    ooi_dat = data_request(site_name, assembly, instrument, method, start=start, stop=stop)
+
+    return ooi_dat
+
+
+def Get_Flort_Profiles(ooi_dat):
+    """
+    This function retrieves list of profiles for depth, datetime, chla, and opticalbackcatter.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
+
+    ## [First get the depth, dt, and chla arrays from ooi_dat.]
+    depth_dat = ooi_dat.variables['depth']
+    dt_dat = ooi_dat.variables['time']
+    chla_dat = ooi_dat.variables['fluorometric_chlorophyll_a']
+    opt_backscatter_dat = ooi_dat.variables['optical_backscatter']
+
+    ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
+    dz_max = 1
+    depth_profs, dt_profs, chla_profs = ODF.Create_Profiles(depth_dat, dt_dat, chla_dat, dz_max)    
+    depth_profs, dt_profs, opt_bs_profs = ODF.Create_Profiles(depth_dat, dt_dat, opt_backscatter_dat, dz_max)    
+
+    ## [Return the profiles.]
+    return depth_profs, dt_profs, chla_profs, opt_bs_profs
+
+
+def Get_Spkir_Profiles(ooi_dat):
+    """
+    This function retrieves list of profiles for depth, datetime, and chla. 
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
+
+    ## [First get the depth, dt, and chla arrays from ooi_dat.]
+    depth_dat = ooi_dat.variables['depth']
+    dt_dat = ooi_dat.variables['time']
+    spkir_dat = ooi_dat.variables['spkir_abj_cspp_downwelling_vector']
+
+    ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
+    dz_max = 1
+    depth_profs, dt_profs, spkir_profs = ODF.Create_Profiles(depth_dat, dt_dat, spkir_dat, dz_max)    
+
+    ## [Return the profiles.]
+    return depth_profs, dt_profs, spkir_profs
+
+
+def Get_Optaa_Profiles(optaa_dat): 
+    """
+    This function retireves the profiles OPTAA absorption data.
+    """
+    ## [First get the depth, dt, and chla arrays from ooi_dat.]
+    depth_dat = optaa_dat.variables['depth']
+    dt_dat = optaa_dat.variables['time']
+    abs_dat = optaa_dat.variables['optical_absorption']
+    wavelength_dat = optaa_dat.variables['wavelength_a']
+
+    ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
+    dz_max = 1
+    depth_profs, dt_profs, abs_profs = ODF.Create_Profiles(depth_dat, dt_dat, abs_dat, dz_max)    
+    depth_profs, dt_profs, wavelength_profs = ODF.Create_Profiles(depth_dat, dt_dat, wavelength_dat, dz_max)    
+
+    ## [Return the profiles.]
+    return depth_profs, dt_profs, abs_profs, wavelength_profs
+ 
+
 
 
 def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs, optaa_dat):
@@ -100,6 +191,7 @@ def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, 
             optaa_abs_prof = optaa_abs_dat[prof_mask]
             optaa_wavelengths = optaa_wavelength_dat[prof_mask]
 
+
             optaa_depth = -np.squeeze(optaa_depth_prof)
             ## [Must get the wavelength index.]
             lam_i = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], lam)
@@ -132,157 +224,64 @@ def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, 
 
     return irr_field, irr_field_ab
 
-def OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat):
-    """
-    This function gets the OOI absorption and scattering for a given profile index and data sets.
-    """
 
-    k = prof_index
-
-    ## [The optaa data.]
-    optaa_depth_dat, optaa_dt_dat, optaa_abs_dat, optaa_wavelength_dat = ODF.Get_Optaa_Dat(optaa_dat)
-
-    dt_lbnd = dt_profs[k].data[0] 
-    dt_ubnd = dt_profs[k].data[-1]
-    prof_mask = ODF.OOI_Dat_Time_Prof_Mask(dt_lbnd, dt_ubnd, optaa_dt_dat)
-
-    optaa_dt_prof = optaa_dt_dat.data[prof_mask]
-    optaa_depth_prof = optaa_depth_dat.data[prof_mask]
-    optaa_abs_prof = optaa_abs_dat.data[prof_mask]
-    optaa_wavelengths = optaa_wavelength_dat.data[prof_mask]
-
-    optaa_depth = np.squeeze(optaa_depth_prof)
-    ## [Must get the wavelength index.]
-    lam_i = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], lam)
-    lam_ooi = optaa_wavelengths[0,lam_i]
-
-    ##[Labeling the ooi z-grids and a, b_b.]
-    z_a = optaa_depth
-    ## [The squeese makes the array 1-D.]
-    a = np.squeeze(optaa_abs_prof[:, lam_i])
-    z_b_b = depth_profs[k].data
-    b_b = opt_bs_profs[k].data
-
-    return z_a, a, z_b_b, b_b
-
-
-def Irr_OOI_Abs_Scat(PI, N, lam, prof_idex, phy_type, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
+def Irr_OOI_Abs_Scat(N, lam, prof_idex, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs, optaa_dat): 
     """
     This function compares the absorption and backscatter as calculated by the irradiance model with Dutkiewicz
     coefficients to the values given by OO.
     """
 
+    PI = Param_Init()
+
+    k = prof_index
     
+    depth = -depth_profs[k]
+
     phy = OI.Phy(depth, chla_profs[k], esd(phy_type), 
                  abscat(lam, phy_type, C2chla='default')[0], 
                  abscat(lam, phy_type, C2chla='default')[1])
-
-    CDOM2C = 0
-    CDOM_dens = OI.CDOM_dens(depth, cdom_profs[k], CDOM2C, lam)
+        
             
     z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(depth[0], 
                                                                    abscat(lam, 'water'), 
                                                                    N,
                                                                    phy=phy, 
-                                                                   CDOM_dens=CDOM_dens, 
+                                                                   CDOM=None, 
                                                                    pt1_perc_zbot=False, 
                                                                    pt1_perc_phy=False)
 
-    ## [Get the ooi absorption and scattering, along with their corresponding grids.]
-    z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi = OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat) 
+    ## [The optaa data.]
+    optaa_depth_dat = optaa_dat.variables['depth'].data
+    optaa_dt_dat = optaa_dat.variables['time'].data
+    optaa_abs_dat = optaa_dat.variables['optical_absorption'].data
+    optaa_wavelength_dat = optaa_dat.variables['wavelength_a'].data
+
+    dt_lbnd = dt_profs[k].data[0] 
+    dt_ubnd = dt_profs[k].data[-1]
+    prof_mask = ODF.OOI_Dat_Time_Prof_Mask(dt_lbnd, dt_ubnd, optaa_dt_dat)
+
+    optaa_dt_prof = optaa_dt_dat[prof_mask]
+    optaa_depth_prof = optaa_depth_dat[prof_mask]
+    optaa_abs_prof = optaa_abs_dat[prof_mask]
+    optaa_wavelengths = optaa_wavelength_dat[prof_mask]
+
+    optaa_depth = -np.squeeze(optaa_depth_prof)
+    ## [Must get the wavelength index.]
+    lam_i = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], lam)
+    lam_ooi = optaa_wavelengths[0,lam_i]
+
+    ##[Labeling the ooi z-grids and a, b_b.]
+    z_a_ooi = optaa_depth
+    ## [The squeese makes the array 1-D.]
+    a_ooi = np.squeeze(optaa_abs_prof[:, lam_i])
+    z_b_b_ooi = depth
+    b_b_ooi = opt_bs_profs[k]
+
 
 
     return  z_irr, a_irr, b_b_irr, z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi, lam_ooi
 
-
-def Abs_Est_Species(PI, N, lam, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
-    """
-    This function is for the estimation of the ratio of different species that could compose the
-    resulting observed absorption profile from OOI. The total observed phytoplankton concentration will be
-    taken from the FLORT instrument and the observed absorption will be taken from the OPTAA instrument. 
-
-    This estimation will be performed as a least squares problem where the different points in the z-axis will
-    be considered the data points sucht that the system is overdetermined. The downside to this is that is assumes the ratios
-    of different phytoplankton will be constant within a single profile. Perhaps down the line the water column can be split up into different
-    sections and we can solve for the phytoplankton in each different overdetermined section. 
-
-    The matrix problem is as follows: 
-
-    Ax = y, where 
-
-    ## [The effective absorption coefficient for each species.]
-    A = [[ a_phy1, a_phy2, a_phy3, a_phy4, ....], 
-         [ a_phy1, a_phy2, a_phy3, a_phy4, ....],
-         [    :  ,   :   ,  :    ,   :   , ....], 
-         [    :  ,   :   ,  :    ,   :   , ....]]
-
-    ## [The ratios of the different phytoplankton species, this is what we are solving for.]
-    x = [ r_phy1, r_phy2, r_phy3, r_phy4, ....]^T 
-
-    ## [The effective absorption given by observed OOI absorption divided by the 
-        observed OOI chla and then subtracted by the dutkiewicz a_wat.]
-    y = [a_ooi(z1), a_ooi(z2), a_ooi(z3), a_ooi(z4), a_ooi(z4) ... ]^T
-
-    Note: The OOI absorption comes from the OPTAA instrument while the chla comes from the
-    FLORT instrument. Thus it is necessary to interpolate them to the same grid. 
-
-    Parameters
-    ----------
-
-    Returns 
-    -------
-
-    """
-
-    ## [The number of species.]
-    N_phy = len(phy_species)
-
-    ## [Get the ooi absorption and scattering, along with their corresponding grids.]
-    z_a_ooi, a_ooi, z_bb_ooi, bb_ooi = OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat) 
-    
-    ## [Get the arrays for the given prof_index.]
-    ## [This is the chla grid and the grid to be used for everything.]
-    z_chla = depth_profs[prof_index].data
-    chla = chla_profs[prof_index].data
-    cdom = cdom_profs[prof_index].data
-
-    ## [The chla and b_b ooi should be on same grid.]
-    ## [Interpolate the ooi chla grid, and ooi b_b to the ooi absorption grid.]
-    z = z_a_ooi
-    chla = np.interp(z, z_chla, chla)
-    bb_ooi = np.interp(z, z_bb_ooi, bb_ooi)
-
-    ## [The number of vertical levels in the ooi grid.]
-    N = len(z)
-
-    ## [Construct the empty matrix system.]
-    A = np.zeros((N,N_phy))
-    b = np.zeros(N)
-
-    ## [Loop over the phytoplankton species.]
-    for k in range(N_phy): 
-        ## [Each column of a is the single effective abs/scat coefficient of a species, 
-        ##  each column corresponds to a different species.]
-        A[:,k] = abscat(lam, phy_species[k], C2chla='default')[1]
-
-    ## [The rhs b, is simply the a_ooi divided by chla minus the a_wat from Dut.]
-    b = bb_ooi/chla - abscat(lam, 'water', C2chla='default')[1]
-        
-    ## [Solving the least square system for the phy ratios.]
-    #x = np.linalg.lstsq(A, b)
-    x = scipy.optimize.nnls(A,b)
-
-    #phy = OI.Phy(depth, chla_profs[k], esd(phy_type), 
-    #             abscat(lam, phy_type, C2chla='default')[0], 
-    #             abscat(lam, phy_type, C2chla='default')[1])
-
-    #CDOM2C = 0
-    #CDOM_dens = OI.CDOM_dens(depth, cdom_profs[k], CDOM2C, lam)
-
-    return x 
-
-
-def Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
+def Plot_Irr_OOI_Abs_Scat(prof_index, wavelengths, N, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs, optaa_dat): 
     """
 
     """
@@ -290,55 +289,43 @@ def Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs
     ## [Get the colors such that they match the wavelengths.] 
     colors = [Wavelength_To_RGB.wavelength_to_rgb(wavelength) for wavelength in wavelengths]
     
-    N_lam = len(wavelengths)
-    figa, axas = plt.subplots(ncols=N_lam, nrows=1)
-    figb, axbs = plt.subplots(ncols=N_lam, nrows=1)
+    figa, axa = plt.subplots()
+    figb, axb = plt.subplots()
     for k, lam in enumerate(wavelengths):
-        ## [The different plots correspond to a given wavlength]
-        axa = axas[k]
-        axb = axbs[k]
-        for i, phy_type in enumerate(phy_types):
-            ## [Getting the absorption and scattering values.]
-            z_irr, a_irr, b_b_irr, z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi, lam_ooi = Irr_OOI_Abs_Scat(PI,
-                                                                                                 N,
-                                                                                                 lam,
-                                                                                                 prof_index,
-                                                                                                 phy_type,
-                                                                                                 depth_profs, 
-                                                                                                 dt_profs,
-                                                                                                 chla_profs, 
-                                                                                                 cdom_profs,
-                                                                                                 opt_bs_profs, 
-                                                                                                 optaa_dat)
-            
-            ## [Plotting Absorption comparison.]
-            ## [Only plot the ooi abs, scat for i==0, since they are indp. of wavelength.]
-            if i == 0: 
-                axa.plot(a_ooi, z_a_ooi, ':', label=f'Abs OOI OPTAA {lam_ooi}')
-            axa.plot(a_irr, z_irr, label=f'Abs Irr {phy_type}')
-            axa.set_title(f'Absorption {lam}')
-            axa.set_ylabel('Z[m]')
-            axa.set_xlabel('Abs [m^-1]')
-            axa.legend()
-            axa.grid()
-    
-            ## [Plotting the scattering comp.]
-            ## [Only plot the ooi abs, scat for i==0, since they are indp. of wavelength.]
-            if i == 0: 
-                axb.plot(b_b_ooi, z_b_b_ooi, ':', label=f'Scat OOI FLORT {lam_ooi}')
-            axb.plot(b_b_irr, z_irr, label=f'Scat Irr {phy_type}')
-            axb.set_title(f'Back Scattering {lam}')
-            axb.set_ylabel('Z[m]')
-            axb.set_xlabel('Scat [m^-1]')
-            axb.legend()
-            axb.grid()
+        z_irr, a_irr, b_b_irr, z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi, lam_ooi = Irr_OOI_Abs_Scat(N,
+                                                                                     lam,
+                                                                                     prof_index,
+                                                                                     phy_type,
+                                                                                     depth_profs, 
+                                                                                     dt_profs,
+                                                                                     chla_profs, 
+                                                                                     opt_bs_profs, 
+                                                                                     optaa_dat)
+        
+        ## [Plotting Absorption comparison.]
+        axa.plot(a_ooi, z_a_ooi, ':', label=f'Abs OOI OPTAA {lam_ooi}', color=colors[k])
+        axa.plot(a_irr, z_irr, label=f'Abs Irr {lam}', color = colors[k])
+        axa.set_title('Absorption')
+        axa.set_ylabel('Z[m]')
+        axa.set_xlabel('Abs [m^-1]')
+
+        ## [Plotting the scattering comp.]
+        axb.plot(b_b_ooi, z_b_b_ooi, ':', label=f'Scat OOI FLORT {lam_ooi}', color=colors[k])
+        axb.plot(b_b_irr, z_irr, label=f'Scat Irr {lam}', color=colors[k])
+        axb.set_title('Back Scattering')
+        axb.set_ylabel('Z[m]')
+        axb.set_xlabel('Scat [m^-1]')
  
     
+    axa.legend()
+    axa.grid()
     figa.show()
+    
+    axb.legend()
+    axb.grid()
     figb.show()
 
     return 
-
 
 def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index,irr_field, irr_field_ab, spkir_dat, site, assembly, method): 
 
@@ -433,13 +420,13 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wav
 
     return 
 
-def Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, start, stop, site_name, assembly, method):
+def Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref):
     """
     This plot creates a plot similiar to the one Chris Wingard sent in his email on 4/9/2022. 
     """
 
     ## [The optaa data.]
-    depth_profs, dt_profs, abs_profs, wavelength_profs = Get_Optaa_Profiles(optaa_dat, abs_cor=True)
+    depth_profs, dt_profs, abs_profs, wavelength_profs = Get_Optaa_Profiles(optaa_dat)
 
     ## [The number of profiles.]
     N = len(depth_profs)
@@ -451,100 +438,23 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, start, stop, site_name, a
     abs_t = np.zeros((N, N_lam))
     ## [Loop over the profiles.]
     for k in range(N): 
-        depth = depth_profs[k].data
+        depth = -depth_profs[k].data
         ## [The depth index.]
         d_i = np.argmin(abs(depth-depth_ref)) 
+        
         ## [The absorption in time.]
         abs_t[k,:] = abs_profs[k][d_i, :] 
 
     ## [Plotting.]
     fig, ax = plt.subplots()
-    
-    ## [The actual plotting]
-    ax.plot(optaa_wavelengths, np.transpose(abs_t), 'b', linewidth=.7)  
-
-    ## [Labels.]
-    ax.set_xlabel(f"Wavelength [{optaa_dat.variables['wavelength_a'].attrs['units']}]")
-    ax.set_ylabel(f"Absorption [{optaa_dat.variables['optical_absorption'].attrs['units']}]")
-    ax.set_title(f"OOI OPTAA optical_absorption Multiple Profiles Single Depth ({depth_ref} [m]) \n START: {start} to STOP: {stop}")
-    ## [Putting some identifying text on the figure.]
-    ## [10% up the vertical location]
-    txt_y = ax.get_ylim()[0] + 0.5 * (ax.get_ylim()[1]  - ax.get_ylim()[0])
-    ## [10% of the horizontal location.]
-    txt_x = ax.get_xlim()[0] + 0.6 * (ax.get_xlim()[1] - ax.get_xlim()[0])
-    ## [The change in txt location in vertical.]
-    txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
-    ## [Adding the txt.]
-    ax.text(txt_x, txt_y, f'SITE: {site_name}')   
-    ax.text(txt_x, txt_y+txt_dz, f'ASSEMBLY: {assembly}')   
-    ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: OPTAA')   
-    ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
-
-    ax.grid()
+    ax.plot(optaa_wavelengths, np.transpose(abs_t), 'b')  
+    ax.set_ylabel('Absorption')
+    ax.set_xlabel('Wavelength [nm]')
     
     fig.show()
 
-    return
     
 
-def Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, start, stop, site_name, assembly, method):
-    """
-    This plot creates a plot similiar to the one Chris Wingard sent in his email on 4/9/2022. 
-    The main difference between this function and Plot_OOI_Abs_Wavelength_Time() is that this function
-    plots the absorption against wavelength for all depths at single wavelengths. 
-    """
-
-    ## [The optaa data.]
-    depth_profs, dt_profs, abs_profs, wavelength_profs = Get_Optaa_Profiles(optaa_dat, abs_cor=True)
-
-    ## [The number of profiles.]
-    N = len(depth_profs[prof_index])
-    ## [The number of wavelengths.]
-    optaa_wavelengths = np.squeeze(wavelength_profs[0][0,:])
-    N_lam = len(optaa_wavelengths)
-
-    ## [The absorption in profile.]
-    abs_p = np.zeros((N, N_lam))
-
-    ## [Loop over the profiles.]
-    for k in range(N): 
-        ## [The absorption in the profile]
-        abs_p[k,:] = abs_profs[prof_index][k, :] 
-
-    print( 'Number of lines:', N)
-
-    ## [Plotting.]
-    fig, ax = plt.subplots()
-
-    ## [The plotting.]
-    ax.plot(optaa_wavelengths, np.transpose(abs_p), 'b', linewidth=.7)  
-
-    ## [Labels.]
-    ax.set_xlabel(f"Wavelength [{optaa_dat.variables['wavelength_a'].attrs['units']}]")
-    ax.set_ylabel(f"Absorption [{optaa_dat.variables['optical_absorption'].attrs['units']}]")
-    #ax.set_title(f"OOI SPKIR Profile and Irradiance Model \n OOI SPKIR Profile Date: {date_time[0]} to {date_time[-1]}")
-    dt_sec = dt_profs[prof_index].data.astype('datetime64[s]')
-    ax.set_title(f"OOI OPTAA optical_absorption Single Profile All Depths \n START: {dt_sec[0]} to STOP: {dt_sec[-1]}")
-    ## [Putting some identifying text on the figure.]
-    ## [10% up the vertical location]
-    txt_y = ax.get_ylim()[0] + 0.7 * (ax.get_ylim()[1]  - ax.get_ylim()[0])
-    ## [10% of the horizontal location.]
-    txt_x = ax.get_xlim()[0] + 0.6 * (ax.get_xlim()[1] - ax.get_xlim()[0])
-    ## [The change in txt location in vertical.]
-    txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
-    ## [Adding the txt.]
-    ax.text(txt_x, txt_y, f'SITE: {site_name}')   
-    ax.text(txt_x, txt_y+txt_dz, f'ASSEMBLY: {assembly}')   
-    ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: OPTAA')   
-    ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
-
-    ax.grid()
-    
-    fig.show()
-
-    return
-
- 
 if __name__ == '__main__':
 
     import argparse
@@ -596,30 +506,24 @@ if __name__ == '__main__':
         optaa_dat = pickle.load(open(optaa_savefile, 'rb'))
 
     ## [Get the chla profile lists.]
-    depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs = ODF.Get_Flort_Profiles(flort_dat)
+    depth_profs, dt_profs, chla_profs, opt_bs_profs = Get_Flort_Profiles(flort_dat)
 
     ## [Get the spkir wavelengths.]
     spkir_wavelengths = np.array(ODF.Get_SPKIR_Wavelengths(spkir_dat.variables['spkir_abj_cspp_downwelling_vector']))
 
     ## [Run the irradiance model using the profiles, over all profiles.]
     N=100
-    wavelengths = [410, 443, 486] #551, 638, 671]
-    phy_types = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
-    PI = Param_Init()
-    phy_type = phy_types[2]
+    wavelengths = [410, 443, 486, 551, 638, 671]
+    phy_type = 'Generic'
     #irr_field, irr_field_ab = Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs, optaa_dat)
 
+    ## [Some params for plotting.]
     prof_index = 0 
     ## [The index of the spkir wavelengths that most closely matches the given irradiance wavcelengths.]
     ## [This wavelength index should be automated soon.]
     #spkir_wavelength_index = [ODF.Get_Wavelength_Index(spkir_wavelengths, wavelengths[0])]
     #Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index, irr_field, irr_field_ab, spkir_dat, args.site_name, args.assembly, args.method)
-    #Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat)
+    #Plot_Irr_OOI_Abs_Scat(prof_index, wavelengths, N, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs, optaa_dat)
+    depth_ref = -10
+    Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref)
 
-    #depth_ref = -10
-    #Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, args.start, args.stop, args.site_name, args.assembly, args.method)
-    #Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, args.start, args.stop, args.site_name, args.assembly, args.method)
-
-
-    ## [Running the least square estimation of the ratio of phytoplankton.]
-    x = Abs_Est_Species(PI, N, 443, prof_index, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat)

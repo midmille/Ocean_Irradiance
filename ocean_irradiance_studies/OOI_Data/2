@@ -25,7 +25,6 @@ import numpy as np
 import pickle
 from ooi_data_explorations.data_request import data_request
 import matplotlib.pyplot as plt
-import scipy
 
 
 def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs, optaa_dat):
@@ -132,7 +131,7 @@ def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, 
 
     return irr_field, irr_field_ab
 
-def OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat):
+def OOI_Abs_Scat(prof_index, depth_profs, dt_profs, opt_bs_profs, optaa_dat) 
     """
     This function gets the OOI absorption and scattering for a given profile index and data sets.
     """
@@ -160,8 +159,8 @@ def OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat
     z_a = optaa_depth
     ## [The squeese makes the array 1-D.]
     a = np.squeeze(optaa_abs_prof[:, lam_i])
-    z_b_b = depth_profs[k].data
-    b_b = opt_bs_profs[k].data
+    z_b_b = depth
+    b_b = opt_bs_profs[k]
 
     return z_a, a, z_b_b, b_b
 
@@ -189,13 +188,13 @@ def Irr_OOI_Abs_Scat(PI, N, lam, prof_idex, phy_type, depth_profs, dt_profs, chl
                                                                    pt1_perc_phy=False)
 
     ## [Get the ooi absorption and scattering, along with their corresponding grids.]
-    z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi = OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat) 
+    z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi = OOI_Abs_Scat(prof_index, depth_profs, dt_profs, opt_bs_profs, optaa_dat) 
 
 
     return  z_irr, a_irr, b_b_irr, z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi, lam_ooi
 
 
-def Abs_Est_Species(PI, N, lam, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
+def Abs_Est_Species(PI, N, lam, prof_idex, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
     """
     This function is for the estimation of the ratio of different species that could compose the
     resulting observed absorption profile from OOI. The total observed phytoplankton concentration will be
@@ -210,21 +209,10 @@ def Abs_Est_Species(PI, N, lam, prof_index, phy_species, depth_profs, dt_profs, 
 
     Ax = y, where 
 
-    ## [The effective absorption coefficient for each species.]
-    A = [[ a_phy1, a_phy2, a_phy3, a_phy4, ....], 
-         [ a_phy1, a_phy2, a_phy3, a_phy4, ....],
-         [    :  ,   :   ,  :    ,   :   , ....], 
-         [    :  ,   :   ,  :    ,   :   , ....]]
-
-    ## [The ratios of the different phytoplankton species, this is what we are solving for.]
-    x = [ r_phy1, r_phy2, r_phy3, r_phy4, ....]^T 
-
-    ## [The effective absorption given by observed OOI absorption divided by the 
-        observed OOI chla and then subtracted by the dutkiewicz a_wat.]
-    y = [a_ooi(z1), a_ooi(z2), a_ooi(z3), a_ooi(z4), a_ooi(z4) ... ]^T
-
-    Note: The OOI absorption comes from the OPTAA instrument while the chla comes from the
-    FLORT instrument. Thus it is necessary to interpolate them to the same grid. 
+    A = [[ a_phy1(z1), a_phy2(z1), a_phy3(z1), a_phy4(z1), ....], 
+         [ a_phy1(z2), a_phy2(z2), a_phy3(z2), a_phy4(z2), ....],
+         [      :    ,      :    ,     :     ,     :     , ....], 
+         [      :    ,      :    ,     :     ,     :     , ....], 
 
     Parameters
     ----------
@@ -237,49 +225,37 @@ def Abs_Est_Species(PI, N, lam, prof_index, phy_species, depth_profs, dt_profs, 
     ## [The number of species.]
     N_phy = len(phy_species)
 
-    ## [Get the ooi absorption and scattering, along with their corresponding grids.]
-    z_a_ooi, a_ooi, z_bb_ooi, bb_ooi = OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat) 
+    ## [The ratio increments] 
+    inc = 1/N_phy
+
+    for 
+
+
     
-    ## [Get the arrays for the given prof_index.]
-    ## [This is the chla grid and the grid to be used for everything.]
-    z_chla = depth_profs[prof_index].data
-    chla = chla_profs[prof_index].data
-    cdom = cdom_profs[prof_index].data
 
-    ## [The chla and b_b ooi should be on same grid.]
-    ## [Interpolate the ooi chla grid, and ooi b_b to the ooi absorption grid.]
-    z = z_a_ooi
-    chla = np.interp(z, z_chla, chla)
-    bb_ooi = np.interp(z, z_bb_ooi, bb_ooi)
 
-    ## [The number of vertical levels in the ooi grid.]
-    N = len(z)
-
-    ## [Construct the empty matrix system.]
-    A = np.zeros((N,N_phy))
-    b = np.zeros(N)
-
-    ## [Loop over the phytoplankton species.]
-    for k in range(N_phy): 
-        ## [Each column of a is the single effective abs/scat coefficient of a species, 
-        ##  each column corresponds to a different species.]
-        A[:,k] = abscat(lam, phy_species[k], C2chla='default')[1]
-
-    ## [The rhs b, is simply the a_ooi divided by chla minus the a_wat from Dut.]
-    b = bb_ooi/chla - abscat(lam, 'water', C2chla='default')[1]
-        
-    ## [Solving the least square system for the phy ratios.]
-    #x = np.linalg.lstsq(A, b)
-    x = scipy.optimize.nnls(A,b)
-
-    #phy = OI.Phy(depth, chla_profs[k], esd(phy_type), 
-    #             abscat(lam, phy_type, C2chla='default')[0], 
-    #             abscat(lam, phy_type, C2chla='default')[1])
+    ## [This needs to be looped over the different percentages of phytoplankton levels.]
+    phy = OI.Phy(depth, chla_profs[k], esd(phy_type), 
+                 abscat(lam, phy_type, C2chla='default')[0], 
+                 abscat(lam, phy_type, C2chla='default')[1])
 
     #CDOM2C = 0
     #CDOM_dens = OI.CDOM_dens(depth, cdom_profs[k], CDOM2C, lam)
+            
+    z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(depth[0], 
+                                                                   abscat(lam, 'water'), 
+                                                                   N,
+                                                                   phy=phy, 
+                                                                   CDOM_dens=None, 
+                                                                   pt1_perc_zbot=False, 
+                                                                   pt1_perc_phy=False)
 
-    return x 
+
+
+
+    ## [Get the ooi absorption and scattering, along with their corresponding grids.]
+    z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi = OOI_Abs_Scat(prof_index, depth_profs, dt_profs, opt_bs_profs, optaa_dat) 
+
 
 
 def Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
@@ -596,7 +572,7 @@ if __name__ == '__main__':
         optaa_dat = pickle.load(open(optaa_savefile, 'rb'))
 
     ## [Get the chla profile lists.]
-    depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs = ODF.Get_Flort_Profiles(flort_dat)
+    depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs = Get_Flort_Profiles(flort_dat)
 
     ## [Get the spkir wavelengths.]
     spkir_wavelengths = np.array(ODF.Get_SPKIR_Wavelengths(spkir_dat.variables['spkir_abj_cspp_downwelling_vector']))
@@ -616,10 +592,6 @@ if __name__ == '__main__':
     #Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index, irr_field, irr_field_ab, spkir_dat, args.site_name, args.assembly, args.method)
     #Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat)
 
-    #depth_ref = -10
-    #Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, args.start, args.stop, args.site_name, args.assembly, args.method)
-    #Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, args.start, args.stop, args.site_name, args.assembly, args.method)
-
-
-    ## [Running the least square estimation of the ratio of phytoplankton.]
-    x = Abs_Est_Species(PI, N, 443, prof_index, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat)
+    depth_ref = -10
+    Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, args.start, args.stop, args.site_name, args.assembly, args.method)
+    Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, args.start, args.stop, args.site_name, args.assembly, args.method)

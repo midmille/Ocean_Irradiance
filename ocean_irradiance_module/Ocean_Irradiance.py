@@ -43,9 +43,9 @@ class Phy:
         return 
 
 
-class CDOM:
+class CDOM_sal:
     """
-    The CDOM Class includes:
+    The CDOM_sal Class includes:
         --> z coordinates corresponding to concentrations [m (< 0)]
                 -- z should be a column vector
         --> salinity concentrations []
@@ -73,6 +73,35 @@ class CDOM:
         return 
 
 
+class CDOM_dens: 
+    """
+    The CDOM_dens class includes: 
+        --> z coordinates coorespnding to ceoncentration levels [m (<0)]. 
+        --> CDOM density
+        --> Absorption coefficient in units of m^2(mmolC)^-1.  
+        --> CDOM to Carbon ratio. This would be CDOM [C] = CDOM [mg/m^3] * ratio. 
+    This cdom uses observed CDOM concentration to calculate the absorption due to 
+    CDOM. 
+
+    """
+
+    def __init__(self, z, cdom, CDOM2C, wavelength): 
+        self.z = z
+        self.cdom = cdom 
+        self.CDOM2C = CDOM2C
+        self.wavelength = wavelength
+
+        ## [This absorption curve is given by Dutkiweicz et al. 2015 equation 15. ] 
+        ## [Value given is in table 1.]
+        c_cdom = 0.18 ## [m^2 (mmol C)^-1]
+        lam_0 = 450 ## [nm]
+        s_cdom = 0.021 ## [(nm)^-1]
+        ## [Equation 15.]
+        self.a = c_cdom * np.exp(-s_cdom*(wavelength - lam_0)) 
+        
+        
+
+        return 
 
 def Backscatter_Ratio(esd):
     """ 
