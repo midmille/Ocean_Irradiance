@@ -195,7 +195,7 @@ def Irr_OOI_Abs_Scat(PI, N, lam, prof_idex, phy_type, depth_profs, dt_profs, chl
     return  z_irr, a_irr, b_b_irr, z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi, lam_ooi
 
 
-def Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
+def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat, plot=False): 
     """
     This function is for the estimation of the ratio of different species that could compose the
     resulting observed absorption profile from OOI. The total observed phytoplankton concentration will be
@@ -242,7 +242,7 @@ def Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_pr
     N_zavg = 20
 
     ## [The vertical point we are doing the wavelength based least square.]
-    z_i = 0
+    #z_i = 0
 
     ## [This step gets the OOI data.]
     ## [The optaa data.]
@@ -322,14 +322,22 @@ def Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_pr
     #CDOM2C = 0
     #CDOM_dens = OI.CDOM_dens(depth, cdom_profs[k], CDOM2C, lam)
 
-    ## [Plot the resulting absorption from the calculated ratios of phytoplankton.]
-    #fig, ax = plt.subplots()
+    if plot: 
+               
+        fig, ax = plt.subplots()
 
-    ## [Plot the 
-    #a_fit = A[0,:]@x[0]
-    #for k in range(N_phy): 
-    #    a_f = a_fit[k] * chla
-    #ax.plot(
+        y_fit = A@x
+
+        ax.plot(wavelengths, y, 'o', label='OOI abs')
+        ax.plot(wavelengths, y_fit, label='abs fit')
+        ax.set_ylabel('Total Phy Abs [m^-1]')
+        ax.set_xlabel('Wavelength [nm]')
+        ax.grid()
+        ax.legend()
+
+        fig.show()
+
+
 
 
     return A, y, x 
@@ -674,6 +682,6 @@ if __name__ == '__main__':
 
 
     ## [Running the least square estimation of the ratio of phytoplankton.]
-    for prof_index in range(10): 
-        A, b, x = Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat)
+    for z_i in range(10): 
+        A, b, x = Abs_Est_Species(PI, wavelengths, z_i,  prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat, plot=False)
         print(x)
