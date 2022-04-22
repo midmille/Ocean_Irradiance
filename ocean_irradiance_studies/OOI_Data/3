@@ -238,8 +238,6 @@ def Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_pr
     N_phy = len(phy_species)
     ## [The number of wavelengths.]
     N_lam = len(wavelengths)
-    ## [The number of grid points for the averaged grid.]
-    N_zavg = 20
 
     ## [The vertical point we are doing the wavelength based least square.]
     z_i = 0
@@ -249,7 +247,7 @@ def Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_pr
     optaa_depth_dat, optaa_dt_dat, optaa_abs_dat, optaa_wavelength_dat = ODF.Get_Optaa_Dat(optaa_dat)
 
     dt_lbnd = dt_profs[prof_index].data[0] 
-    dt_ubnd = dt_profs[prof_index].data[-1]
+    dt_ubnd = dt_prof[prof_index].data[-1]
     prof_mask = ODF.OOI_Dat_Time_Prof_Mask(dt_lbnd, dt_ubnd, optaa_dt_dat)
 
     ## [This retreives the profiles]
@@ -264,27 +262,17 @@ def Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_pr
     chla = chla_profs[prof_index].data
     cdom = cdom_profs[prof_index].data
 
-    ## [Smoothing out the data onto the same grid.]
-    ## [Smoothing the absorption profile.]
-    z_a_avg = np.linspace(z_a[0], z_a[-1], N_zavg)
-    a_ooi = ODF.Grid_Average_Profile(z_a, a_ooi, z_a_avg)
-
-    ## [Smoothing the chla and cdom profiles.]
-    z_chla_avg = np.linspace(z_chla[0], z_chla[-1], N_zavg)
-    chla = ODF.Grid_Average_Profile(z_chla, chla, z_chla_avg)
-    cdom = ODF.Grid_Average_Profile(z_chla, cdom, z_chla_avg)
-
     ## [The chla and b_b ooi should be on same grid.]
     ## [Interpolate the ooi chla grid, and ooi b_b to the ooi absorption grid.]
-    chla = np.interp(z_a_avg, z_chla_avg, chla)
-    cdom = np.interp(z_a_avg, z_chla_avg, cdom)
+    chla = np.interp(z_a, z_chla, chla)
+    cdom = np.interp(z_a, z_chla, cdom)
 
     ## [The array of indexes that corresponds to desired wavelength.] 
     lam_is = np.zeros(N_lam)
     ## [Loop over the wavelengths to get the corresponding ooi wavelength nearest neighbour.]
-    for i in range(N_lam): 
+    for k in range(N_lam): 
         ## [Must get the wavelength index.]
-        lam_is[i] = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], wavelengths[i])
+        lam_is[k] = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], lam)
         #lam_ooi = optaa_wavelengths[0,lam_i]
 
     ## [Construct the empty matrix system.]
@@ -300,20 +288,11 @@ def Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_pr
             A[i,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[0] * chla[z_i])
 
         ## [The rhs y, is simply the a_ooi minus the a_wat from Dut.]
-        ## [The water absorption subtraction is commented out at the momment because it leads to negative.]
-
-        ## WARNING 
-        ## WARNING The abs should be removed and the negative absorption problem should be fixed, this is temp. 
-        ## WARNING 
-        y[i] = abs(a_ooi[z_i, int(lam_is[i])]) # - abscat(wavelengths[i], 'water', C2chla='default')[0]
+        y[i] = a_ooi[z_i, lam_is[i]] - abscat(wavelengths[i], 'water', C2chla='default')[0]
         
     ## [Solving the least square system for the phy ratios.]
     #x = np.linalg.lstsq(A, b)
-    x = scipy.optimize.nnls(A,y)[0]
-
-    ## [Divide x by its two norm.]
-    ## [x should be positive.]
-    x = x/ sum(x)
+    x = scipy.optimize.nnls(A,y)
 
     #phy = OI.Phy(depth, chla_profs[k], esd(phy_type), 
     #             abscat(lam, phy_type, C2chla='default')[0], 
@@ -332,7 +311,7 @@ def Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_pr
     #ax.plot(
 
 
-    return A, y, x 
+    return A, b, x 
 
 
 def Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
@@ -657,11 +636,11 @@ if __name__ == '__main__':
     ## [Run the irradiance model using the profiles, over all profiles.]
     N=100
     wavelengths = [410, 443, 486, 551, 638, 671] #551, 638, 671]
-    phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn']
+    phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
     PI = Param_Init()
     #irr_field, irr_field_ab = Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs, optaa_dat)
 
-    prof_index = 0
+    prof_index = 1
     ## [The index of the spkir wavelengths that most closely matches the given irradiance wavcelengths.]
     ## [This wavelength index should be automated soon.]
     #spkir_wavelength_index = [ODF.Get_Wavelength_Index(spkir_wavelengths, wavelengths[0])]
@@ -674,6 +653,4 @@ if __name__ == '__main__':
 
 
     ## [Running the least square estimation of the ratio of phytoplankton.]
-    for prof_index in range(10): 
-        A, b, x = Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat)
-        print(x)
+    A, b, x = Abs_Est_Species(PI, wavelengths, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat)

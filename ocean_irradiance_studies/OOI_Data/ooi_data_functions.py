@@ -252,7 +252,7 @@ def Get_Wavelength_Index(var_wavelengths, wavelength):
     """
 
     diff = abs(var_wavelengths - wavelength)
-    print('diff', diff)
+    #print('diff', diff)
     wavelength_i = np.nanargmin(diff)
 
     return wavelength_i
@@ -383,19 +383,42 @@ def Grid_Average_Profile(x_dat, y_dat, x_avg):
     """
 
     ## [Empty y_avg array.]
-    y_avg = np.zeros(len(x_avg))
-    ## [Loop over the x_avg grid.]
-    for k in range(len(x_avg)-1): 
-        ## [y-vals when x-vals larger than the lower bound cell.]
-        y_lbnd = y_dat[x_dat>x_avg[k]]
-        x_lbnd = x_dat[x_dat>x_avg[k]]
-        ## [y-vals smaller than the upper bound cell.]
-        y_bnd = y_lbnd[x_lbnd<x_avg[k+1]]
-        ## [Set the y-val avg]
-        y_avg[k] = np.average(y_bnd)
+    ## [If the array is one or two D. ]
+    if len(y_dat.shape) == 2: 
+        y_avg = np.zeros((len(x_avg), y_dat.shape[1]))
+        dim = 2
+    elif len(y_dat.shape) == 1: 
+        y_avg = np.zeros(len(x_avg))
+        dim = 1
     
-    ## [Duplicate the last entry of y_avg.]
-    y_avg[-1] = y_avg[-2]
+    if dim == 1:
+        ## [Loop over the x_avg grid.]
+        for k in range(len(x_avg)-1): 
+            ## [y-vals when x-vals larger than the lower bound cell.]
+            y_lbnd = y_dat[x_dat>x_avg[k]]
+            x_lbnd = x_dat[x_dat>x_avg[k]]
+            ## [y-vals smaller than the upper bound cell.]
+            y_bnd = y_lbnd[x_lbnd<x_avg[k+1]]
+            ## [Set the y-val avg]
+            y_avg[k] = np.average(y_bnd)
+        ## [Duplicate the last entry of y_avg.]
+        y_avg[-1] = y_avg[-2]
+
+    ## [if the array is 2D the routine assumes that the first dimension is the 
+    ##  coordinate axis.]
+    if dim == 2:
+        ## [Loop over the x_avg grid.]
+        for k in range(len(x_avg)-1): 
+            ## [y-vals when x-vals larger than the lower bound cell.]
+            y_lbnd = y_dat[x_dat>x_avg[k]]
+            x_lbnd = x_dat[x_dat>x_avg[k]]
+            ## [y-vals smaller than the upper bound cell.]
+            y_bnd = y_lbnd[x_lbnd<x_avg[k+1]]
+            ## [Set the y-val avg]
+            y_avg[k, :] = np.average(y_bnd, axis=0)
+        ## [Duplicate the last entry of y_avg.]
+        y_avg[-1,:] = y_avg[-2,:]
+
 
     return y_avg
 
