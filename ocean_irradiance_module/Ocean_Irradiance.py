@@ -102,6 +102,51 @@ class CDOM_dens:
         
 
         return 
+        
+
+class CDOM_refa: 
+    """
+    This class is meant for the approximation of constant CDOM absorption. This takes a reference absorption and calculates the 
+    absorption spectrum for CDOM.
+
+    Parameters
+    ----------
+    z: 1-D Array [N]
+        The z coordinates on which the absorption due to cdom is defined.
+    cdom_refa: 1-D Array [N]
+        The reference absorption value for the CDOM absorption spoectrum. Choose something small like 400-450nm.
+    lam0: Float
+        The reference absorption corresponding wavelength value. 
+    wavelength: Float
+        The wavelength of the desired absorption. 
+    fraca: Optional, Float
+        Default is 1.0. This is the fraction of the reference absorption to be used. For example if 
+        50% of the absorption at the reference wavelength is due to CDOM then fraca would equal 0.5.
+    
+    Returns
+    -------
+    a: 1-D Array [N]
+        An array filled with the scalar constant CDOM absroption at the provided wavelength. 
+
+    """
+
+    def __init__(self, z, cdom_refa, lam0, wavelength, fraca=1.0): 
+
+        self.z = z
+        self.cdom_refa = cdom_refa
+        self.lam0 = lam0 
+        self.wavelength = wavelength
+        self.fraca = fraca
+
+        ## [This absorption curve is given by Dutkiweicz et al. 2015 equation 15. ] 
+        ## [Value given is in table 1.]
+        s_cdom = 0.021 ## [(nm)^-1]
+        ## [Equation 15.]
+        a = fraca *cdom_refa * np.exp(-s_cdom*(wavelength - lam0)) 
+        self.a = a
+        
+        return 
+
 
 def Backscatter_Ratio(esd):
     """ 

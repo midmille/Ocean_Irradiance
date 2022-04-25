@@ -159,37 +159,39 @@ def OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat
     ##[Labeling the ooi z-grids and a, b_b.]
     z_a = optaa_depth
     ## [The squeese makes the array 1-D.]
+    ## [Removing the water.]
     a = np.squeeze(optaa_abs_prof[:, lam_i])
     z_b_b = depth_profs[k].data
     b_b = opt_bs_profs[k].data
 
-    return z_a, a, z_b_b, b_b
+    return z_a, a, z_b_b, b_b, lam_ooi
 
 
-def Irr_OOI_Abs_Scat(PI, N, lam, prof_idex, phy_type, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
+def Irr_OOI_Abs_Scat(PI, N, lam, prof_idex, phy_type, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat, cdom_reflam): 
     """
     This function compares the absorption and backscatter as calculated by the irradiance model with Dutkiewicz
     coefficients to the values given by OO.
     """
-
     
-    phy = OI.Phy(depth, chla_profs[k], esd(phy_type), 
+    phy = OI.Phy(depth_profs[prof_index], chla_profs[prof_index], esd(phy_type), 
                  abscat(lam, phy_type, C2chla='default')[0], 
                  abscat(lam, phy_type, C2chla='default')[1])
 
-    CDOM2C = 0
-    CDOM_dens = OI.CDOM_dens(depth, cdom_profs[k], CDOM2C, lam)
+    ## [Get the z_a, a, and lam_ooi for the CDOM_refa object.]
+    z_a, cdom_refa, z_bb, bb, lam_ooi = OOI_Abs_Scat(prof_index, cdom_reflam, depth_profs, dt_profs, opt_bs_profs, optaa_dat)
+    ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
+    CDOM = OI.CDOM_refa(z_a, cdom_refa, lam_ooi, lam)
             
-    z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(depth[0], 
+    z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(depth_profs[prof_index][0], 
                                                                    abscat(lam, 'water'), 
                                                                    N,
                                                                    phy=phy, 
-                                                                   CDOM_dens=CDOM_dens, 
+                                                                   CDOM_refa=CDOM, 
                                                                    pt1_perc_zbot=False, 
                                                                    pt1_perc_phy=False)
 
     ## [Get the ooi absorption and scattering, along with their corresponding grids.]
-    z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi = OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat) 
+    z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi, lam_ooi = OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat) 
 
 
     return  z_irr, a_irr, b_b_irr, z_a_ooi, a_ooi, z_b_b_ooi, b_b_ooi, lam_ooi
@@ -343,7 +345,7 @@ def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, 
     return A, y, x 
 
 
-def Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat): 
+def Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat, cdom_reflam): 
     """
 
     """
@@ -370,8 +372,11 @@ def Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs
                                                                                                  chla_profs, 
                                                                                                  cdom_profs,
                                                                                                  opt_bs_profs, 
-                                                                                                 optaa_dat)
+                                                                                                 optaa_dat, 
+                                                                                                 cdom_reflam)
             
+            ## [Adding water absorption to OOI absorption.]
+            a_ooi = a_ooi + abscat(lam, 'water')[0]
             ## [Plotting Absorption comparison.]
             ## [Only plot the ooi abs, scat for i==0, since they are indp. of wavelength.]
             if i == 0: 
@@ -662,11 +667,14 @@ if __name__ == '__main__':
     ## [Get the spkir wavelengths.]
     spkir_wavelengths = np.array(ODF.Get_SPKIR_Wavelengths(spkir_dat.variables['spkir_abj_cspp_downwelling_vector']))
 
-    ## [Run the irradiance model using the profiles, over all profiles.]
+    ## [Some parameters.]
     N=100
     wavelengths = [410, 443, 486, 551, 638, 671] #551, 638, 671]
     phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn']
     PI = Param_Init()
+    cdom_reflam=412.0
+
+    ## [Run the irradiance model using the profiles, over all profiles.]
     #irr_field, irr_field_ab = Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs, optaa_dat)
 
     prof_index = 0
@@ -674,7 +682,7 @@ if __name__ == '__main__':
     ## [This wavelength index should be automated soon.]
     #spkir_wavelength_index = [ODF.Get_Wavelength_Index(spkir_wavelengths, wavelengths[0])]
     #Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index, irr_field, irr_field_ab, spkir_dat, args.site_name, args.assembly, args.method)
-    #Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat)
+    Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat, cdom_reflam)
 
     #depth_ref = -10
     #Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, args.start, args.stop, args.site_name, args.assembly, args.method)

@@ -70,7 +70,7 @@ def numerical_Eu(z, Ed, a, b_b, v_u, v_d):
     return Eu
 
 
-def ocean_irradiance_two_stream_ab(hbot, ab_wat, N, phy=None, CDOM_sal=None, CDOM_dens=None, pt1_perc_zbot=True, pt1_perc_phy=True):
+def ocean_irradiance_two_stream_ab(hbot, ab_wat, N, phy=None, CDOM_sal=None, CDOM_dens=None, CDOM_refa=None, pt1_perc_zbot=True, pt1_perc_phy=True):
 
     """
     This function calculates the irradiance grid, calculates the absorption, scattering, and backscatter 
@@ -157,10 +157,27 @@ def ocean_irradiance_two_stream_ab(hbot, ab_wat, N, phy=None, CDOM_sal=None, CDO
             a_cdom = cdom_a * CDOM2C * cdom 
             a += a_cdom
 
-            
+    ## [Inclusion of CDOM via its reference absorption.]
+    if CDOM_refa: 
+        ## [Unpack.]
+        z_cdom = CDOM_refa.z
+        a_cdom = CDOM_refa.a
+        ## [Interpolate CDOM to the phytoplankton grid.]
+        if phy: 
+            ## [Now cdom is on the phy grid.]
+            a_cdom = np.interp(z_phy, z_cdom, a_cdom)
+            a += a_cdom
+        ## [If there is not phy.]
+        else: 
+            ## [On the cdom grid.]
+            a += a_cdom
 
     ## [One estimation of CDOM at a time.]
     if CDOM_sal and CDOM_dens:
+        raise Exception("Can't have both CDOM versions at same time")
+    if CDOM_sal and CDOM_refa:
+        raise Exception("Can't have both CDOM versions at same time")
+    if CDOM_dens and CDOM_refa:
         raise Exception("Can't have both CDOM versions at same time")
 
     
@@ -197,7 +214,7 @@ def ocean_irradiance_two_stream_ab(hbot, ab_wat, N, phy=None, CDOM_sal=None, CDO
         print('a_interp_post:', a)
         b = np.interp(z,z_phy,b)
         b_b_phy = np.interp(z, z_phy, b_b_phy)
-    elif CDOM_sal or CDOM_dens: 
+    elif CDOM_sal or CDOM_dens or CDOM_refa: 
         a = np.interp(z,z_cdom,a)
         ## no scattering for cdom, thus just water scattering.
         b = np.full(N, b)
