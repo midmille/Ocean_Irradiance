@@ -141,11 +141,11 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default', dut_txt=T
  
     ## [Use the Dutkiewicz text file coefficients.]
     if dut_txt == True: 
-        path = PI.path
+
         ## [The water data frame.]
         ## [Water data fram column names.]
         wat_cols = ['wavelength', 'a', 'b']
-        opt_wat = pandas.read_csv(path + "optics_water.txt", header=None, sep=' ', skiprows=7, names=wat_cols)
+        opt_wat = pandas.read_csv("optics_water.txt", header=None, sep=' ', skiprows=7, names=wat_cols)
 
         ## [The phytoplankton data frame.]
         ## [Phytoplankton column names.]
@@ -157,7 +157,7 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default', dut_txt=T
                                "non-spec bb coef (m2 mgC-1)",
                                "a (m2 mgC-1)" ]
 
-        opt_phy = pandas.read_csv(path + "optics_plankton.txt", 
+        opt_phy = pandas.read_csv("optics_plankton.txt", 
                                    header=None, 
                                    sep=" ", 
                                    skiprows=8, 
@@ -176,41 +176,35 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default', dut_txt=T
                 spec_name = "Micromonas"
             if constituent == 'Syn':
                 spec_name = "Syn"
-                if C2chla == 'default': 
-                    C2chla == SC2chla
             if constituent == 'HLPro':
                 spec_name = "HLPro"
             if constituent == 'LLPro':
                 spec_name = "LLPro"
             if constituent == 'Diat':
                 spec_name = "Diatom"
-                if C2chla == 'default': 
-                    C2chla == LC2chla
             if constituent == 'Cocco':
-                spec_name = "Coccoli"
-            if constituent == 'Tricho':
-                spec_name = "Tricho"
-            if constituent == 'n2unicell':
-                spec_name = "n2unicell"
-            if constituent == 'Lgeuk':
-                spec_name = "Lgeuk"
-            if constituent == 'Generic':
-                spec_name = "MEAN"
-            if constituent == 'zooplankton':
-                spec_name = "zooplankton"
-            if constituent == 'heterobacteria':
-                spec_name = "heterobacteria"
+                spec_name = "Syn"
 
-            ## [Retrieveing the species specific absorption and scattering for desired wavelength.]
+
             ## [Species specific portion of the data frame.]
             spec_df = opt_phy[opt_phy["species"] == spec_name]
             ## [Getting the wavelength specific values.]
-            a = spec_df[spec_df["wavelength"] == wavelength].values[0,2]
-            ## [Total Scattering is still in units of Carbon]
-            b = spec_df[spec_df["wavelength"] == wavelength].values[0,4] * C2chla
-            
-            return a, b
+            a = spec_df[spec_df["wavelength"] == wavelength].values[[
 
+     
+    
+    if constituent == 'water':
+        return water[wavelength]
+    if constituent == 'HLPro': 
+        return HLPro[wavelength]
+    if constituent == 'Cocco': 
+        return Cocco[wavelength]
+    if constituent == 'Diat':
+        return Diat[wavelength]
+    if constituent == 'Generic': 
+        return Generic[wavelength]
+    if constituent == 'Syn':
+        return Syn[wavelength]
     
 def equivalent_spherical_diameter(species):
     """

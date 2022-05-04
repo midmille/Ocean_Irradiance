@@ -10,6 +10,7 @@ from ooi_data_explorations.data_request import data_request
 import matplotlib.pyplot as plt
 import re
 import numpy as np
+import pickle
 ## [User Mods]
 from ocean_irradiance_module import Wavelength_To_RGB
 
@@ -32,6 +33,68 @@ def Download_Data(site_name, assembly, instrument, method, start, stop):
     ooi_dat = data_request(site_name, assembly, instrument, method, start=start, stop=stop)
 
     return ooi_dat
+
+
+def Download_OOI_Data(ooi_savefile_head, download, site_name, assembly, method, start, stop):
+    """
+    This function is for the download xor load of the desired OOI data. If the files already exists then pass
+    the download argument as false. Otherwise if you want to download the data from OOI servers, 
+    which takes some times, then pass the download argument as true.
+
+    Parameters
+    ----------
+    ooi_savefile_head: String
+        The header of the save file. The function will add '_{instrumentname}.p' for each different instrument, 
+        which is [spkir, flort, optaa]. 
+    download: Boolean 
+        Set True to download OOI data from servers. Set False to load from predownloaded pickle files.
+    site_name: String
+        The site name variables for the data.
+    assembly: String 
+        The assembly. 
+    method: String 
+        The method.
+    start: String
+        The start date of the profiler data. 
+    stop: String
+        The stop date of the profiler data. 
+
+    Returns
+    -------
+    flort_dat: ooi data_request object
+        The flort data.
+    spkir_dat: ooi data_request object
+        The spkir data.
+    optaa_dat: ooi data_request object
+        The optaa data.
+
+    """
+    ## [The savefile names for each ooi data set.]
+    spkir_savefile = ooi_savefile_head + '_spkir.p'
+    flort_savefile = ooi_savefile_head + '_flort.p'
+    optaa_savefile = ooi_savefile_head + '_optaa.p'
+
+    ## [Download OOI data.]
+    if download: 
+        ## [Download the data.]
+        ## [The Chla data.]
+        flort_dat = Download_Data(site_name, assembly, 'FLORT', method, start, stop)
+        ## [The spkir data.]
+        spkir_dat = Download_Data(site_name, assembly, 'SPKIR', method, start, stop)
+        ## [The OPTAA data.]
+        optaa_dat = Download_Data(site_name, assembly, 'OPTAA', method, start, stop)
+        ## [Save the ooi data into the pickle file.]
+        pickle.dump(flort_dat, open(flort_savefile, 'wb'))
+        pickle.dump(spkir_dat, open(spkir_savefile, 'wb'))
+        pickle.dump(optaa_dat, open(optaa_savefile, 'wb'))
+
+    ## [Load the data from pickle.]
+    else:
+        flort_dat = pickle.load(open(flort_savefile, 'rb'))
+        spkir_dat = pickle.load(open(spkir_savefile, 'rb'))
+        optaa_dat = pickle.load(open(optaa_savefile, 'rb'))
+
+    return flort_dat, spkir_dat, optaa_dat
 
 
 def Create_Profiles(depth, date_time, val, dz_max): 
@@ -191,13 +254,28 @@ def Get_Optaa_Dat(optaa_dat, abs_cor=False):
     depth_dat = - optaa_dat.variables['depth']
     dt_dat = optaa_dat.variables['time']
     abs_dat = optaa_dat.variables['optical_absorption']
+    beam_att_dat = optaa_dat.variables['beam_attenuation']
     wavelength_dat = optaa_dat.variables['wavelength_a']
+    wavelength_beam_dat = optaa_dat.variables['wavelength_c']
+
+    ## [The empty scatter array. The underscore '_dat' is removed because the array is ]
+    scat = np.zeros(abs_dat.data.shape)
+    ## [Interpolate the beam attenuation onto the absorption spectral grid]
+    ## [Loop over the z-coordinate grid and perform the interpolation at every z.]
+    for k in range(len(depth_dat)): 
+        ## [The 1-D beam attenuation array interpolated to the absroption wavelengths].
+        beam_att_interp = np.interp(wavelength_dat.data[k,:], 
+                                    wavelength_beam_dat.data[k,:], 
+                                    beam_att_dat.data[k,:])
+        ## [The total scattering is given by the total attenuation minus the absorption.]
+        scat[k,:] = beam_att_interp - abs_dat.data[k,:]
+
 
     if abs_cor: 
         wavelengths = wavelength_dat.data[0,:] 
         OPTAA_Abs_Correction_G(abs_dat, wavelengths) 
 
-    return depth_dat, dt_dat, abs_dat, wavelength_dat
+    return depth_dat, dt_dat, abs_dat, wavelength_dat, scat
 
 
 def Get_Optaa_Profiles(optaa_dat, abs_cor=False): 
@@ -423,6 +501,69 @@ def Grid_Average_Profile(x_dat, y_dat, x_avg):
     return y_avg
 
 
+def Smooth_Profile_55(x_dat, y_dat): 
+    """
+    This function implements the 557 data smoothing algorithm as described and used by 
+    Chris Wingard, but without the 7. 
+
+    Parameters
+    ----------
+    x_dat: 1-D Array, [N]
+        The x-coordinates of the data.
+    y_dat: 1-D Array, [N]
+        The y-coordinates of the data.
+
+    Returns 
+    -------
+    x_55: 1-D Array, [int(N)/5/5]
+        The returned x_coordinates of the smooth y data.
+    y_55: 1-D Array, [int(N)/5/5]
+        The returned smoothed y_data.
+    """
+
+    N = len(y_dat)
+
+    ## [5 point median section.]
+    ## -------------------------
+    ## [The 5 point median array size.]
+    N_5 = int(N/5)
+    y_5 = np.zeros(N_5)
+    x_5 = np.zeros(N_5)
+
+    ## [Counter.]
+    i = 0
+    ## [Loop over profile in 5 point increments and take the 5 point median.]
+    for k in range(5, N, 5): 
+        ## [5 point median. Since the 5 pt array is always odd, we can assume that the 
+        ##  median will be in the array.]
+        y_5[i] = np.median(y_dat[k-5:k])
+        ## [The correct x coordinate.]
+        xi = np.argwhere(y_dat[k-5:k] == y_5[i])
+        x_5[i] = x_dat[xi[0] + (k-5)]
+        
+        i+=1
+
+    ## [5 point mean section.]
+    ## -----------------------
+    ## [The 5 point mean array size.]
+    N_55 = int(N_5/5)
+    y_55 = np.zeros(N_55)
+    x_55 = np.zeros(N_55)
+
+    ## [Counter.]
+    i=0
+    ## [Loop over the median profile in increments of 5.]
+    for k in range(5, N_5, 5): 
+        ## [The 5 point mean.]
+        y_55[i] = np.mean(y_5[k-5:k])
+        ## [x cooirdinate is the middle of the center coordinate of this 5 point mean.]
+        x_55[i] = x_5[k-3]
+
+        i+=1
+
+    return x_55, y_55
+
+
 def Plot_SPKIR_Profile(prof_index, spkir_data, site, assembly, instrument, method): 
     """
 
@@ -438,8 +579,6 @@ def Plot_SPKIR_Profile(prof_index, spkir_data, site, assembly, instrument, metho
     depth_profs, date_time_profs, spkir_profs = Create_Profiles(depth_dat.data, date_time_dat.data, spkir_dat.data, dz_max)
     ## [Make the given profs theri own variables.]
     depth = depth_profs[prof_index]
-    for d in depth:
-        print(d)
     date_time = date_time_profs[prof_index]
     spkir = spkir_profs[prof_index]
 
@@ -588,6 +727,5 @@ def Plot_Hoffmuller(data_set, var_name, site, assembly, instrument, method):
     fig.show()
 
     return 
-
 
 

@@ -28,6 +28,9 @@ class Param_Init:
         ## Wavelengths taken from John Wilkin email regarding satelite wavelengths.
         self.wavelengths = [410,443,486,551,638,671] 
 
+        ## [The path to the ocean_irradiance_module.]
+        self.path = '~/Ocean_Irradiance/ocean_irradiance_module/'
+
         ## The Chlorophyll to Nitrogen unit change. 
         #-------------------------------------------------------------
         """
