@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 import scipy
 
 
-def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat, plot=False): 
+def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat, ab='a', plot=False): 
     """
     This function is for the estimation of the ratio of different species that could compose the
     resulting observed absorption profile from OOI. The total observed phytoplankton concentration will be
@@ -78,7 +78,7 @@ def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, 
 
     ## [This step gets the OOI data.]
     ## [The optaa data.]
-    optaa_depth_dat, optaa_dt_dat, optaa_abs_dat, optaa_wavelength_dat, scat = ODF.Get_Optaa_Dat(optaa_dat)
+    optaa_depth_dat, optaa_dt_dat, optaa_abs_dat, optaa_scat, optaa_wavelength_dat = ODF.Get_Optaa_Dat(optaa_dat)
 
     dt_lbnd = dt_profs[prof_index].data[0] 
     dt_ubnd = dt_profs[prof_index].data[-1]
@@ -86,8 +86,9 @@ def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, 
 
     ## [This retreives the profiles]
     optaa_dt = optaa_dt_dat.data[prof_mask]
-    z_a = optaa_depth_dat.data[prof_mask]
+    z_ab = optaa_depth_dat.data[prof_mask]
     a_ooi = optaa_abs_dat.data[prof_mask]
+    b_ooi = optaa_scat[prof_mask]
     optaa_wavelengths = optaa_wavelength_dat.data[prof_mask]
 
     ## [Get the arrays for the given prof_index.]
@@ -95,22 +96,8 @@ def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, 
     z_chla = depth_profs[prof_index].data
     chla = chla_profs[prof_index].data
     cdom = cdom_profs[prof_index].data
-
-    ## [Smoothing out the data onto the same grid.]
-    ## [Smoothing the absorption profile.]
-    z_a_avg = np.linspace(z_a[0], z_a[-1], N_zavg)
-    a_ooi = ODF.Grid_Average_Profile(z_a, a_ooi, z_a_avg)
-
-    ## [Smoothing the chla and cdom profiles.]
-    z_chla_avg = np.linspace(z_chla[0], z_chla[-1], N_zavg)
-    chla = ODF.Grid_Average_Profile(z_chla, chla, z_chla_avg)
-    cdom = ODF.Grid_Average_Profile(z_chla, cdom, z_chla_avg)
-
-    ## [The chla and b_b ooi should be on same grid.]
-    ## [Interpolate the ooi chla grid, and ooi b_b to the ooi absorption grid.]
-    chla = np.interp(z_a_avg, z_chla_avg, chla)
-    cdom = np.interp(z_a_avg, z_chla_avg, cdom)
-
+    ## [Smoothing chla and cdom]
+    z_chla_s, chla_s = ODF.Smooth_Profile_55(z_chla, chla)
 
     ## [The array of indexes that corresponds to desired wavelength.] 
     lam_is = np.zeros(N_lam, dtype=np.int8)
@@ -126,11 +113,27 @@ def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, 
 
     ## [Loop over the wavelengths.]
     for i in range(N_lam): 
+
+        ## [Absorption and scattering for current wavelength]
+        a = np.squeeze(a_ooi[:,lam_is[i]])
+        b = np.squeeze(b_ooi[:,lam_is[i]])
+        
+        ## [Smoothing the absorption and scattering for current wavelength]
+        z_s, a_s = ODF.Smooth_Profile_55(z_ab, a)
+        z_s, b_s = ODF.Smooth_Profile_55(z_ab, b)
+
+        ## [Chla being interpolated to absorption grid.]
+        chla_s_interp = np.interp(z_s, z_chla_s, chla_s)
+
         ## [Loop over the phytoplankton species.]
         for k in range(N_phy): 
             ## [Filling the A array, recall we are solving for a single z location. 
             ##  Each row corresponds to a wavelength and each column a different species.]
-            A[i,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[0] * chla[z_i])
+            ## [Absorption array.]
+            if ab == 'a':
+                A[i,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[0] * chla_s_interp[z_i])
+            if ab == 'b':
+                A[i,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[1] * chla_s_interp[z_i])
 
         ## [The rhs y, is simply the a_ooi minus the a_wat from Dut.]
         ## [The water absorption subtraction is commented out at the momment because it leads to negative.]
@@ -138,8 +141,8 @@ def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, 
         ## [Get the cdom absorption]
         cdom_reflam = 412
         lam_cdom_i = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], cdom_reflam)
-        CDOM = OI.CDOM_refa(z_a_avg, 
-                            a_ooi[z_i, lam_cdom_i], 
+        CDOM = OI.CDOM_refa(z_s, 
+                            a_s[z_i], 
                             optaa_wavelengths[0,lam_cdom_i],
                             optaa_wavelengths[0,lam_is[i]])
         a_cdom = CDOM.a
@@ -148,7 +151,10 @@ def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, 
         ## WARNING The abs should be removed and the negative absorption problem should be fixed, this is temp. 
         ## WARNING 
         ## [The cdom is subtracted.]
-        y[i] = abs(a_ooi[z_i, lam_is[i]]) - a_cdom # - abscat(wavelengths[i], 'water', C2chla='default')[0]
+        if  ab == 'a':
+            y[i] = abs(a_s[z_i]) - a_cdom # - abscat(wavelengths[i], 'water', C2chla='default')[0]
+        if  ab == 'b':
+            y[i] = abs(b_s[z_i]) 
         
     ## [Solving the least square system for the phy ratios.]
     #x = np.linalg.lstsq(A, b)
@@ -183,7 +189,7 @@ def Abs_Est_Species(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, 
     return A, y, x 
 
 
-def Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x): 
+def Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab='a'): 
     """
     This plots the resulting solution for the least squares absorption approximation. 
     
@@ -200,17 +206,21 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x):
 
     y_est = A@x
 
-
     fig, ax = plt.subplots()
 
-    ax.plot(wavelengths, y, 'k', label = "OOI Total Effective Absorption")
-    ax.plot(wavelengths, y_est, ':k', label = "Least Square Approx Absorption")
+    if ab == 'a': 
+        ab_str = 'Absorption'
+    if ab == 'b': 
+        ab_str = 'Scattering'
+
+    ax.plot(wavelengths, y, 'k', label = f"OOI Total Effective {ab_str}")
+    ax.plot(wavelengths, y_est, ':k', label = f"Least Square Approx {ab_str}")
     
     ## [Plot the species coefficients]
     for k in range(N_phy): 
         ax.plot(wavelengths, A[:, k], label = phy_species[k]) 
 
-    ax.set_ylabel("Effective Absorption [m^-1]")
+    ax.set_ylabel(f"Effective {ab_str}  [m^-1]")
     ax.set_xlabel("Wavelength [nm]")
 
     ax.grid()
@@ -244,6 +254,9 @@ if __name__ == '__main__':
     PI = Param_Init()
     cdom_reflam = 412.0
     prof_index = 0 
+    z_i = -1
+    ## [The absorption or scattering flag.]
+    ab = 'b'
 
 
     ## [Download or load the data sets.]
@@ -265,7 +278,6 @@ if __name__ == '__main__':
 
 
     ## [Running the least square estimation of the ratio of phytoplankton.]
-    z_i = 0
     A, y, x = Abs_Est_Species(PI, 
                               wavelengths,
                                   z_i,
@@ -277,7 +289,8 @@ if __name__ == '__main__':
                                   cdom_profs, 
                                   opt_bs_profs, 
                                   optaa_dat, 
+                                  ab=ab,
                                   plot=False)
 
 
-    Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x)
+    Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab=ab)

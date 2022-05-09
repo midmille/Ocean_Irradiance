@@ -140,7 +140,7 @@ def OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat
     k = prof_index
 
     ## [The optaa data.]
-    optaa_depth_dat, optaa_dt_dat, optaa_abs_dat, optaa_wavelength_dat, optaa_scat = ODF.Get_Optaa_Dat(optaa_dat)
+    optaa_depth_dat, optaa_dt_dat, optaa_abs_dat, optaa_scat, optaa_wavelength_dat = ODF.Get_Optaa_Dat(optaa_dat)
 
     dt_lbnd = dt_profs[k].data[0] 
     dt_ubnd = dt_profs[k].data[-1]

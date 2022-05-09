@@ -275,7 +275,7 @@ def Get_Optaa_Dat(optaa_dat, abs_cor=False):
         wavelengths = wavelength_dat.data[0,:] 
         OPTAA_Abs_Correction_G(abs_dat, wavelengths) 
 
-    return depth_dat, dt_dat, abs_dat, wavelength_dat, scat
+    return depth_dat, dt_dat, abs_dat, scat, wavelength_dat
 
 
 def Get_Optaa_Profiles(optaa_dat, abs_cor=False): 
