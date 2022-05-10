@@ -246,15 +246,14 @@ def Run_Lstsq_Time(N_profs, PI, wavelengths, z_i, phy_species, depth_profs, dt_p
     """
 
     ## [The number of phytoplankton species.]
-    N_phy = len(phy_species)
+    N=len(phy_species)
 
     ## [The exmpty x_profs array, which contains the lst sq species estimate for each profile
     ##  at the same z_i.]
-    x_profs = np.zeros((N_phy, N_profs))
+    x_profs = np.zeros((N, N_profs))
     
     ## [Loop over the profiles.]
     for prof_index in range(N_profs):
-        print(prof_index)
         ## [Running the least square estimation of the ratio of phytoplankton.]
         A, y, x = Est_Spec_Lstsq(PI, 
                                 wavelengths,
@@ -270,7 +269,7 @@ def Run_Lstsq_Time(N_profs, PI, wavelengths, z_i, phy_species, depth_profs, dt_p
                                 plot=False)
 
         ## [Storing the result into x_profs array.]
-        x_profs[:,prof_index] = x
+        x_profs[:,prof_index]
 
     return x_profs
 
@@ -347,50 +346,6 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab='a'):
     return 
 
 
-def Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs): 
-    """
-    This plots a Hoffmuller diagram of the ratios of different species opf phytoplankton in time
-
-    It will be done by plotting a stacked bar plot.]
-    """
-
-    ## [The number of species.]
-    N_phy = len(phy_species)
-
-    fig, ax = plt.subplots()
-
-    ## [Init the bottom coordinate for the stacked bar plot.]
-    bot = np.zeros(N_profs)
-
-    ## [Init the dt coordinate array.]
-#    dt = np.zeros(N_profs, dtype=object)
-    dt = np.zeros(N_profs)
-
-    ## [The colors for each species.]
-    colors = ['b','r','g','y','c','m','k','w'][:N_phy]
-
-    ## [The time coordinate.]
-    for k in range(N_profs):
-#        dt[k] = dt_profs[k][0]
-         dt[k] = k
-
-    print(dt)
-    ## [Loop over the species.]
-    for k in range(N_phy): 
-        
-        ## [plot the phy species layer of the bar plot.]
-        ax.bar(dt, x_profs[k,:], bottom=bot, color = colors[k], label=phy_species[k], width=0.9)
-
-        ## [Update the bottom of the bar plot.]
-        bot = bot + x_profs[k,:]
-
-    ax.legend()
-    ax.grid()
-    fig.show()
-
-    return 
-        
-
 if __name__ == '__main__': 
     
     ## [The data request parameters.]
@@ -417,8 +372,7 @@ if __name__ == '__main__':
     z_i = -1
     ## [The absorption or scattering flag.]
     ab = 'ab'
-    ## [The number of profiles for the Hoffmuller.]
-    N_profs = 54
+
 
     ## [Download or load the data sets.]
     flort_dat, spkir_dat, optaa_dat = ODF.Download_OOI_Data(ooi_savefile_head, 
@@ -454,15 +408,14 @@ if __name__ == '__main__':
     Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab=ab)
 
     ## [Running the least squares problem over many profiles.]
-#    x_profs = Run_Lstsq_Time(N_profs, 
-#                             PI, 
-#                             wavelengths, 
-#                             z_i, 
-#                             phy_species, 
-#                             depth_profs, 
-#                             dt_profs, 
-#                             chla_profs, 
-#                             cdom_profs, 
-#                             optaa_dat, 
-#                             ab=ab)
-#    Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs)
+    x_profs = Run_Lstsq_Time(N_profs, 
+                             PI, 
+                             wavelengths, 
+                             z_i, 
+                             phy_species, 
+                             depth_profs, 
+                             dt_profs, 
+                             chla_profs, 
+                             cdom_profs, 
+                             optaa_dat, 
+                             ab='ab')

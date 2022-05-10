@@ -539,7 +539,12 @@ def Smooth_Profile_55(x_dat, y_dat):
         y_5[i] = np.median(y_dat[k-5:k])
         ## [The correct x coordinate.]
         xi = np.argwhere(y_dat[k-5:k] == y_5[i])
-        x_5[i] = x_dat[xi[0] + (k-5)]
+        ## [If the length of xi is zero then it wasn't found, just use 0.]
+        ## [This is a hack job fix but check with jonathan and Chris about it later.]
+        if len(xi)==0: 
+            x_5[i] = x_dat[0 + (k-5)]
+        else:
+            x_5[i] = x_dat[xi[0] + (k-5)]
         
         i+=1
 
