@@ -25,6 +25,7 @@ import pickle
 from ooi_data_explorations.data_request import data_request
 import matplotlib.pyplot as plt
 import scipy
+import cvxpy as cp
 
 
 def Est_Spec_Lstsq(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs,
@@ -203,37 +204,25 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, d
                 y[i] = abs(a_s[z_i]) - a_cdom # - abscat(wavelengths[i], 'water', C2chla='default')[0]
             if  ab == 'b':
                 y[i] = abs(b_s[z_i]) 
+
+    ## [Solvving the problem as a convex optimization problem using the cvxpy.]
+    ## [This is a least squares implementation fo the problem with constraints.]
+    x = cp.Variable(N_phy)
+    objective = cp.Minimize(cp.sum_squares(A@x - y))
+    constraints = [0 <= x, cp.sum(x) == 1.0]
+    prob = cp.Problem(objective, constraints)
+    result = prob.solve()
+    x = x.value
+
         
     ## [Solving the least square system for the phy ratios.]
     #x = np.linalg.lstsq(A, b)
-    x = scipy.optimize.nnls(A,y)[0]
-#    x = scipy.optimize.lsq_linear(A,y, bounds=(0,1)).x
+#    x = scipy.optimize.nnls(A,y)[0]
+#    x = scipy.optimize.lsq_linear(A,y, bounds=(0,1))
 
     ## [Divide x by its two norm.]
     ## [x should be positive.]
 #    x = x/ sum(x)
-
-    #phy = OI.Phy(depth, chla_profs[k], esd(phy_type), 
-    #             abscat(lam, phy_type, C2chla='default')[0], 
-    #             abscat(lam, phy_type, C2chla='default')[1])
-
-    #CDOM2C = 0
-    #CDOM_dens = OI.CDOM_dens(depth, cdom_profs[k], CDOM2C, lam)
-
-    if plot: 
-               
-        fig, ax = plt.subplots()
-
-        y_fit = A@x
-
-        ax.plot(wavelengths, y, 'o', label='OOI abs')
-        ax.plot(wavelengths, y_fit, label='abs fit')
-        ax.set_ylabel('Total Phy Abs [m^-1]')
-        ax.set_xlabel('Wavelength [nm]')
-        ax.grid()
-        ax.legend()
-
-        fig.show()
 
     return A, y, x 
 
@@ -251,6 +240,9 @@ def Run_Lstsq_Time(N_profs, PI, wavelengths, z_i, phy_species, depth_profs, dt_p
     ## [The exmpty x_profs array, which contains the lst sq species estimate for each profile
     ##  at the same z_i.]
     x_profs = np.zeros((N_phy, N_profs))
+
+    ## [The residuals of the fit for each.]
+    residuals = np.zeros(N_profs)
     
     ## [Loop over the profiles.]
     for prof_index in range(N_profs):
@@ -269,10 +261,17 @@ def Run_Lstsq_Time(N_profs, PI, wavelengths, z_i, phy_species, depth_profs, dt_p
                                 ab=ab,
                                 plot=False)
 
+        ## [If the point is bad such that y is all zeros.]
+        if sum(np.abs(y)) == 0.0: 
+            x = np.NaN * x
+
         ## [Storing the result into x_profs array.]
         x_profs[:,prof_index] = x
 
-    return x_profs
+        ## [The two norm of the difference between y_true and the apporx solution.]
+        residuals[prof_index] = np.linalg.norm(A@x - y, ord=2) / np.linalg.norm(y, ord=2)
+
+    return x_profs, residuals
 
 
 def Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab='a'): 
@@ -347,7 +346,7 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab='a'):
     return 
 
 
-def Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs): 
+def Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs, plot_residuals=False, residuals=None): 
     """
     This plots a Hoffmuller diagram of the ratios of different species opf phytoplankton in time
 
@@ -356,8 +355,6 @@ def Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs):
 
     ## [The number of species.]
     N_phy = len(phy_species)
-
-    fig, ax = plt.subplots()
 
     ## [Init the bottom coordinate for the stacked bar plot.]
     bot = np.zeros(N_profs)
@@ -374,7 +371,14 @@ def Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs):
 #        dt[k] = dt_profs[k][0]
          dt[k] = k
 
-    print(dt)
+    ## [Plot the residual on the same figure.]
+    if plot_residuals: 
+        fig, axs = plt.subplots(nrows=1, ncols=2)
+    else:
+        fig, ax = plt.subplots()
+
+    ## [Top ax is the hoffmuller.]
+    ax = axs[0]
     ## [Loop over the species.]
     for k in range(N_phy): 
         
@@ -384,9 +388,25 @@ def Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs):
         ## [Update the bottom of the bar plot.]
         bot = bot + x_profs[k,:]
 
+    ax.set_title('Constrained Least Squares \n Phytoplankton Community Estimation')
+    ax.set_ylabel('Fractional Concentraion')
+    ax.set_xlabel('Temporal Index')
     ax.legend()
     ax.grid()
     fig.show()
+
+    if plot_residuals: 
+        ## [The bottom ax.]
+        ax = axs[1]
+
+        ## [Plot the residuals.]
+        ax.bar(dt, residuals, color = 'k', width=0.9)
+
+        ax.set_title('Two Norm of Residual Vector')
+        ax.set_ylabel(r'$\frac{|\mathbf{A} \mathbf{x} - \mathbf{y} |_2}{|\mathbf{y}|_2}$')
+        ax.set_xlabel('Temporal Index')
+        ax.grid()
+        fig.show()
 
     return 
         
@@ -413,12 +433,12 @@ if __name__ == '__main__':
     phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
-    prof_index = 0 
+    prof_index = 12
     z_i = -1
     ## [The absorption or scattering flag.]
     ab = 'ab'
     ## [The number of profiles for the Hoffmuller.]
-    N_profs = 54
+    N_profs = 50
 
     ## [Download or load the data sets.]
     flort_dat, spkir_dat, optaa_dat = ODF.Download_OOI_Data(ooi_savefile_head, 
@@ -454,15 +474,15 @@ if __name__ == '__main__':
     Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab=ab)
 
     ## [Running the least squares problem over many profiles.]
-#    x_profs = Run_Lstsq_Time(N_profs, 
-#                             PI, 
-#                             wavelengths, 
-#                             z_i, 
-#                             phy_species, 
-#                             depth_profs, 
-#                             dt_profs, 
-#                             chla_profs, 
-#                             cdom_profs, 
-#                             optaa_dat, 
-#                             ab=ab)
-#    Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs)
+#    x_profs, residuals = Run_Lstsq_Time(N_profs, 
+#                                        PI, 
+#                                        wavelengths, 
+#                                        z_i, 
+#                                        phy_species, 
+#                                        depth_profs, 
+#                                        dt_profs, 
+#                                        chla_profs, 
+#                                        cdom_profs, 
+#                                        optaa_dat, 
+#                                        ab=ab)
+#    Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs, plot_residuals=True, residuals=residuals)
