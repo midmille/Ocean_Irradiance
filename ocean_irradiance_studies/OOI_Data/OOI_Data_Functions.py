@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import re
 import numpy as np
 import pickle
+import xarray as xr
 ## [User Mods]
 from ocean_irradiance_module import Wavelength_To_RGB
 
@@ -35,7 +36,7 @@ def Download_Data(site_name, assembly, instrument, method, start, stop):
     return ooi_dat
 
 
-def Download_OOI_Data(ooi_savefile_head, download, site_name, assembly, method, start, stop):
+def Download_OOI_Data(ooi_savefile_head, download, site_name, assembly, method, start, stop, profiled=True):
     """
     This function is for the download xor load of the desired OOI data. If the files already exists then pass
     the download argument as false. Otherwise if you want to download the data from OOI servers, 
@@ -58,6 +59,8 @@ def Download_OOI_Data(ooi_savefile_head, download, site_name, assembly, method, 
         The start date of the profiler data. 
     stop: String
         The stop date of the profiler data. 
+    profiled: optional, Boolean
+        This flag is set true if the data is to made into profiles. 
 
     Returns
     -------
@@ -67,12 +70,26 @@ def Download_OOI_Data(ooi_savefile_head, download, site_name, assembly, method, 
         The spkir data.
     optaa_dat: ooi data_request object
         The optaa data.
+    ---
+    AND 
+    ---
 
+    flort_profiles: List of ooi data_request objects
+        The flort data.
+    spkir_profiles: List of ooi data_request objects
+        The spkir data.
+    optaa_profiles: List of ooi data_request objects
+        The optaa data.
     """
+
     ## [The savefile names for each ooi data set.]
     spkir_savefile = ooi_savefile_head + '_spkir.p'
     flort_savefile = ooi_savefile_head + '_flort.p'
     optaa_savefile = ooi_savefile_head + '_optaa.p'
+    ## [The pickle file names of the processed data.]
+    spkir_profiles_savefile = ooi_savefile_head + '_spkir_profiles.p'
+    flort_profiles_savefile = ooi_savefile_head + '_flort_profiles.p'
+    optaa_profiles_savefile = ooi_savefile_head + '_optaa_profiles.p'
 
     ## [Download OOI data.]
     if download: 
@@ -83,216 +100,150 @@ def Download_OOI_Data(ooi_savefile_head, download, site_name, assembly, method, 
         spkir_dat = Download_Data(site_name, assembly, 'SPKIR', method, start, stop)
         ## [The OPTAA data.]
         optaa_dat = Download_Data(site_name, assembly, 'OPTAA', method, start, stop)
+
+        ## [Make into profiles if flag True.]
+        if profiled: 
+            ## [Making Flort profiles, no profile processing for now.]
+            flort_profiles = Create_Profiles(flort_dat, process_profile=False)
+            ## [Spkir profiles.]
+            spkir_profiles = Create_Profiles(spkir_dat, process_profile=False)
+            ## [The optaa profiles, does include processing since the optaa data set 
+            ##  has the on_seconds variable.]
+            optaa_profiles = Create_Profiles(optaa_dat, process_profile=False)
+
+            ## [Save the profiled data into pickles.]
+            pickle.dump(flort_profiles, open(flort_profiles_savefile, 'wb'))
+            pickle.dump(spkir_profiles, open(spkir_profiles_savefile, 'wb'))
+            pickle.dump(optaa_profiles, open(optaa_profiles_savefile, 'wb'))
+
         ## [Save the ooi data into the pickle file.]
         pickle.dump(flort_dat, open(flort_savefile, 'wb'))
         pickle.dump(spkir_dat, open(spkir_savefile, 'wb'))
         pickle.dump(optaa_dat, open(optaa_savefile, 'wb'))
+
+
 
     ## [Load the data from pickle.]
     else:
         flort_dat = pickle.load(open(flort_savefile, 'rb'))
         spkir_dat = pickle.load(open(spkir_savefile, 'rb'))
         optaa_dat = pickle.load(open(optaa_savefile, 'rb'))
+        if profiled: 
+            flort_profiles = pickle.load(open(flort_profiles_savefile, 'rb'))
+            spkir_profiles = pickle.load(open(spkir_profiles_savefile, 'rb'))
+            optaa_profiles = pickle.load(open(optaa_profiles_savefile, 'rb'))
 
-    return flort_dat, spkir_dat, optaa_dat
+    if profiled: 
+        return flort_dat, spkir_dat, optaa_dat, flort_profiles, spkir_profiles, optaa_profiles
+    else:
+        return flort_dat, spkir_dat, optaa_dat
 
-
-def Create_Profiles(depth, date_time, val, dz_max): 
+def Process_Profile(profile, drop_time=60): 
     """
-    This seperates the 1-D Array for the depth and corresponding value 
-    into a list of Smaller 1-D Arrays which are just a single profile
+    This function processes a given profile. 
+
+    Much of this function comes from line 41 of the following Jupyter notebook from Chris Wingard: 
+    https://nbviewer.org/github/cwingard/ooi-data-explorations/blob/notebooks/python/examples/notebooks/optaa/process_ooinet_optaa_cspp.ipynb
 
     Parameters
     ----------
-    depth: 1-D Array [N]
-        The depths corrspnding to the given values. 
-    val: 1-D Array [N]
-        The values of the data at each depth to be split into a list
-        of 1-D profiles. 
-    dz_max: Float
-        The maximum value of separation to decide where one profile begins
-        and another ends. 
+    profile:  OOI xarray.DataArray object
+        The profiled data set. 
+    drop_time: optional, Float
+        The default is 60[s]. The first number of seconds of the profile to drop. 
 
     Returns
     -------
-    depth_profs: List
-        The list of depth arrays for each profile. 
-    val_profs: List
-        The list of values for each profile. 
+    profile: OOI xarray.DataArray object
+        The processed profile.
     """
 
-    ## [The start of the function.]
-    ## [Init the list.]
-    depth_profs = []
-    date_time_profs  = []
-    val_profs = []
-    ## [Init the index that marks where the profile begins.]
-    k_prof = 0
+    ## [First remove the first 60 seconds of the profile. This is because the filter wheel spin-up and 
+    ##  the lamp warmup occur during this time.]
+    profile = profile.where(profile['on_seconds'] > drop_time, drop=True)
 
-    ## [Loop over the entire 1-D depth array.]
-    for k in range(len(depth)): 
-    
-        ## [Check if not on the last k.]
-        if (k != len(depth) - 1): 
+    ## [Bin the data into 25cm depth bins.]
+    ## [The bins centers.]
+    bin_centers = np.arange(0.125, 75.125, 0.25)
+    ## [This results in a GroupBy Object with key, value pairs for each group.]
+    bins = profile.groupby_bins('depth', bin_centers) 
 
-            ## [This statement determines if at the end of profile or not.]
-            if abs(depth[k+1] - depth[k]) > dz_max: 
-                ## [The array of the profile.]
-                depth_prof = depth[k_prof:k]
-                date_time_prof = date_time[k_prof:k]
-                val_prof = val[k_prof:k]
-                ## [Appending the arrays to their respective lists.]
-                depth_profs.append(depth_prof)
-                date_time_profs.append(date_time_prof)
-                val_profs.append(val_prof)
-                ## [Rewriting the index where the profiles ends/ next begins.]
-                k_prof = k+1
+    binned = []
+    ## [Loop over each bin. Each bin is a group of a interval key and a xarray.DataArray object value, 
+    ##  thus each group will be indexed with grp[1], for the group value.]
+    for grp in bins: 
+        ## [Taking the temporal median of each bin.]
+        med = grp[1].median('time', keepdims=True, keep_attrs=True)
+        ## [To get back the time coordinate is necessary to use the mean of the 
+        ##  time coordinates of this group. This is because the median function does not 
+        ##  return the coordinate its is taken of.  This is because the median does not 
+        ##  necessarily correspond to an actual point in the xarray.DataArray object.]
+        med = med.assign_coords({'time': np.atleast_1d(grp[1]['time'].mean().values)})
+        ## [Set the depth coordinate to the bin midpoint.]
+        med['depth'] = med['depth']*0 + grp[0].mid
+        ## [Append the median data set back into a list of bins.]
+        binned.append(med)
 
-        ## [If loop is at last index.]
-        if (k == len(depth)-1): 
-            ## [The array of the profile.]
-             depth_prof = depth[k_prof:k]
-             date_time_prof = date_time[k_prof:k]
-             val_prof = val[k_prof:k]
-             ## [Appending the arrays to their respective lists.]
-             depth_profs.append(depth_prof)
-             date_time_profs.append(date_time_prof)
-             val_profs.append(val_prof)
-            
-                
-    return depth_profs, date_time_profs, val_profs   
-
-
-def Get_Flort_Dat(flort_dat): 
-    """
-    This retrieves all the useful flort data. 
-    """
-
-    ## [Make the depth negative.]
-    depth_dat = - flort_dat.variables['depth']
-    dt_dat = flort_dat.variables['time']
-    chla_dat = flort_dat.variables['fluorometric_chlorophyll_a']
-    cdom_dat = flort_dat.variables['fluorometric_cdom']
-    opt_bs_dat = flort_dat.variables['optical_backscatter']
-
-    return depth_dat, dt_dat, chla_dat, cdom_dat, opt_bs_dat
-
-
-def Get_Flort_Profiles(flort_dat):
-    """
-    This function retrieves list of profiles for depth, datetime, chla, and opticalbackcatter.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-    """
-
-    ## [Retrieve the data.]
-    depth_dat, dt_dat, chla_dat, cdom_dat, opt_bs_dat = Get_Flort_Dat(flort_dat)
-
-    ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
-    dz_max = 1
-    depth_profs, dt_profs, chla_profs = Create_Profiles(depth_dat, dt_dat, chla_dat, dz_max)    
-    depth_profs, dt_profs, cdom_profs = Create_Profiles(depth_dat, dt_dat, cdom_dat, dz_max)    
-    depth_profs, dt_profs, opt_bs_profs = Create_Profiles(depth_dat, dt_dat, opt_bs_dat, dz_max)    
-
-    ## [Return the profiles.]
-    return depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs
-
-
-def Get_Spkir_Data(spkir_dat):
-    """
-    This retrives all the useful SPKIR data.
-    """
-    
-    ## [This gets all the useful data.]
-    ## [Depth is made negative.]
-    depth_dat = - spkir_dat.variables['depth']
-    dt_dat = spkir_dat.variables['time']
-    spkir_dat = spkir_dat.variables['spkir_abj_cspp_downwelling_vector']
-
-    return depth_dat, dt_dat, spkir_dat
-
-
-def Get_Spkir_Profiles(spkir_dat):
-    """
-    This function retrieves list of profiles for depth, datetime, and chla. 
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-    """
-
-    depth_dat, dt_dat, spkir_dat = Get_Spkir_Data(spkir_dat)
-
-    ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
-    dz_max = 1
-    depth_profs, dt_profs, spkir_profs = Create_Profiles(depth_dat, dt_dat, spkir_dat, dz_max)    
-
-    ## [Return the profiles.]
-    return depth_profs, dt_profs, spkir_profs
-
-
-def Get_Optaa_Dat(optaa_dat, abs_cor=False): 
-    """
-    This function gets the important optaa data.
-
-    Parameters
-    ---------- 
-    optaa_dat: ooi_data_request data object. 
-        Instrument: OPTAA, 
-    abs_cor: Boolean 
-        The absorption correction flag. If true the correction algorithm is implemented
-        and the edited array is returned.
-    """
+    ## [Recombine the data into a single data set.]
+    profile = xr.concat(binned, 'time')  
+    ## [Sort ascending in time.]
+    profile = profile.sortby('time')
         
-    ## [The depth should be made negative.]
-    depth_dat = - optaa_dat.variables['depth']
-    dt_dat = optaa_dat.variables['time']
-    abs_dat = optaa_dat.variables['optical_absorption']
-    beam_att_dat = optaa_dat.variables['beam_attenuation']
-    wavelength_dat = optaa_dat.variables['wavelength_a']
-    wavelength_beam_dat = optaa_dat.variables['wavelength_c']
-
-    ## [The empty scatter array. The underscore '_dat' is removed because the array is ]
-    scat = np.zeros(abs_dat.data.shape)
-    ## [Interpolate the beam attenuation onto the absorption spectral grid]
-    ## [Loop over the z-coordinate grid and perform the interpolation at every z.]
-    for k in range(len(depth_dat)): 
-        ## [The 1-D beam attenuation array interpolated to the absroption wavelengths].
-        beam_att_interp = np.interp(wavelength_dat.data[k,:], 
-                                    wavelength_beam_dat.data[k,:], 
-                                    beam_att_dat.data[k,:])
-        ## [The total scattering is given by the total attenuation minus the absorption.]
-        scat[k,:] = beam_att_interp - abs_dat.data[k,:]
+    return profile
 
 
-    if abs_cor: 
-        wavelengths = wavelength_dat.data[0,:] 
-        OPTAA_Abs_Correction_G(abs_dat, wavelengths) 
-
-    return depth_dat, dt_dat, abs_dat, scat, wavelength_dat
-
-
-def Get_Optaa_Profiles(optaa_dat, abs_cor=False): 
+def Create_Profiles(ooi_dat, dt_sep=120, process_profile=True): 
     """
-    This function retireves the profiles OPTAA absorption data.
+    This organizes the x_array data set into a list of different profiles.
+
+    Much of this function comes from line 42 of the following Jupyter notebook from Chris Wingard: 
+    https://nbviewer.org/github/cwingard/ooi-data-explorations/blob/notebooks/python/examples/notebooks/optaa/process_ooinet_optaa_cspp.ipynb
+
+    Parameters
+    ----------
+    ooi_data:  OOI xarray.DataArray object
+        The data set. 
+    dt_sep: optional, Float
+        The default is 120 [s]. The minimum time between profiles in seconds.
+    process_profile: optional, Boolean
+        The default is True. This is used to implement the profile processing function on each profile.
+
+    Returns
+    -------
+    profiles: List
+        A list of profiled xarrays.
     """
 
-    ## [Get the optaa data.]
-    depth_dat, dt_dat, abs_dat, wavelength_dat = Get_Optaa_Dat(optaa_dat, abs_cor=abs_cor)
+    ## [This gets the index of each profile split.]
+    dt = ooi_dat.where(ooi_dat['time'].diff('time') > np.timedelta64(120, 's'), drop=True).get_index('time') 
 
-    ## [Next retrieve profile lists using ooi_data_functions.Create_Profiles()]
-    dz_max = 1
-    depth_profs, dt_profs, abs_profs = ODF.Create_Profiles(depth_dat, dt_dat, abs_dat, dz_max)    
-    depth_profs, dt_profs, wavelength_profs = ODF.Create_Profiles(depth_dat, dt_dat, wavelength_dat, dz_max)    
+    ## [Init the list of profiled xarrays.]
+    profiles = []
+    ## [Process each profile by looping over the dts.]
+    for k, d in enumerate(dt): 
+        ## [The first profile.]
+        if k==0: 
+            profile = ooi_dat.where(ooi_dat['time'] < d, drop=True)
+        else:
+            profile = ooi_dat.where((ooi_dat['time'] >= dt[k-1]) & (ooi_dat['time'] < d), drop=True)
 
-    ## [Return the profiles.]
-    return depth_profs, dt_profs, abs_profs, wavelength_profs
+        ## [Append the profiled data set to the list.]
+        if process_profile == True: 
+            profiles.append(Process_Profile(profile))
+        else: 
+            profiles.append(profile)
+    
+    ## [Append the last profile to the list.]
+    profile = ooi_dat.where(ooi_dat['time'] >= dt[-1], drop=True)
+    ## [Append the profiled data set to the list.]
+    if process_profile == True: 
+        profiles.append(Process_Profile(profile))
+    else: 
+        profiles.append(profile)
+            
+    ## 
+                
+    return profiles
 
 
 def Get_SPKIR_Wavelengths(spkir_dat):
@@ -353,88 +304,6 @@ def OOI_Dat_Time_Prof_Mask(dt_lbnd, dt_ubnd, var_dt):
     b = np.logical_and(lb,ub)
 
     return b 
-
-
-def OPTAA_Abs_Correction_G(optical_absorption, wavelengths):
-    """
-    This function implements the correction to all absorption values in a given OPTAA
-    data set. It implements the method suggested by Chris Wingard in an email on
-    April 8th, 2022.
-
-    This function implements the 715nm correction to all values of absorption in the
-    data set and does not use profiles. It takes the smallest absorbtion at 715 and 
-    corrects off of that value.
-
-    Parameters
-    -----------
-    optical_absorption: 2-D Array, [N,M]
-        optical_absorption values to be corrected. 
-    wavelengths: 1-D Array, [M]
-        
-
-    Returns 
-    --------
-    optical_absorption: 2-D Array, [N,M]
-        The optical_absorption corrected via the 715nm wavelength.
-        This is the optaa data set. This is the data set with absorption corrected for
-        negative values using 715nm.
-
-    """
-
-    ## [The 715 nm index.]
-    lam_i = Get_Wavelength_Index(wavelengths, 715)
-
-    ## [Finding all the absorption values at 715nm at all depths at all time.]
-    a_715 = optical_absorption[:, lam_i]   
-    
-    ## [Finding the minimum at 715nm and setting that as the correction value.]
-    a_cor = np.min(a_715) 
-
-    ## [Correcting the absorption in the data set to reflect this correction.]
-    optical_absorption = optical_absorption - a_cor
-
-    return optical_absorption
-
-
-def OPTAA_Abs_Correction_L(abs_profs, wavelengths):
-    """
-    This function implements the correction to all absorption values in a given OPTAA
-    data set. It implements the method suggested by Chris Wingard in an email on
-    April 8th, 2022.
-
-    This function implements the 715nm correction to all values of absorption in the
-    data set and does not use profiles. It takes the smallest absorbtion at 715 and 
-    corrects off of that value.
-
-    Parameters
-    -----------
-    optical_absorption: 2-D Array, [N,M]
-        optical_absorption values to be corrected. 
-    wavelengths: 1-D Array, [M]
-        
-
-    Returns 
-    --------
-    optical_absorption: 2-D Array, [N,M]
-        The optical_absorption corrected via the 715nm wavelength.
-        This is the optaa data set. This is the data set with absorption corrected for
-        negative values using 715nm.
-
-    """
-
-    ## [The 715 nm index.]
-    lam_i = Get_Wavelength_Index(wavelengths, 715)
-
-    ## [Finding all the absorption values at 715nm at all depths at all time.]
-    a_715 = optical_absorption[:, lam_i]   
-    
-    ## [Finding the minimum at 715nm and setting that as the correction value.]
-    a_cor = np.min(a_715) 
-
-    ## [Correcting the absorption in the data set to reflect this correction.]
-    optical_absorption = optical_absorption - a_cor
-
-    return optical_absorption
 
 
 def Grid_Average_Profile(x_dat, y_dat, x_avg): 

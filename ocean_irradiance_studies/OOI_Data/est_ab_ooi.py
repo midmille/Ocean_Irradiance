@@ -11,7 +11,7 @@ observed absorption and scattering in the water column.
 
 ## [Import statements.]
 ## [User Modules.]
-import ooi_data_functions as ODF
+import OOI_Data_Functions as ODF 
 from ocean_irradiance_module import Ocean_Irradiance as OI
 import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
 from ocean_irradiance_module.PARAMS import Param_Init
@@ -25,11 +25,11 @@ import pickle
 from ooi_data_explorations.data_request import data_request
 import matplotlib.pyplot as plt
 import scipy
+from scipy import interpolate
 import cvxpy as cp
 
 
-def Est_Spec_Lstsq(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs,
-                   optaa_dat, ab='a', plot=False): 
+def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab='a', plot=False): 
     """
     This function is for the estimation of the ratio of different species that could compose the
     resulting observed absorption profile from OOI. The total observed phytoplankton concentration will be
@@ -76,36 +76,34 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, d
     ## [The reference wavelength for the cdom absorption.]
     cdom_reflam = 412
 
-    ## [This step gets the OOI data.]
-    ## [The optaa data.]
-    optaa_depth_dat, optaa_dt_dat, optaa_abs_dat, optaa_scat, optaa_wavelength_dat = ODF.Get_Optaa_Dat(optaa_dat)
-
-    dt_lbnd = dt_profs[prof_index].data[0] 
-    dt_ubnd = dt_profs[prof_index].data[-1]
-    prof_mask = ODF.OOI_Dat_Time_Prof_Mask(dt_lbnd, dt_ubnd, optaa_dt_dat)
-
     ## [This retreives the profiles]
-    optaa_dt = optaa_dt_dat.data[prof_mask]
-    z_ab = optaa_depth_dat.data[prof_mask]
-    a_ooi = optaa_abs_dat.data[prof_mask]
-    b_ooi = optaa_scat[prof_mask]
-    optaa_wavelengths = optaa_wavelength_dat.data[prof_mask]
+    optaa_dt = optaa_prof['time'].data
+    optaa_z = optaa_prof['depth'].data
+    wavelength_c = optaa_prof['wavelength_c'].data
+    wavelength_a = optaa_prof['wavelength_a'].data
+    optaa_c = optaa_prof['beam_attenuation'].data
+    optaa_a = optaa_prof['optical_absorption'].data
+    ## [interpolate the attenuation onto the absorption wavelength grid.]
+    optaa_interp = interpolate.interp1d(wavelength_a[0,:], optaa_a, axis=1)
+    optaa_c = optaa_interp(wavelength_c[0,:])
 
-    ## [Get the arrays for the given prof_index.]
-    ## [This is the chla grid and the grid to be used for everything.]
-    z_chla = depth_profs[prof_index].data
-    chla = chla_profs[prof_index].data
-    cdom = cdom_profs[prof_index].data
-    ## [Smoothing chla and cdom]
-    z_chla_s, chla_s = ODF.Smooth_Profile_55(z_chla, chla)
+    print(optaa_a.shape)
+    print(optaa_c.shape)
+    ## [The scattering is simply the attenuation minus the absorption]
+    optaa_b = optaa_c - optaa_a
+
+    ## [The flort data.]
+    flort_z = flort_prof['depth'].data
+    flort_chla = flort_prof['fluorometric_chlorophyll_a'].data
+    z_chla_s, chla_s = ODF.Smooth_Profile_55(flort_z, flort_chla)
+
 
     ## [The array of indexes that corresponds to desired wavelength.] 
     lam_is = np.zeros(N_lam, dtype=np.int8)
     ## [Loop over the wavelengths to get the corresponding ooi wavelength nearest neighbour.]
     for i in range(N_lam): 
         ## [Must get the wavelength index.]
-        lam_is[i] = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], wavelengths[i])
-        #lam_ooi = optaa_wavelengths[0,lam_i]
+        lam_is[i] = ODF.Get_Wavelength_Index(wavelength_a[0,:], wavelengths[i])
 
     ## [The coupled scattering and absorption problem.]
     if ab == 'ab': 
@@ -117,13 +115,13 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, d
         for i in range(N_lam): 
     
             ## [Absorption and scattering for current wavelength]
-            a = np.squeeze(a_ooi[:,lam_is[i]])
-            b = np.squeeze(b_ooi[:,lam_is[i]])
+            a = np.squeeze(optaa_a[:,lam_is[i]])
+            b = np.squeeze(optaa_b[:,lam_is[i]])
          
             ## [Smoothing the absorption and scattering for current wavelength]
-            z_s, a_s = ODF.Smooth_Profile_55(z_ab, a)
-            z_s, b_s = ODF.Smooth_Profile_55(z_ab, b)
-    
+            z_s, a_s = ODF.Smooth_Profile_55(optaa_z, a)
+            z_s, b_s = ODF.Smooth_Profile_55(optaa_z, b)
+            
             ## [Chla being interpolated to absorption grid.]
             chla_s_interp = np.interp(z_s, z_chla_s, chla_s)
     
@@ -139,11 +137,11 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, d
             ## [The water absorption subtraction is commented out at the momment because it leads to negative.]
 
             ## [Get the cdom absorption]
-            lam_cdom_i = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], cdom_reflam)
+            lam_cdom_i = ODF.Get_Wavelength_Index(wavelength_a[0,:], cdom_reflam)
             CDOM = OI.CDOM_refa(z_s, 
                                 a_s[z_i], 
-                                optaa_wavelengths[0,lam_cdom_i],
-                                optaa_wavelengths[0,lam_is[i]])
+                                wavelength_a[0,lam_cdom_i],
+                                wavelength_a[0,lam_is[i]])
             a_cdom = CDOM.a
     
             ## WARNING 
@@ -165,12 +163,12 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, d
         for i in range(N_lam): 
     
             ## [Absorption and scattering for current wavelength]
-            a = np.squeeze(a_ooi[:,lam_is[i]])
-            b = np.squeeze(b_ooi[:,lam_is[i]])
+            a = np.squeeze(optaa_a[:,lam_is[i]])
+            b = np.squeeze(optaa_b[:,lam_is[i]])
          
             ## [Smoothing the absorption and scattering for current wavelength]
-            z_s, a_s = ODF.Smooth_Profile_55(z_ab, a)
-            z_s, b_s = ODF.Smooth_Profile_55(z_ab, b)
+            z_s, a_s = ODF.Smooth_Profile_55(optaa_z, a)
+            z_s, b_s = ODF.Smooth_Profile_55(optaa_z, b)
     
             ## [Chla being interpolated to absorption grid.]
             chla_s_interp = np.interp(z_s, z_chla_s, chla_s)
@@ -189,11 +187,11 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, prof_index, phy_species, depth_profs, d
             ## [The water absorption subtraction is commented out at the momment because it leads to negative.]
     
             ## [Get the cdom absorption]
-            lam_cdom_i = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], cdom_reflam)
+            lam_cdom_i = ODF.Get_Wavelength_Index(wavelength_a[0,:], cdom_reflam)
             CDOM = OI.CDOM_refa(z_s, 
                                 a_s[z_i], 
-                                optaa_wavelengths[0,lam_cdom_i],
-                                optaa_wavelengths[0,lam_is[i]])
+                                wavelength_a[0,lam_cdom_i],
+                                wavelength_a[0,lam_is[i]])
             a_cdom = CDOM.a
     
             ## WARNING 
@@ -421,7 +419,7 @@ if __name__ == '__main__':
     stop = "2021-04-30"
 
     ## [File name parameter.]
-    ooi_savefile_head = "ooi_dat"
+    ooi_savefile_head = "ooi_data/ooi_dat"
 
     ## [Data load flag, fale means load data from pickle.]
     download = False
@@ -433,42 +431,39 @@ if __name__ == '__main__':
     phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
-    prof_index = 12
-    z_i = -1
+    prof_index = 1
+    z_i = -2
     ## [The absorption or scattering flag.]
     ab = 'ab'
     ## [The number of profiles for the Hoffmuller.]
     N_profs = 50
 
     ## [Download or load the data sets.]
-    flort_dat, spkir_dat, optaa_dat = ODF.Download_OOI_Data(ooi_savefile_head, 
-                                                            download, 
-                                                            site_name, 
-                                                            assembly, 
-                                                            method, 
-                                                            start, 
-                                                            stop)
-                                                            
+    ooi_data = ODF.Download_OOI_Data(ooi_savefile_head, 
+                                     download, 
+                                     site_name, 
+                                     assembly, 
+                                     method, 
+                                     start, 
+                                     stop)
 
-    ## [Get the chla profile lists.]
-    depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs = ODF.Get_Flort_Profiles(flort_dat)
+    flort_dat, spkir_dat, optaa_dat, flort_profs, spkir_profs, optaa_profs = ooi_data
+                                                            
+    ## [Index the profiles for the given index.]
+    flort_prof = flort_profs[prof_index]
+    optaa_prof = optaa_profs[prof_index]
 
     ## [Get the spkir wavelengths.]
     spkir_wavelengths = np.array(ODF.Get_SPKIR_Wavelengths(
                         spkir_dat.variables['spkir_abj_cspp_downwelling_vector']))
 
-
     ## [Running the least square estimation of the ratio of phytoplankton.]
     A, y, x = Est_Spec_Lstsq(PI, 
                              wavelengths,
                              z_i,
-                             prof_index,
                              phy_species,
-                             depth_profs, 
-                             dt_profs, 
-                             chla_profs, 
-                             cdom_profs, 
-                             optaa_dat, 
+                             flort_prof, 
+                             optaa_prof,
                              ab=ab,
                              plot=False)
     Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab=ab)

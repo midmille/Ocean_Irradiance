@@ -12,7 +12,7 @@ To run:
 
 ## [Import Statements]
 ## [User Modules]
-import ooi_data_functions as ODF 
+import OOI_Data_Functions as ODF 
 from ocean_irradiance_module import Ocean_Irradiance as OI
 import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
 from ocean_irradiance_module.PARAMS import Param_Init
