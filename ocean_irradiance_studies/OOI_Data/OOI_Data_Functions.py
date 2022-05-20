@@ -240,8 +240,6 @@ def Create_Profiles(ooi_dat, dt_sep=120, process_profile=True):
         profiles.append(Process_Profile(profile))
     else: 
         profiles.append(profile)
-            
-    ## 
                 
     return profiles
 

@@ -78,7 +78,7 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
 
     ## [This retreives the profiles]
     optaa_dt = optaa_prof['time'].data
-    optaa_z = optaa_prof['depth'].data
+    optaa_z = -optaa_prof['depth'].data
     wavelength_c = optaa_prof['wavelength_c'].data
     wavelength_a = optaa_prof['wavelength_a'].data
     optaa_c = optaa_prof['beam_attenuation'].data
@@ -93,7 +93,7 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
     optaa_b = optaa_c - optaa_a
 
     ## [The flort data.]
-    flort_z = flort_prof['depth'].data
+    flort_z = -flort_prof['depth'].data
     flort_chla = flort_prof['fluorometric_chlorophyll_a'].data
     z_chla_s, chla_s = ODF.Smooth_Profile_55(flort_z, flort_chla)
 
