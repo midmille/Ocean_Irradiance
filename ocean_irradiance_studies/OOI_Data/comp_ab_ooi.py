@@ -74,10 +74,12 @@ def get_dev_coeffs(data):
     if dev.coeffs['serial_number'] != int(data.attrs['SerialNumber'][4:]):
         raise Exception('Serial Number mismatch between ac-s data and the device file.')
     print('num_wavelengths', dev.coeffs['num_wavelengths'], data['num_wavelengths'][0])
-    if dev.coeffs['num_wavelengths'] != len(data['wavelength_a'][0]):
-        raise Exception('Number of wavelengths mismatch between ac-s data and the device file.')
+#    if dev.coeffs['num_wavelengths'] != data['num_wavelengths'][0]):
+#        raise Exception('Number of wavelengths mismatch between ac-s data and the device file.')
                                                                                                      
     return dev
+
+
 def apply_dev(optaa, coeffs):
     """
     Processes the raw data contained in the optaa dictionary and applies the 
@@ -299,23 +301,28 @@ def Plot_Comp_Ab(optaa_profs, ip):
 
     
     optaa_prof = optaa_profs[ip]
-    optaa_prof = optaa_prof.dropna('wavelength')
+#    optaa_prof = optaa_prof.dropna('wavelength')
 
     for k in range(optaa_prof['depth'].shape[0]): 
         ## [The different processed variables.]
         a = optaa_prof['optical_absorption'].data[k,:]
-        a_lam = optaa_prof['wavelength_a'].data[k,:]
-        nan_mask = ~np.isnan(a_lam)
+        a_mask = ~np.isnan(a)
+        a = a[a_mask]
+        ## !!!!!!!!IMPORTANT THIS WAVELENGTH SPLICING CHANGE IS ONLY FOR m2m download!!!!!!!
+        a_lam = optaa_prof['wavelength_a'].data[k,:][a_mask]
         c = optaa_prof['beam_attenuation'].data[k,:]
-        c_lam = optaa_prof['wavelength_c'].data[k,:]
+        c_mask = ~np.isnan(c)
+        c = c[c_mask]
+        ## !!!!!!!!IMPORTANT THIS WAVELENGTH SPLICING CHANGE IS ONLY FOR m2m download!!!!!!!
+        c_lam = optaa_prof['wavelength_c'].data[k,:][c_mask]
         ## [Interpolate the attenuation to the absorption grid.]
         c = np.interp(a_lam, c_lam, c) 
         ## [Scattering is simply the attenuation minus the absorption.]
         b = c - a
  
         ## [The different raw variables.]
-        a_raw = optaa_prof['apd_ts_s'].data[k,:]
-        c_raw = optaa_prof['cpd_ts'].data[k,:]
+        a_raw = optaa_prof['apd_ts_s'].data[k,:][a_mask]
+        c_raw = optaa_prof['cpd_ts'].data[k,:][c_mask]
         ## [Interpolate the attenuation to the absorption grid.]
         c_raw = np.interp(a_lam, c_lam, c_raw) 
         ## [Scattering is simply the attenuation minus the absorption.]
@@ -388,8 +395,10 @@ if __name__ == '__main__':
  
     ## [Data load flag, fale means load data from pickle.]
     download = False
+    ## [Process the data and save processed data if True. Load if False.]
     process_raw = True
-    use_chris_depl = False
+    ## [Use the deployement provided by Chris Wingard in his Jupyter notebook]
+    use_chris_depl = True
  
     ## [Functional parameters.]
     prof_index=1
@@ -398,9 +407,14 @@ if __name__ == '__main__':
     phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn'] 
     cdom_reflam = 412.0
  
-    ## [Download or load the data sets either from Chirs' deployement or mine.]
+    ## [Download or load the data sets either from Chris' deployement or mine.]
     if use_chris_depl: 
-        optaa_dat = Downlaod_Chris_Depl()
+        chris_savefile = "ooi_data/chris_ooi_depl.p"
+        if os.path.exists(chris_savefile): 
+            optaa_dat = pickle.load(open(chris_savefile, 'rb'))
+        else: 
+            optaa_dat = Downlaod_Chris_Depl()
+            pickle.dump(optaa_dat, open(chris_savefile, 'wb'))
     else:
         ooi_data = ODF.Download_OOI_Data(ooi_savefile_head, 
                                         download, 

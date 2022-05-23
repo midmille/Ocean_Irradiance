@@ -79,13 +79,18 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
     ## [This retreives the profiles]
     optaa_dt = optaa_prof['time'].data
     optaa_z = -optaa_prof['depth'].data
-    wavelength_c = optaa_prof['wavelength_c'].data
-    wavelength_a = optaa_prof['wavelength_a'].data
+    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
+    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
+    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
+    wavelength_c = optaa_prof['wavelength_c'].data.transpose()
+    wavelength_a = optaa_prof['wavelength_a'].data.transpose()
     optaa_c = optaa_prof['beam_attenuation'].data
     optaa_a = optaa_prof['optical_absorption'].data
     ## [interpolate the attenuation onto the absorption wavelength grid.]
-    optaa_interp = interpolate.interp1d(wavelength_a[0,:], optaa_a, axis=1)
-    optaa_c = optaa_interp(wavelength_c[0,:])
+#    optaa_interp = interpolate.interp1d(wavelength_c[0,:], optaa_, axis=1)
+#    optaa_a = optaa_interp(wavelength_c[0,:])
+    for k in range(len(optaa_z)): 
+        optaa_c[k,:] = np.interp(wavelength_a[k,:], wavelength_c[k,:], optaa_c[k,:])
 
     print(optaa_a.shape)
     print(optaa_c.shape)
@@ -420,6 +425,7 @@ if __name__ == '__main__':
 
     ## [File name parameter.]
     ooi_savefile_head = "ooi_data/ooi_dat"
+    optaa_profs_save = "ooi_data/ooi_dat_rawoptaaprofs.p"
 
     ## [Data load flag, fale means load data from pickle.]
     download = False
@@ -434,7 +440,7 @@ if __name__ == '__main__':
     prof_index = 1
     z_i = -2
     ## [The absorption or scattering flag.]
-    ab = 'ab'
+    ab = 'a'
     ## [The number of profiles for the Hoffmuller.]
     N_profs = 50
 
@@ -448,6 +454,12 @@ if __name__ == '__main__':
                                      stop)
 
     flort_dat, spkir_dat, optaa_dat, flort_profs, spkir_profs, optaa_profs = ooi_data
+
+    ## [Use the processed raw optaa profs.]
+    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
+    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
+    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
+    optaa_profs = pickle.load(open(optaa_profs_save,'rb'))
                                                             
     ## [Index the profiles for the given index.]
     flort_prof = flort_profs[prof_index]
@@ -474,10 +486,10 @@ if __name__ == '__main__':
 #                                        wavelengths, 
 #                                        z_i, 
 #                                        phy_species, 
-#                                        depth_profs, 
+##                                        depth_profs, 
 #                                        dt_profs, 
 #                                        chla_profs, 
 #                                        cdom_profs, 
 #                                        optaa_dat, 
-#                                        ab=ab)
+##                                        ab=ab)
 #    Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs, plot_residuals=True, residuals=residuals)

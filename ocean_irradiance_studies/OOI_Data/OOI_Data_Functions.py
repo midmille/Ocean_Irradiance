@@ -138,7 +138,7 @@ def Download_OOI_Data(ooi_savefile_head, download, site_name, assembly, method, 
     else:
         return flort_dat, spkir_dat, optaa_dat
 
-def Process_Profile(profile, drop_time=60): 
+def Process_Profile(profile, drop_time=60, chris_method=True): 
     """
     This function processes a given profile. 
 
@@ -157,6 +157,8 @@ def Process_Profile(profile, drop_time=60):
     profile: OOI xarray.DataArray object
         The processed profile.
     """
+
+#    if chris_method:
 
     ## [First remove the first 60 seconds of the profile. This is because the filter wheel spin-up and 
     ##  the lamp warmup occur during this time.]
