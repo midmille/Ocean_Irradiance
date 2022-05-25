@@ -29,7 +29,8 @@ from scipy import interpolate
 import cvxpy as cp
 
 
-def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab='a', plot=False): 
+def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof, ab='a', plot=False,
+                   weight=None): 
     """
     This function is for the estimation of the ratio of different species that could compose the
     resulting observed absorption profile from OOI. The total observed phytoplankton concentration will be
@@ -73,6 +74,11 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
     ## [The number of wavelengths.]
     N_lam = len(wavelengths)
 
+    ## [Get the depth index for optaa.]
+    zi_optaa = (optaa_prof['depth'] - depthz).argmin()
+    ## [Get the depth index for flort.]
+    zi_flort = (flort_prof['depth'] - depthz).argmin()
+
     ## [The reference wavelength for the cdom absorption.]
     cdom_reflam = 412
 
@@ -102,6 +108,15 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
     flort_chla = flort_prof['fluorometric_chlorophyll_a'].data
     z_chla_s, chla_s = ODF.Smooth_Profile_55(flort_z, flort_chla)
 
+    ## [The wieghting for the leats squares problem.]
+    ## [If the weights are provided are argument, unpack and use.]
+    if weight: 
+        weighta, weightb = weight 
+    ## [The default weight is the ratio of spectral mean absorption to spectral mean scattering.]
+    else:
+        ## [Since the weiht is a ratio of a/b, then only multiply scattering by weight.]
+        weighta = 1 / np.nanmean(optaa_a[zi_optaa,:])
+        weightb = 1 / np.nanmean(optaa_b[zi_optaa,:])
 
     ## [The array of indexes that corresponds to desired wavelength.] 
     lam_is = np.zeros(N_lam, dtype=np.int8)
@@ -122,39 +137,46 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
             ## [Absorption and scattering for current wavelength]
             a = np.squeeze(optaa_a[:,lam_is[i]])
             b = np.squeeze(optaa_b[:,lam_is[i]])
+            a_s = a
+            b_s = b 
+            z_s = optaa_z
          
             ## [Smoothing the absorption and scattering for current wavelength]
-            z_s, a_s = ODF.Smooth_Profile_55(optaa_z, a)
-            z_s, b_s = ODF.Smooth_Profile_55(optaa_z, b)
+#            z_s, a_s = ODF.Smooth_Profile_55(optaa_z, a)
+#            z_s, b_s = ODF.Smooth_Profile_55(optaa_z, b)
             
             ## [Chla being interpolated to absorption grid.]
             chla_s_interp = np.interp(z_s, z_chla_s, chla_s)
+
+            ## [Get the cdom absorption]
+            lam_cdom_i = ODF.Get_Wavelength_Index(wavelength_a[0,:], cdom_reflam)
+            CDOM = OI.CDOM_refa(z_s, 
+                                a_s[zi_optaa], 
+                                wavelength_a[0,lam_cdom_i],
+                                wavelength_a[0,lam_is[i]])
+            a_cdom = CDOM.a
     
             ## [Loop over the phytoplankton species.]
             for k in range(N_phy): 
                 ## [Filling the A array, recall we are solving for a single z location. 
                 ##  Each row corresponds to a wavelength and each column a different species.]
                 ## [Absorption array.]
-                A[2*i,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[0] * chla_s_interp[z_i])
-                A[2*i+1,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[1] * chla_s_interp[z_i])
+                ## [Multiply the absorption eqaution by weight a that is (1/(avg(absorptio(lam)))).]
+                ## [Multiply the scattering equation by weight b. Which is (1/avg(scattering(lam))).] 
+                A[2*i,k] = ((abscat(wavelengths[i], phy_species[k], C2chla='default')[0] * chla_s_interp[zi_optaa])) * weighta 
+
+                A[2*i+1,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[1] * chla_s_interp[zi_optaa]) * weightb
     
             ## [The rhs y, is simply the a_ooi minus the a_wat from Dut.]
             ## [The water absorption subtraction is commented out at the momment because it leads to negative.]
-
-            ## [Get the cdom absorption]
-            lam_cdom_i = ODF.Get_Wavelength_Index(wavelength_a[0,:], cdom_reflam)
-            CDOM = OI.CDOM_refa(z_s, 
-                                a_s[z_i], 
-                                wavelength_a[0,lam_cdom_i],
-                                wavelength_a[0,lam_is[i]])
-            a_cdom = CDOM.a
     
             ## WARNING 
             ## WARNING The abs should be removed and the negative absorption problem should be fixed, this is temp. 
             ## WARNING 
             ## [The cdom is subtracted.]
-            y[2*i] = abs(a_s[z_i]) - a_cdom # - abscat(wavelengths[i], 'water', C2chla='default')[0]
-            y[2*i+1] = abs(b_s[z_i]) 
+            y[2*i] = (abs(a_s[zi_optaa]) - a_cdom) * weighta  
+            y[2*i+1] = abs(b_s[zi_optaa]) * weightb
+
 
     ## [The uncoupled problem.]
     else:  
@@ -184,9 +206,9 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
                 ##  Each row corresponds to a wavelength and each column a different species.]
                 ## [Absorption array.]
                 if ab == 'a':
-                    A[i,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[0] * chla_s_interp[z_i])
+                    A[i,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[0] * chla_s_interp[zi_flort])
                 if ab == 'b':
-                    A[i,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[1] * chla_s_interp[z_i])
+                    A[i,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[1] * chla_s_interp[zi_flort])
     
             ## [The rhs y, is simply the a_ooi minus the a_wat from Dut.]
             ## [The water absorption subtraction is commented out at the momment because it leads to negative.]
@@ -194,7 +216,7 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
             ## [Get the cdom absorption]
             lam_cdom_i = ODF.Get_Wavelength_Index(wavelength_a[0,:], cdom_reflam)
             CDOM = OI.CDOM_refa(z_s, 
-                                a_s[z_i], 
+                                a_s[zi_optaa], 
                                 wavelength_a[0,lam_cdom_i],
                                 wavelength_a[0,lam_is[i]])
             a_cdom = CDOM.a
@@ -204,9 +226,9 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
             ## WARNING 
             ## [The cdom is subtracted.]
             if  ab == 'a':
-                y[i] = abs(a_s[z_i]) - a_cdom # - abscat(wavelengths[i], 'water', C2chla='default')[0]
+                y[i] = abs(a_s[zi_optaa]) - a_cdom # - abscat(wavelengths[i], 'water', C2chla='default')[0]
             if  ab == 'b':
-                y[i] = abs(b_s[z_i]) 
+                y[i] = abs(b_s[zi_optaa]) 
 
     ## [Solvving the problem as a convex optimization problem using the cvxpy.]
     ## [This is a least squares implementation fo the problem with constraints.]
@@ -217,7 +239,12 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
     result = prob.solve()
     x = x.value
 
-        
+    ## [If coupled then remove weight from returned array.]
+    if ab == 'ab':
+        A[0:2*N_lam:2, :] = A[0:2*N_lam:2, :] / weighta
+        A[1:2*N_lam:2, :] = A[1:2*N_lam:2, :] / weightb
+        y[0:2*N_lam:2] = y[0:2*N_lam:2] / weighta
+        y[1:2*N_lam:2] = y[1:2*N_lam:2] / weightb
     ## [Solving the least square system for the phy ratios.]
     #x = np.linalg.lstsq(A, b)
 #    x = scipy.optimize.nnls(A,y)[0]
@@ -230,8 +257,7 @@ def Est_Spec_Lstsq(PI, wavelengths, z_i, phy_species, flort_prof, optaa_prof, ab
     return A, y, x 
 
 
-def Run_Lstsq_Time(N_profs, PI, wavelengths, z_i, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, 
-                   optaa_dat, ab='ab'): 
+def Run_Lstsq_Time(N_profs, PI, wavelengths, depthz, phy_species, flort_profs, optaa_profs, ab='ab'): 
     """
     Run the least square problem over many profiles in time. The output from this function 
     can then be used to construct a hoffmuller diagram of the species ratios.
@@ -241,7 +267,7 @@ def Run_Lstsq_Time(N_profs, PI, wavelengths, z_i, phy_species, depth_profs, dt_p
     N_phy = len(phy_species)
 
     ## [The exmpty x_profs array, which contains the lst sq species estimate for each profile
-    ##  at the same z_i.]
+    ##  at the same depthz]
     x_profs = np.zeros((N_phy, N_profs))
 
     ## [The residuals of the fit for each.]
@@ -249,21 +275,16 @@ def Run_Lstsq_Time(N_profs, PI, wavelengths, z_i, phy_species, depth_profs, dt_p
     
     ## [Loop over the profiles.]
     for prof_index in range(N_profs):
-        print(prof_index)
         ## [Running the least square estimation of the ratio of phytoplankton.]
         A, y, x = Est_Spec_Lstsq(PI, 
                                 wavelengths,
-                                z_i,
-                                prof_index,
+                                depthz,
                                 phy_species,
-                                depth_profs, 
-                                dt_profs, 
-                                chla_profs, 
-                                cdom_profs, 
-                                optaa_dat, 
+                                flort_profs[prof_index], 
+                                optaa_profs[prof_index],
                                 ab=ab,
                                 plot=False)
-
+ 
         ## [If the point is bad such that y is all zeros.]
         if sum(np.abs(y)) == 0.0: 
             x = np.NaN * x
@@ -299,6 +320,12 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab='a'):
     if ab == 'b': 
         ab_str = 'Scattering'
 
+    ## [Text box params for the plot.]
+    props = dict(facecolor='grey', alpha=0.6)
+    txt = [f'{phy_species[k]}: {round(x[k],2)}' for k in range(len(phy_species))]
+    txt = tuple(txt)
+    txt = '\n'.join(txt)
+
     if ab == 'ab':
         ## [Two subplots one for absorption and one for scattering.]
         fig, axs = plt.subplots(ncols=1, nrows=2)
@@ -320,36 +347,47 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab='a'):
          
             ## [Plot the species coefficients]
             for i in range(N_phy): 
-                ax.plot(wavelengths, A[k::2, i], label = phy_species[i]) 
+                ax.plot(wavelengths, A[k::2, i], label = f'{phy_species[i]}: {round(x[i],2)}') 
      
             ax.set_ylabel(f"Effective {ab_str}  [m^-1]")
      
             ax.grid()
             ax.legend()
+
+        ## [Setting som etext with the reslting coefficients.]
+#        ylim = axs[0].get_ylim()
+#        xlim = axs[0].get_xlim()
+#        axs[0].text(xlim[0] + (xlim[1]-xlim[0])*0.1, ylim[0] + (ylim[1]-ylim[0])*0.1, txt, bbox=props)
         
         fig.show()
 
     ## [The uncoupled abs/scat specific solution.]
     else: 
+        fig, ax = plt.subplots()
         ax.plot(wavelengths, y, 'k', label = f"OOI Total Effective {ab_str}")
         ax.plot(wavelengths, y_est, ':k', label = f"Least Square Approx {ab_str}")
      
         ## [Plot the species coefficients]
         for k in range(N_phy): 
-            ax.plot(wavelengths, A[:, k], label = phy_species[k]) 
+            ax.plot(wavelengths, A[:, k], label = f'{phy_species[k]}: {round(x[k],2)}') 
     
         ax.set_ylabel(f"Effective {ab_str}  [m^-1]")
         ax.set_xlabel("Wavelength [nm]")
     
         ax.grid()
         ax.legend()
+
+        ## [Setting som etext with the reslting coefficients.]
+#        ylim = ax.get_ylim()
+#        xlim = ax.get_xlim()
+#        ax.text(xlim*0.1, ylim*0.1, txt, bbox=props)
     
         fig.show()
     
     return 
 
 
-def Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs, plot_residuals=False, residuals=None): 
+def Plot_Spec_Lstsq_Hoffmuller(N_profs, depthz, flort_profs, optaa_profs, phy_species, x_profs, plot_residuals=False, residuals=None): 
     """
     This plots a Hoffmuller diagram of the ratios of different species opf phytoplankton in time
 
@@ -359,57 +397,92 @@ def Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs, plot_res
     ## [The number of species.]
     N_phy = len(phy_species)
 
+
     ## [Init the bottom coordinate for the stacked bar plot.]
     bot = np.zeros(N_profs)
-
-    ## [Init the dt coordinate array.]
-#    dt = np.zeros(N_profs, dtype=object)
-    dt = np.zeros(N_profs)
 
     ## [The colors for each species.]
     colors = ['b','r','g','y','c','m','k','w'][:N_phy]
 
-    ## [The time coordinate.]
+    ## [Init the dt coordinate array.]
+    dt = []
+    dt_ticks = []
+    dt_labs = []
+    ## [The label font size.]
+    xlfs = 7
+    ## [The time coordinate and their accompanying labels.]
+    same_date = 0
     for k in range(N_profs):
-#        dt[k] = dt_profs[k][0]
-         dt[k] = k
+        dt.append(k)
+        ## [If the date is different then previously then set the date as the ticker.]
+        if (str(optaa_profs[k]['time'].data.astype('datetime64[D]')[0])[-2:] != same_date): 
+            dt_labs.append(str(optaa_profs[k]['time'].data.astype("datetime64[D]")[0]))
+            dt_ticks.append(k)
+            same_date = str(optaa_profs[k]['time'].data.astype('datetime64[D]')[0])[-2:]
+        ## [Else use the time as the ticker.]
+        else: 
+            dt_labs.append(str(optaa_profs[k]['time'].data.astype("datetime64[m]")[0])[-5:])
+            dt_ticks.append(k)
 
     ## [Plot the residual on the same figure.]
     if plot_residuals: 
         fig, axs = plt.subplots(nrows=1, ncols=2)
+        ## [Least square axis.]
+        ax_ls = axs[0]
+        ## [Chla twin axis on least squares plot.]
+        ax_cl = ax_ls.twinx()
+        ## [Residual axis.]
+        ax_rs = axs[1]
     else:
         fig, ax = plt.subplots()
-
-    ## [Top ax is the hoffmuller.]
-    ax = axs[0]
+        ## [Least square axis.]
+        ax_ls = ax
+        ## [Chla twin axis on least squares plot.]
+        ax_cl = ax_ls.twinx()
+ 
     ## [Loop over the species.]
     for k in range(N_phy): 
         
         ## [plot the phy species layer of the bar plot.]
-        ax.bar(dt, x_profs[k,:], bottom=bot, color = colors[k], label=phy_species[k], width=0.9)
+        ax_ls.bar(dt, x_profs[k,:], bottom=bot, color = colors[k], label=phy_species[k], width=0.9)
 
         ## [Update the bottom of the bar plot.]
         bot = bot + x_profs[k,:]
 
-    ax.set_title('Constrained Least Squares \n Phytoplankton Community Estimation')
-    ax.set_ylabel('Fractional Concentraion')
-    ax.set_xlabel('Temporal Index')
-    ax.legend()
-    ax.grid()
-    fig.show()
+    ax_ls.set_title(f'Constrained Least Squares \n Phytoplankton Community Estimation at Depth: {depthz}[m]')
+    ax_ls.set_ylabel('Fractional Concentraion')
+    ax_ls.set_xlabel('Date Time')
+    ax_ls.set_xticks(dt_ticks)
+    ax_ls.set_xticklabels(dt_labs, rotation=75, fontsize=xlfs)
+    ax_ls.legend(loc=2)
+    ax_ls.grid(axis='y')
+
+    ## [Getting the chla at the givenz level in each profile.]
+    chla = np.zeros(N_profs)
+    for k in range(N_profs):
+        ## [Get the depth index for flort.]
+        zi_flort = (flort_profs[k]['depth'] - depthz).argmin()
+        chla[k] = flort_profs[k]['fluorometric_chlorophyll_a'].data[zi_flort]
+
+    ## [Adding chla as twin plot to least squares.]
+    ax_cl.plot(dt, chla, 'k', label='Chl-a', linewidth=2)
+    ax_cl.set_yticks(np.linspace(ax_cl.get_yticks()[0], ax_cl.get_yticks()[-1], len(ax_ls.get_yticks())))
+    ax_cl.set_ylabel(f"Fluorometirc Chl-a [{flort_profs[0]['fluorometric_chlorophyll_a'].attrs['units'][0]}]")
+    ax_cl.legend(loc=1)
 
     if plot_residuals: 
-        ## [The bottom ax.]
-        ax = axs[1]
-
         ## [Plot the residuals.]
-        ax.bar(dt, residuals, color = 'k', width=0.9)
+        ax_rs.bar(dt, residuals, color = 'k', width=0.9)
 
-        ax.set_title('Two Norm of Residual Vector')
-        ax.set_ylabel(r'$\frac{|\mathbf{A} \mathbf{x} - \mathbf{y} |_2}{|\mathbf{y}|_2}$')
-        ax.set_xlabel('Temporal Index')
-        ax.grid()
-        fig.show()
+        ax_rs.set_title('Two Norm of Residual Vector')
+        ax_rs.set_ylabel(r'$\frac{|\mathbf{A} \mathbf{x} - \mathbf{y} |_2}{|\mathbf{y}|_2}$')
+        ax_rs.set_xlabel('Date Time')
+        ax_rs.set_xticks(dt_ticks)
+        ax_rs.set_xticklabels(dt_labs, rotation=75, fontsize=xlfs)
+        ax_rs.set_xticklabels(dt_labs)
+        ax_rs.grid(axis='y')
+
+    fig.show()
 
     return 
         
@@ -438,11 +511,11 @@ if __name__ == '__main__':
     PI = Param_Init()
     cdom_reflam = 412.0
     prof_index = 1
-    z_i = -2
+    depthz = 5
     ## [The absorption or scattering flag.]
-    ab = 'a'
+    ab = 'ab'
     ## [The number of profiles for the Hoffmuller.]
-    N_profs = 50
+    N_profs = 30
 
     ## [Download or load the data sets.]
     ooi_data = ODF.Download_OOI_Data(ooi_savefile_head, 
@@ -472,24 +545,23 @@ if __name__ == '__main__':
     ## [Running the least square estimation of the ratio of phytoplankton.]
     A, y, x = Est_Spec_Lstsq(PI, 
                              wavelengths,
-                             z_i,
+                             depthz,
                              phy_species,
                              flort_prof, 
                              optaa_prof,
                              ab=ab,
-                             plot=False)
+                             plot=False, 
+                             weight = [0.4, 0.04])
+
     Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab=ab)
 
     ## [Running the least squares problem over many profiles.]
-#    x_profs, residuals = Run_Lstsq_Time(N_profs, 
-#                                        PI, 
-#                                        wavelengths, 
-#                                        z_i, 
-#                                        phy_species, 
-##                                        depth_profs, 
-#                                        dt_profs, 
-#                                        chla_profs, 
-#                                        cdom_profs, 
-#                                        optaa_dat, 
-##                                        ab=ab)
-#    Plot_Spec_Lstsq_Hoffmuller(N_profs, dt_profs, phy_species, x_profs, plot_residuals=True, residuals=residuals)
+    x_profs, residuals = Run_Lstsq_Time(N_profs, 
+                                        PI, 
+                                        wavelengths, 
+                                        depthz, 
+                                        phy_species, 
+                                        flort_profs, 
+                                        optaa_profs,
+                                        ab=ab)
+    Plot_Spec_Lstsq_Hoffmuller(N_profs, depthz, flort_profs, optaa_profs, phy_species, x_profs, plot_residuals=True, residuals=residuals)
