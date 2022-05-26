@@ -23,14 +23,14 @@ from ocean_irradiance_module import Wavelength_To_RGB
 import numpy as np
 import pickle 
 from ooi_data_explorations.data_request import data_request
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy
 from scipy import interpolate
 import cvxpy as cp
 
 
-def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof, ab='a', plot=False,
-                   weight=None): 
+def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof, ab='a', weight=None): 
     """
     This function is for the estimation of the ratio of different species that could compose the
     resulting observed absorption profile from OOI. The total observed phytoplankton concentration will be
@@ -75,9 +75,9 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
     N_lam = len(wavelengths)
 
     ## [Get the depth index for optaa.]
-    zi_optaa = (optaa_prof['depth'] - depthz).argmin()
+    zi_optaa = (abs(optaa_prof['depth'] - depthz)).argmin()
     ## [Get the depth index for flort.]
-    zi_flort = (flort_prof['depth'] - depthz).argmin()
+    zi_flort = (abs(flort_prof['depth'] - depthz)).argmin()
 
     ## [The reference wavelength for the cdom absorption.]
     cdom_reflam = 412
@@ -230,9 +230,20 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
             if  ab == 'b':
                 y[i] = abs(b_s[zi_optaa]) 
 
+    ## [Check for NaNs before solving.]
+    ycheck = np.any(np.isnan(y))
+    Acheck = np.any(np.isnan(A))
+    if ycheck or Acheck: 
+        y = y * np.nan
+        A = A * np.nan
+        x = np.zeros(N_phy) * np.nan
+        print('NaN value found... Least squares estimation not implemented')
+        return A, y, x
+
     ## [Solvving the problem as a convex optimization problem using the cvxpy.]
     ## [This is a least squares implementation fo the problem with constraints.]
     x = cp.Variable(N_phy)
+    print('y', y)
     objective = cp.Minimize(cp.sum_squares(A@x - y))
     constraints = [0 <= x, cp.sum(x) == 1.0]
     prob = cp.Problem(objective, constraints)
@@ -282,8 +293,7 @@ def Run_Lstsq_Time(N_profs, PI, wavelengths, depthz, phy_species, flort_profs, o
                                 phy_species,
                                 flort_profs[prof_index], 
                                 optaa_profs[prof_index],
-                                ab=ab,
-                                plot=False)
+                                ab=ab)
  
         ## [If the point is bad such that y is all zeros.]
         if sum(np.abs(y)) == 0.0: 
@@ -294,6 +304,49 @@ def Run_Lstsq_Time(N_profs, PI, wavelengths, depthz, phy_species, flort_profs, o
 
         ## [The two norm of the difference between y_true and the apporx solution.]
         residuals[prof_index] = np.linalg.norm(A@x - y, ord=2) / np.linalg.norm(y, ord=2)
+
+    return x_profs, residuals
+
+
+def Run_Lstsq_Depth(N_depths, PI, wavelengths, phy_species, flort_prof, optaa_prof, ab='ab'): 
+    """
+    Run the least square problem over a sinlge profile for all optaa depths. The output from this function 
+    can then be used to construct a hoffmuller diagram of the species ratios.
+    """
+
+    ## [The number of phytoplankton species.]
+    N_phy = len(phy_species)
+
+    ## [Get the depths from the optaa data set.]
+    depths = optaa_prof['depth'].data
+
+    ## [The exmpty x_profs array, which contains the lst sq species estimate for each profile
+    ##  at the same depthz]
+    x_profs = np.zeros((N_phy, N_depths))
+
+    ## [The residuals of the fit for each.]
+    residuals = np.zeros(N_depths)
+    
+    ## [Loop over the profiles.]
+    for k in range(N_depths):
+        ## [Running the least square estimation of the ratio of phytoplankton.]
+        A, y, x = Est_Spec_Lstsq(PI, 
+                                wavelengths,
+                                depths[k],
+                                phy_species,
+                                flort_prof, 
+                                optaa_prof,
+                                ab=ab)
+ 
+        ## [If the point is bad such that y is all zeros.]
+        if sum(np.abs(y)) == 0.0: 
+            x = np.NaN * x
+
+        ## [Storing the result into x_profs array.]
+        x_profs[:,k] = x
+
+        ## [The two norm of the difference between y_true and the apporx solution.]
+        residuals[k] = np.linalg.norm(A@x - y, ord=2) / np.linalg.norm(y, ord=2)
 
     return x_profs, residuals
 
@@ -387,7 +440,7 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab='a'):
     return 
 
 
-def Plot_Spec_Lstsq_Hoffmuller(N_profs, depthz, flort_profs, optaa_profs, phy_species, x_profs, plot_residuals=False, residuals=None): 
+def Plot_Spec_Lstsq_Hoffmuller_Time(N_profs, depthz, flort_profs, optaa_profs, phy_species, x_profs, plot_residuals=False, residuals=None): 
     """
     This plots a Hoffmuller diagram of the ratios of different species opf phytoplankton in time
 
@@ -397,12 +450,12 @@ def Plot_Spec_Lstsq_Hoffmuller(N_profs, depthz, flort_profs, optaa_profs, phy_sp
     ## [The number of species.]
     N_phy = len(phy_species)
 
-
     ## [Init the bottom coordinate for the stacked bar plot.]
     bot = np.zeros(N_profs)
 
     ## [The colors for each species.]
     colors = ['b','r','g','y','c','m','k','w'][:N_phy]
+#    cmap = mpl.cm.get_cmap('Set1')
 
     ## [Init the dt coordinate array.]
     dt = []
@@ -444,12 +497,13 @@ def Plot_Spec_Lstsq_Hoffmuller(N_profs, depthz, flort_profs, optaa_profs, phy_sp
     for k in range(N_phy): 
         
         ## [plot the phy species layer of the bar plot.]
-        ax_ls.bar(dt, x_profs[k,:], bottom=bot, color = colors[k], label=phy_species[k], width=0.9)
+#        ax_ls.bar(dt, x_profs[k,:], bottom=bot, color = cmap((k/(2*N_phy))), label=phy_species[k], width=0.9, alpha=.8)
+        ax_ls.bar(dt, x_profs[k,:], bottom=bot, color = colors[k], label=phy_species[k], width=0.9, alpha=.8)
 
         ## [Update the bottom of the bar plot.]
         bot = bot + x_profs[k,:]
 
-    ax_ls.set_title(f'Constrained Least Squares \n Phytoplankton Community Estimation at Depth: {depthz}[m]')
+    ax_ls.set_title(f'Constrained Least Squares \n Phytoplankton Community Estimation at Depth: {depthz}m')
     ax_ls.set_ylabel('Fractional Concentraion')
     ax_ls.set_xlabel('Date Time')
     ax_ls.set_xticks(dt_ticks)
@@ -461,7 +515,7 @@ def Plot_Spec_Lstsq_Hoffmuller(N_profs, depthz, flort_profs, optaa_profs, phy_sp
     chla = np.zeros(N_profs)
     for k in range(N_profs):
         ## [Get the depth index for flort.]
-        zi_flort = (flort_profs[k]['depth'] - depthz).argmin()
+        zi_flort = (abs(flort_profs[k]['depth'] - depthz)).argmin()
         chla[k] = flort_profs[k]['fluorometric_chlorophyll_a'].data[zi_flort]
 
     ## [Adding chla as twin plot to least squares.]
@@ -474,13 +528,110 @@ def Plot_Spec_Lstsq_Hoffmuller(N_profs, depthz, flort_profs, optaa_profs, phy_sp
         ## [Plot the residuals.]
         ax_rs.bar(dt, residuals, color = 'k', width=0.9)
 
-        ax_rs.set_title('Two Norm of Residual Vector')
+        ax_rs.set_title('Goodness of Fit \n Two Norm of Residual Vector')
         ax_rs.set_ylabel(r'$\frac{|\mathbf{A} \mathbf{x} - \mathbf{y} |_2}{|\mathbf{y}|_2}$')
         ax_rs.set_xlabel('Date Time')
         ax_rs.set_xticks(dt_ticks)
         ax_rs.set_xticklabels(dt_labs, rotation=75, fontsize=xlfs)
         ax_rs.set_xticklabels(dt_labs)
         ax_rs.grid(axis='y')
+
+    fig.show()
+
+    return 
+        
+
+def Plot_Spec_Lstsq_Hoffmuller_Depth(N_depths, flort_prof, optaa_prof, phy_species, x_profs, plot_residuals=False, residuals=None): 
+    """
+    This plots a Hoffmuller diagram of the ratios of different species opf phytoplankton at different depths for a single profile.
+
+    It will be done by plotting a stacked bar plot.]
+    """
+
+    ## [The number of species.]
+    N_phy = len(phy_species)
+
+    ## [Init the bottom coordinate for the stacked bar plot.]
+    bot = np.zeros(N_depths)
+
+    ## [The colors for each species.]
+    colors = ['b','r','g','y','c','m','k','w'][:N_phy]
+#    cmap = mpl.cm.get_cmap('Set1')
+
+    ## [The true depth values.]
+    depths = optaa_prof['depth'][:N_depths].data
+
+    ## [The optaa depth coordinate]
+    depthi = np.arange(N_depths)
+    ## [If doing a bunch of depths, then just label every fifth depth.]
+    if N_depths > 50:
+        ytick_labels = []
+        yticks = []
+        for k in range(0,N_depths, int(N_depths/10)):
+            ytick_labels.append(depths[k])
+            yticks.append(k)
+    else: 
+        ytick_labels = depths
+        yticks = depthi
+
+    ## [Plot the residual on the same figure.]
+    if plot_residuals: 
+        fig, axs = plt.subplots(nrows=1, ncols=2)
+        ## [Least square axis.]
+        ax_ls = axs[0]
+        ## [Chla twin axis on least squares plot.]
+        ax_cl = ax_ls.twinx()
+        ## [Residual axis.]
+        ax_rs = axs[1]
+    else:
+        fig, ax = plt.subplots()
+        ## [Least square axis.]
+        ax_ls = ax
+ 
+    ## [Loop over the species.]
+    for k in range(N_phy): 
+        
+        ## [plot the phy species layer of the bar plot.]
+#        ax_ls.barh(depthi, x_profs[k,:], left=bot, color = cmap(k/(2*N_phy)), label=phy_species[k], height=1.0, alpha=0.8)
+        ax_ls.barh(depthi, x_profs[k,:], left=bot, color = colors[k], label=phy_species[k], height=1.0, alpha=0.8)
+
+        ## [Update the bottom of the bar plot.]
+        bot = bot + x_profs[k,:]
+
+    ## [The profile start date for the title.]
+    prof_sd = str(optaa_prof['time'].data.astype('datetime64[D]')[0])
+    prof_t = str(optaa_prof['time'].data.astype('datetime64[m]')[0])[-5:]
+    ax_ls.set_title(f'Constrained Least Squares Phytoplankton \n Community Estimation at Profile Date: {prof_sd}, Time: {prof_t}')
+    ax_ls.set_xlabel('Fractional Concentraion')
+    ax_ls.set_ylabel('Depth [m]')
+    ax_ls.set_yticks(yticks)
+    ax_ls.set_yticklabels(ytick_labels)
+    ax_ls.legend(loc=2)
+    ax_ls.grid(axis='x')
+
+    ## [Getting the chla at the givenz level in each profile.]
+    chla = np.zeros(N_depths)
+    for k in range(N_depths):
+        ## [This aligns the chla concentration at a near z-coordinate of OPTAA]
+        zi_flort = (abs(flort_prof['depth'] - depths[k])).argmin()
+        chla[k] = flort_prof['fluorometric_chlorophyll_a'].data[zi_flort]
+
+    ## [Chla twin axis on least squares plot.]
+    ax_cl = ax_ls.twiny()
+    ## [Adding chla as twin plot to least squares.]
+    ax_cl.plot(chla, depthi, 'k', label='Chl-a', linewidth=2)
+    ax_cl.set_xticks(np.linspace(ax_cl.get_xticks()[0], ax_cl.get_xticks()[-1], len(ax_ls.get_xticks())))
+    ax_cl.set_xlabel(f"Fluorometirc Chl-a [{flort_profs[0]['fluorometric_chlorophyll_a'].attrs['units'][0]}]")
+    ax_cl.legend(loc=1)
+
+    if plot_residuals: 
+        ## [Plot the residuals.]
+        ax_rs.barh(depthi, residuals, color = 'k', height=1.0)
+        ax_rs.set_title('Goodness of Fit \n Two Norm of Residual Vector')
+        ax_rs.set_xlabel(r'$\frac{|\mathbf{A} \mathbf{x} - \mathbf{y} |_2}{|\mathbf{y}|_2}$')
+        ax_rs.set_yticks(yticks)
+        ax_rs.set_yticklabels([])
+        ax_rs.grid(axis='x')
 
     fig.show()
 
@@ -506,16 +657,19 @@ if __name__ == '__main__':
     ## [Functional parameters.]
     N=100
     wavelengths = np.arange(425, 725, 25)
-    #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Tricho', 'Lgeuk'] 
+#    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Tricho', 'Lgeuk'] 
     phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
-    prof_index = 1
+    prof_index = 15
     depthz = 5
     ## [The absorption or scattering flag.]
     ab = 'ab'
     ## [The number of profiles for the Hoffmuller.]
-    N_profs = 30
+    N_profs = 50
+    ## [Number of depths for the depth Hoffmuller.]
+    N_depths = 270
+#    N_depths = 20
 
     ## [Download or load the data sets.]
     ooi_data = ODF.Download_OOI_Data(ooi_savefile_head, 
@@ -546,22 +700,30 @@ if __name__ == '__main__':
     A, y, x = Est_Spec_Lstsq(PI, 
                              wavelengths,
                              depthz,
-                             phy_species,
+                            phy_species,
                              flort_prof, 
                              optaa_prof,
                              ab=ab,
-                             plot=False, 
                              weight = [0.4, 0.04])
-
     Plot_Abs_Est_LstSq_Sol(wavelengths, phy_species, A, y, x, ab=ab)
 
     ## [Running the least squares problem over many profiles.]
-    x_profs, residuals = Run_Lstsq_Time(N_profs, 
-                                        PI, 
-                                        wavelengths, 
-                                        depthz, 
-                                        phy_species, 
-                                        flort_profs, 
-                                        optaa_profs,
-                                        ab=ab)
-    Plot_Spec_Lstsq_Hoffmuller(N_profs, depthz, flort_profs, optaa_profs, phy_species, x_profs, plot_residuals=True, residuals=residuals)
+#    x_profs, residuals = Run_Lstsq_Time(N_profs, 
+#                                       PI, 
+#                                        wavelengths, 
+#                                        depthz, 
+#                                        phy_species, 
+#                                        flort_profs, 
+#                                        optaa_profs,
+#                                        ab=ab)
+#    Plot_Spec_Lstsq_Hoffmuller_Time(N_profs, depthz, flort_profs, optaa_profs, phy_species, x_profs, plot_residuals=True, residuals=residuals)
+
+    ## [Running the least squares problem over many depths in single profile.]
+#    x_profs, residuals = Run_Lstsq_Depth(N_depths, 
+#                                        PI, 
+#                                        wavelengths, 
+#                                        phy_species, 
+#                                      flort_prof, 
+#                                        optaa_prof,
+#                                        ab=ab)
+#    Plot_Spec_Lstsq_Hoffmuller_Depth(N_depths, flort_prof, optaa_prof, phy_species, x_profs, plot_residuals=True, residuals=residuals)
