@@ -470,20 +470,87 @@ def Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, start, stop, site_name, 
  
 if __name__ == '__main__':
 
-    import argparse
+#    import argparse
+#
+#    parser = argparse.ArgumentParser(description='Run irradiance model using OOI profile input.')
+#    parser.add_argument('--download', action='store_true', help='Download the data from OOI [This takes time], must specify file head')
+#    parser.add_argument('--site_name', help='site name')
+#    parser.add_argument('--assembly', help= 'assembly')
+#    parser.add_argument('--method', help = 'method')
+#    parser.add_argument('--start', help='start')
+#    parser.add_argument('--stop', help='stop')
+#    parser.add_argument('--ooi_savefile_head', help='The name of the pickle file in which the ooi data is saved.'\
+#                                               'If this argument is given then the ooi data will be loaded'\
+#                                               ' from file and not downloaded from source.', 
+#                                               type=str, required=True)
+#    args = parser.parse_args()
 
-    parser = argparse.ArgumentParser(description='Run irradiance model using OOI profile input.')
-    parser.add_argument('--download', action='store_true', help='Download the data from OOI [This takes time], must specify file head')
-    parser.add_argument('--site_name', help='site name')
-    parser.add_argument('--assembly', help= 'assembly')
-    parser.add_argument('--method', help = 'method')
-    parser.add_argument('--start', help='start')
-    parser.add_argument('--stop', help='stop')
-    parser.add_argument('--ooi_savefile_head', help='The name of the pickle file in which the ooi data is saved.'\
-                                               'If this argument is given then the ooi data will be loaded'\
-                                               ' from file and not downloaded from source.', 
-                                               type=str, required=True)
-    args = parser.parse_args()
+    ## [The data request parameters.]
+    site_name = "CE02SHSP"
+    assembly = "profiler"
+    method = "recovered_cspp"
+    start = "2021-04-01"
+    stop = "2021-04-30"
+
+    ## [File name parameter.]
+    ooi_savefile_head = "ooi_data/ooi_dat"
+    optaa_profs_save = "ooi_data/ooi_dat_rawoptaaprofs.p"
+
+    ## [Data load flag, fale means load data from pickle.]
+    download = False
+
+    ## [Functional parameters.]
+    N=100
+    wavelengths = np.arange(425, 725, 25)
+#    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
+    phy_species = [ 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
+#    phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn'] 
+    PI = Param_Init()
+    cdom_reflam = 412.0
+    prof_index = 15
+    depthz = 5
+    ## [The absorption or scattering flag.]
+    ab = 'b'
+    ## [The number of profiles for the Hoffmuller.]
+    N_profs = 50
+    ## [Number of depths for the depth Hoffmuller.]
+    N_depths = 270
+#    N_depths = 20
+
+    ## [Get color list for each species of phy.]
+    color_dict = ODF.Get_Phy_Cmap_Dict()
+
+    ## [Download or load the data sets.]
+    ooi_data = ODF.Download_OOI_Data(ooi_savefile_head, 
+                                     download, 
+                                     site_name, 
+                                     assembly, 
+                                     method, 
+                                     start, 
+                                     stop)
+
+    flort_dat, spkir_dat, optaa_dat, flort_profs, spkir_profs, optaa_profs = ooi_data
+
+    ## [Use the processed raw optaa profs.]
+    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
+    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
+    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
+    optaa_profs = pickle.load(open(optaa_profs_save,'rb'))
+                                                            
+    ## [Index the profiles for the given index.]
+    flort_prof = flort_profs[prof_index]
+    optaa_prof = optaa_profs[prof_index]
+
+    ## [Get the spkir wavelengths.]
+    spkir_wavelengths = np.array(ODF.Get_SPKIR_Wavelengths(
+                        spkir_dat.variables['spkir_abj_cspp_downwelling_vector']))
+
+
+
+
+
+
+
 
     ## [Download or load the data sets.]
     flort_dat, spkir_dat, optaa_dat = ODF.Download_OOI_Data(args.ooi_savefile_head, args.download, args.site_name, args.assembly, args.method, args.start, args.stop)

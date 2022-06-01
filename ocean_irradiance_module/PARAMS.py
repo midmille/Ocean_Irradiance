@@ -81,7 +81,17 @@ class Param_Init:
         
         self.coefficients = (self.r_s, self.r_u, self.v_d, self.v_s, self.v_u)
 
+        ## [The names of the phytoplankton species we have.]
+        self.phy_species = ['Syn', 
+                            'HLPro', 
+                            'LLPro', 
+                            'Diat', 
+                            'Cocco', 
+                            'Tricho', 
+                            'Lgeuk', 
+                            'Generic']
         ##############################################################################
         ##############################################################################
         
+        return 
     
