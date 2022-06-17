@@ -188,7 +188,7 @@ def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam)
     z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam, smooth=True)
 
     ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
-    CDOM = OI.CDOM_refa(z_a, cdom_refa, lam_ooi, lam)
+    CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam)
     print('CDOM', CDOM)
 
             
@@ -231,8 +231,8 @@ def Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_types, flort_prof, optaa_prof,
 #            a_ooi = a_ooi + abscat(lam, 'water')[0]
 #            b_ooi = b_ooi + abscat(lam, 'water')[1]
             ## [Removing water from irr.]
-            a_irr = a_irr + abscat(lam, 'water')[0]
-            b_irr = b_irr + abscat(lam, 'water')[1]
+            a_irr = a_irr - abscat(lam, 'water')[0]
+            b_irr = b_irr - abscat(lam, 'water')[1]
 
 
             ## [Plotting Absorption comparison.]
