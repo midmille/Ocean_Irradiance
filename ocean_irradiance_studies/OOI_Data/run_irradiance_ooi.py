@@ -132,61 +132,67 @@ def Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, 
 
     return irr_field, irr_field_ab
 
-def OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat, smooth=True):
+def OOI_Abs_Scat(optaa_prof, lam, smooth=True):
     """
     This function gets the OOI absorption and scattering for a given profile index and data sets.
     """
 
-    k = prof_index
+    optaa_z = - optaa_prof['depth'].data
+    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
+    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
+    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
+    wavelength_c = optaa_prof['wavelength_c'].data.transpose()
+    wavelength_a = optaa_prof['wavelength_a'].data.transpose()
+    optaa_c = optaa_prof['beam_attenuation'].data
+    optaa_a = optaa_prof['optical_absorption'].data
+    for k in range(len(optaa_z)): 
+        optaa_c[k,:] = np.interp(wavelength_a[k,:], wavelength_c[k,:], optaa_c[k,:])
 
-    ## [The optaa data.]
-    optaa_depth_dat, optaa_dt_dat, optaa_abs_dat, optaa_scat, optaa_wavelength_dat = ODF.Get_Optaa_Dat(optaa_dat)
+    ## [The scattering is simply the attenuation minus the absorption]
+    optaa_b = optaa_c - optaa_a
 
-    dt_lbnd = dt_profs[k].data[0] 
-    dt_ubnd = dt_profs[k].data[-1]
-    prof_mask = ODF.OOI_Dat_Time_Prof_Mask(dt_lbnd, dt_ubnd, optaa_dt_dat)
-
-    optaa_dt_prof = optaa_dt_dat.data[prof_mask]
-    optaa_depth_prof = optaa_depth_dat.data[prof_mask]
-    optaa_abs_prof = optaa_abs_dat.data[prof_mask]
-    optaa_wavelengths = optaa_wavelength_dat.data[prof_mask]
-    optaa_scat_prof = optaa_scat[prof_mask]
-
-    optaa_depth = np.squeeze(optaa_depth_prof)
     ## [Must get the wavelength index.]
-    lam_i = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], lam)
-    lam_ooi = optaa_wavelengths[0,lam_i]
+    lam_i = ODF.Get_Wavelength_Index(wavelength_a[0,:], lam)
+    lam_ooi = wavelength_a[0,lam_i]
 
     ##[Labeling the ooi z-grids and a, b_b.]
-    z = optaa_depth
+    z = optaa_z
     ## [The squeese makes the array 1-D.]
     ## [Removing the water.]
-    a = np.squeeze(optaa_abs_prof[:, lam_i])
-    b = np.squeeze(optaa_scat_prof[:, lam_i])
+    a = np.squeeze(optaa_a[:, lam_i])
+    b = np.squeeze(optaa_b[:, lam_i])
 
     ## [Smoothing the data using the 55 Smoothing algorithm.] 
-    z_s, a_s = ODF.Smooth_Profile_55(z, a)
-    z_s, b_s = ODF.Smooth_Profile_55(z, b)
+#    z_s, a_s = ODF.Smooth_Profile_55(z, a)
+#    z_s, b_s = ODF.Smooth_Profile_55(z, b)
+    z_s = z
+    a_s = a
+    b_s = b
 
     return z_s, a_s, b_s, lam_ooi
 
 
-def Irr_OOI_Abs_Scat(PI, N, lam, prof_idex, phy_type, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat, cdom_reflam): 
+def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam): 
     """
     This function compares the absorption and backscatter as calculated by the irradiance model with Dutkiewicz
     coefficients to the values given by OO.
     """
     
-    phy = OI.Phy(depth_profs[prof_index], chla_profs[prof_index], esd(phy_type), 
+    chla = flort_prof['fluorometric_chlorophyll_a'].data
+    flort_z = -flort_prof['depth'].data
+    phy = OI.Phy(flort_z, chla, esd(phy_type), 
                  abscat(lam, phy_type, C2chla='default')[0], 
                  abscat(lam, phy_type, C2chla='default')[1])
 
     ## [Get the z_a, a, and lam_ooi for the CDOM_refa object.]
-    z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(prof_index, cdom_reflam, depth_profs, dt_profs, opt_bs_profs, optaa_dat)
+    z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam, smooth=True)
+
     ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
     CDOM = OI.CDOM_refa(z_a, cdom_refa, lam_ooi, lam)
+    print('CDOM', CDOM)
+
             
-    z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(depth_profs[prof_index][0], 
+    z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(flort_z[0], 
                                                                    abscat(lam, 'water'), 
                                                                    N,
                                                                    phy=phy, 
@@ -195,13 +201,13 @@ def Irr_OOI_Abs_Scat(PI, N, lam, prof_idex, phy_type, depth_profs, dt_profs, chl
                                                                    pt1_perc_phy=False)
 
     ## [Get the ooi absorption and scattering, along with their corresponding grids.]
-    z_ooi, a_ooi, b_ooi, lam_ooi = OOI_Abs_Scat(prof_index, lam, depth_profs, dt_profs, opt_bs_profs, optaa_dat) 
+    z_ooi, a_ooi, b_ooi, lam_ooi = OOI_Abs_Scat(optaa_prof, lam, smooth=True)
 
 
     return  z_irr, a_irr, b_irr, z_ooi, a_ooi, b_ooi, lam_ooi
 
 
-def Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat, cdom_reflam): 
+def Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_types, flort_prof, optaa_prof, cdom_reflam): 
     """
 
     """
@@ -217,23 +223,18 @@ def Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_types, depth_profs
         axa = axas[k]
         axb = axbs[k]
         for i, phy_type in enumerate(phy_types):
+
             ## [Getting the absorption and scattering values.]
-            z_irr, a_irr, b_irr, z_ooi, a_ooi, b_ooi, lam_ooi = Irr_OOI_Abs_Scat(PI,
-                                                                                     N,
-                                                                                     lam,
-                                                                                     prof_index,
-                                                                                     phy_type,
-                                                                                     depth_profs, 
-                                                                                     dt_profs,
-                                                                                     chla_profs, 
-                                                                                     cdom_profs,
-                                                                                     opt_bs_profs, 
-                                                                                     optaa_dat, 
-                                                                                     cdom_reflam)
-            
+            z_irr, a_irr, b_irr, z_ooi, a_ooi, b_ooi, lam_ooi = Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof, cdom_reflam)
+
             ## [Adding water absorption to OOI absorption.]
-            a_ooi = a_ooi + abscat(lam, 'water')[0]
-            b_ooi = b_ooi + abscat(lam, 'water')[1]
+#            a_ooi = a_ooi + abscat(lam, 'water')[0]
+#            b_ooi = b_ooi + abscat(lam, 'water')[1]
+            ## [Removing water from irr.]
+            a_irr = a_irr + abscat(lam, 'water')[0]
+            b_irr = b_irr + abscat(lam, 'water')[1]
+
+
             ## [Plotting Absorption comparison.]
             ## [Only plot the ooi abs, scat for i==0, since they are indp. of wavelength.]
             if i == 0: 
@@ -501,13 +502,15 @@ if __name__ == '__main__':
 
     ## [Functional parameters.]
     N=100
-    wavelengths = np.arange(425, 725, 25)
+#    wavelengths = np.arange(425, 725, 25)
+    wavelengths = np.arange(425, 725, 75)
 #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
-    phy_species = [ 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
+    phy_species = [ 'Cocco', 'Diat', 'Syn'] 
+#    phy_species = [ 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
 #    phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
-    prof_index = 15
+    prof_index = 1
     depthz = 5
     ## [The absorption or scattering flag.]
     ab = 'b'
@@ -545,47 +548,17 @@ if __name__ == '__main__':
     spkir_wavelengths = np.array(ODF.Get_SPKIR_Wavelengths(
                         spkir_dat.variables['spkir_abj_cspp_downwelling_vector']))
 
-
-
-
-
-
-
-
-    ## [Download or load the data sets.]
-    flort_dat, spkir_dat, optaa_dat = ODF.Download_OOI_Data(args.ooi_savefile_head, args.download, args.site_name, args.assembly, args.method, args.start, args.stop)
-
-    ## [Get the chla profile lists.]
-    depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs = ODF.Get_Flort_Profiles(flort_dat)
-
-    ## [Get the spkir wavelengths.]
-    spkir_wavelengths = np.array(ODF.Get_SPKIR_Wavelengths(spkir_dat.variables['spkir_abj_cspp_downwelling_vector']))
-
-    ## [Some parameters.]
-    N=100
-    ## [Includes up to 700nm but not 725.]
-    wavelengths = np.arange(425, 650, 25)
-#    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Tricho', 'Lgeuk'] 
-    phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn'] 
-    print(phy_species)
-    PI = Param_Init()
-    cdom_reflam=412.0
-    #wavelengths =  PI.wavelengths
-
     ## [Run the irradiance model using the profiles, over all profiles.]
     #irr_field, irr_field_ab = Run_Irradiance(N, wavelengths, phy_type, depth_profs, dt_profs, chla_profs, opt_bs_profs, optaa_dat)
 
-    prof_index = 0
     ## [The index of the spkir wavelengths that most closely matches the given irradiance wavcelengths.]
     ## [This wavelength index should be automated soon.]
     #spkir_wavelength_index = [ODF.Get_Wavelength_Index(spkir_wavelengths, wavelengths[0])]
     #Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_wavelengths, spkir_wavelength_index, irr_field, irr_field_ab, spkir_dat, args.site_name, args.assembly, args.method)
-    Plot_Irr_OOI_Abs_Scat(PI, prof_index, wavelengths, N, phy_species, depth_profs, dt_profs, chla_profs, cdom_profs, opt_bs_profs, optaa_dat, cdom_reflam)
+    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
     #for d in depth:
     #depth_ref = -10
     #Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, args.start, args.stop, args.site_name, args.assembly, args.method)
     #Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, args.start, args.stop, args.site_name, args.assembly, args.method)
-
-
 

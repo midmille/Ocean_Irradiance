@@ -61,12 +61,12 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, optaa_prof, phy_species, A, y, x, phycol
             if k==1: 
                 ab_str = 'Scattering'
 
-            ax.plot(wavelengths, y[k::2], 'k', label = f"OOI Total Effective {ab_str}")
-            ax.plot(wavelengths, y_est[k::2], ':k', label = f"Least Square Approx {ab_str}")
-         
             ## [Plot the species coefficients]
             for i in range(N_phy): 
-                ax.plot(wavelengths, A[k::2, i], color = phycolors[phy_species[i]], label = f'{phy_species[i]}: {round(x[i],2)}') 
+                ax.plot(wavelengths, A[k::2, i], lw='2', color = phycolors[phy_species[i]], label = f'{phy_species[i]}: {abs(round(x[i],2))}') 
+
+            ax.plot(wavelengths, y[k::2], 'k', lw='2', label = f"OOI Total Effective {ab_str}")
+            ax.plot(wavelengths, y_est[k::2], 'k', lw='2', linestyle='dotted', label = f"Least Square Approx {ab_str}")
      
             ax.set_ylabel(f"Effective {ab_str}  [m^-1]")
      
@@ -84,13 +84,14 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, optaa_prof, phy_species, A, y, x, phycol
     ## [The uncoupled abs/scat specific solution.]
     else: 
         fig, ax = plt.subplots()
-        ax.plot(wavelengths, y, 'k', label = f"OOI Total Effective {ab_str}")
-        ax.plot(wavelengths, y_est, ':k', label = f"Least Square Approx {ab_str}")
      
         ## [Plot the species coefficients]
         for k in range(N_phy): 
-            ax.plot(wavelengths, A[:, k], color= phycolors[phy_species[k]], label = f'{phy_species[k]}: {round(x[k],2)}') 
+            ax.plot(wavelengths, A[:, k], lw='2', color= phycolors[phy_species[k]], label = f'{phy_species[k]}: {abs(round(x[k],2))}') 
     
+        ax.plot(wavelengths, y, 'k', lw='2', label = f"OOI Total Effective {ab_str}")
+        ax.plot(wavelengths, y_est, 'k', lw='2', linestyle='dotted', label = f"Least Square Approx {ab_str}")
+
         ax.set_ylabel(f"Effective {ab_str}  [m^-1]")
         ax.set_xlabel("Wavelength [nm]")
     

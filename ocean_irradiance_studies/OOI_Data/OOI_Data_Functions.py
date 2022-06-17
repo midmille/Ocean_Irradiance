@@ -38,18 +38,21 @@ def Get_Phy_Cmap_Dict():
     N = len(phy_species)
 
     ## [The number of colors in the cmap.]
-    Ncolors = 12
+    Ncolors = 8
 
     ## [Can only do up to 10 colors.]
     if N > Ncolors:
         raise ValueError(f'Limit to N .LE. {Ncolors} colors, or increase number of colors in cmap')
 
 #    cmap = mpl.cm.get_cmap('nipy_spectral')
-    cmap = mpl.cm.get_cmap('Set3')
+    cmap = mpl.cm.get_cmap('Dark2')
 
     color_dict = {}
+    colors = ['g', 'tab:purple', 'b', 'm', 'c', 'tab:brown','r', 'y']
     for k,phy in enumerate(phy_species): 
-        color_dict[phy] = (cmap(((k+ 0.5*(1/10))/ (10))))
+#        color_dict[phy] = (cmap(((k+ 0.5*(1/10))/ (10))))
+        color_dict[phy] = colors[k]
+        
 
     return color_dict
 

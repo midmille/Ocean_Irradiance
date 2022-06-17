@@ -378,7 +378,7 @@ if __name__ == '__main__':
     prof_index = 15
     depthz = 5
     ## [The absorption or scattering flag.]
-    ab = 'b'
+    ab = 'ab'
     ## [The number of profiles for the Hoffmuller.]
     N_profs = 50
     ## [Number of depths for the depth Hoffmuller.]
@@ -442,5 +442,5 @@ if __name__ == '__main__':
                                         phy_species, 
                                       flort_prof, 
                                         optaa_prof,
-                                        ab=ab)
+                                       ab=ab)
     PLOT.Plot_Spec_Lstsq_Hoffmuller_Depth(N_depths, flort_prof, optaa_prof, phy_species, x_profs, color_dict, plot_residuals=True, residuals=residuals)
