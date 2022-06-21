@@ -14,6 +14,7 @@ To run:
 ## [User Modules]
 import OOI_Data_Functions as ODF 
 from ocean_irradiance_module import Ocean_Irradiance as OI
+from ocean_irradiance_module import Ocean_Irradiance_ROMS as OIR
 import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
@@ -342,6 +343,9 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
         depth_avg = np.arange(spkir_depth[0], spkir_depth[-1], 1)
         spkir_avg = ODF.Grid_Average_Profile(spkir_depth, spkir[:,lam_i], depth_avg)
         
+        ## [Surface Ed0.]
+        print('surface Ed0+Es0', spkir_avg[-1])
+
         ## [irr arrays for lam.]
         irr_arr = irr_field[lam]
         irr_arr_ab = irr_field_ab[lam]

@@ -264,7 +264,7 @@ def ocean_irradiance_shubha(hbot, Ed0, ab_wat, coefficients, phy=None, CDOM=None
     return Ed, Eu, z, a, b_b
 
 
-def ocean_irradiance_shubha_ooi(hbot, Ed0, coefficients, z_a, a, z_b_b, b_b, CDOM=None, N=30, pt1_perc_zbot=True):
+def ocean_irradiance_shubha_ooi(hbot, Ed0, coefficients, z_a, a, z_b_b, b_b, N=30, pt1_perc_zbot=True):
 
     """
     The implementation of the two stream model of Shubha 1997, 1998. 
