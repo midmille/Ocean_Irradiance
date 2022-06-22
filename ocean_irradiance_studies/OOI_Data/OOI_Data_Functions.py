@@ -57,27 +57,26 @@ def Get_Phy_Cmap_Dict():
     return color_dict
 
 
-def Download_Data(site_name, assembly, instrument, method, start, stop):
+def Download_Data(site, node, sensor, method, deployment, stream, tag):
     """
-    This file is to download the ooi data from source using the ooi_data_explorations.data_request module. 
-    
+
     Parameters
     ----------
-    ooi_paramdict: Dict
-        This is a dictionary containing the required arguments for the OOI data download. 
-        The keys are as follows: [site, assembly, instrument, method, start, stop]. 
     Returns
     -------
-    ooi_dat: 
-
     """
 
-    ooi_dat = data_request(site_name, assembly, instrument, method, start=start, stop=stop)
+    ## [Get the start and stop date for the deployement.]
+    start, stop = get_deployment_dates(site, node, sensor, deployment)
 
-    return ooi_dat
+    ## [Request the data.]
+    r = m2m_request(site, node, sensor, method, stream, start, stop)
+    data = m2m_collect(r, tag)
+
+    return data
 
 
-def Download_OOI_Data(ooi_savefile_head, download, site_name, assembly, method, start, stop, profiled=True):
+def Download_OOI_Data(savefile_head, download, site, node, method, deployment, profiled=True):
     """
     This function is for the download xor load of the desired OOI data. If the files already exists then pass
     the download argument as false. Otherwise if you want to download the data from OOI servers, 
@@ -85,21 +84,19 @@ def Download_OOI_Data(ooi_savefile_head, download, site_name, assembly, method, 
 
     Parameters
     ----------
-    ooi_savefile_head: String
-        The header of the save file. The function will add '_{instrumentname}.p' for each different instrument, 
+    savefile_head: String
+        The header of the save file. The function will add '{deployment}_{instrumentname}.p' for each different instrument, 
         which is [spkir, flort, optaa]. 
     download: Boolean 
         Set True to download OOI data from servers. Set False to load from predownloaded pickle files.
-    site_name: String
+    site: String
         The site name variables for the data.
-    assembly: String 
-        The assembly. 
+    node: String
+        The OOI net node designator.
     method: String 
-        The method.
-    start: String
-        The start date of the profiler data. 
-    stop: String
-        The stop date of the profiler data. 
+        The OOI delivery method.
+    deployment: String
+        The OOI deployment number.
     profiled: optional, Boolean
         This flag is set true if the data is to made into profiles. 
 
@@ -124,23 +121,39 @@ def Download_OOI_Data(ooi_savefile_head, download, site_name, assembly, method, 
     """
 
     ## [The savefile names for each ooi data set.]
-    spkir_savefile = ooi_savefile_head + '_spkir.p'
-    flort_savefile = ooi_savefile_head + '_flort.p'
-    optaa_savefile = ooi_savefile_head + '_optaa.p'
+    spkir_savefile = f'{savefile_head}_{deployment}_spkir.p'
+    flort_savefile = f'{savefile_head}_{deployment}_flort.p'
+    optaa_savefile = f'{savefile_head}_{deployment}_optaa.p'
+
     ## [The pickle file names of the processed data.]
-    spkir_profiles_savefile = ooi_savefile_head + '_spkir_profiles.p'
-    flort_profiles_savefile = ooi_savefile_head + '_flort_profiles.p'
-    optaa_profiles_savefile = ooi_savefile_head + '_optaa_profiles.p'
+    spkir_savefile = f'{savefile_head}_{deployment}_spkir_profiles.p'
+    flort_savefile = f'{savefile_head}_{deployment}_flort_profiles.p'
+    optaa_savefile = f'{savefile_head}_{deployment}_optaa_profiles.p'
 
     ## [Download OOI data.]
     if download: 
         ## [Download the data.]
         ## [The Chla data.]
-        flort_dat = Download_Data(site_name, assembly, 'FLORT', method, start, stop)
+        sensor = '07-FLORTJ000' 
+        stream = 'flort_sample'
+        tag = f'.*deployment00{deployment}.*FLORT.*\\.nc$'
+        flort_dat = Download_Data(site, node, sensor, method, deployement, stream, tag)
         ## [The spkir data.]
-        spkir_dat = Download_Data(site_name, assembly, 'SPKIR', method, start, stop)
+        sensor = '06-SPKIRJ000' 
+        stream = 'spkir_abj_cspp_instrument_recovered'
+        tag = f'.*deployment00{deployment}.*SPKIR.*\\.nc$'
+        spkir_dat = Download_Data(site, node, sensor, method, deployement, stream, tag)
         ## [The OPTAA data.]
-        optaa_dat = Download_Data(site_name, assembly, 'OPTAA', method, start, stop)
+        sensor = '04-OTAAJ000' 
+        stream = 'optaa_dj_cspp_instrument_recovered'
+        tag = f'.*deployment00{deployment}.*OPTAA.*\\.nc$'
+        optaa_dat = Download_Data(site, node, sensor, method, deployement, stream, tag)
+
+        ## [If this flag is set to True then process the raw optaa data.]
+        if process_optaa: 
+
+
+            
 
         ## [Make into profiles if flag True.]
         if profiled: 
