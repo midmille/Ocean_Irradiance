@@ -6,16 +6,20 @@ This file contains some useful fucntions for parsing over the ooi data.
 """
 
 ## [External Mods]
-from ooi_data_explorations.data_request import data_request
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import re
 import numpy as np
 import pickle
 import xarray as xr
+## [OOI Mods]
+from ooi_data_explorations.data_request import data_request
+from ooi_data_explorations.common import m2m_request, m2m_collect, get_deployment_dates
 ## [User Mods]
 from ocean_irradiance_module import Wavelength_To_RGB
 from ocean_irradiance_module.PARAMS import Param_Init
+import process_optaa
+
 
 
 def Get_Phy_Cmap_Dict(): 
@@ -76,7 +80,7 @@ def Download_Data(site, node, sensor, method, deployment, stream, tag):
     return data
 
 
-def Download_OOI_Data(savefile_head, download, site, node, method, deployment, profiled=True):
+def Download_OOI_Data(savefile_head, download, site, node, method, deployment, profiled=True, optaa_processed=True):
     """
     This function is for the download xor load of the desired OOI data. If the files already exists then pass
     the download argument as false. Otherwise if you want to download the data from OOI servers, 
@@ -137,23 +141,21 @@ def Download_OOI_Data(savefile_head, download, site, node, method, deployment, p
         sensor = '07-FLORTJ000' 
         stream = 'flort_sample'
         tag = f'.*deployment00{deployment}.*FLORT.*\\.nc$'
-        flort_dat = Download_Data(site, node, sensor, method, deployement, stream, tag)
+        flort_dat = Download_Data(site, node, sensor, method, deployment, stream, tag)
         ## [The spkir data.]
         sensor = '06-SPKIRJ000' 
         stream = 'spkir_abj_cspp_instrument_recovered'
         tag = f'.*deployment00{deployment}.*SPKIR.*\\.nc$'
-        spkir_dat = Download_Data(site, node, sensor, method, deployement, stream, tag)
+        spkir_dat = Download_Data(site, node, sensor, method, deployment, stream, tag)
         ## [The OPTAA data.]
         sensor = '04-OTAAJ000' 
         stream = 'optaa_dj_cspp_instrument_recovered'
         tag = f'.*deployment00{deployment}.*OPTAA.*\\.nc$'
-        optaa_dat = Download_Data(site, node, sensor, method, deployement, stream, tag)
+        optaa_dat = Download_Data(site, node, sensor, method, deployment, stream, tag)
 
-        ## [If this flag is set to True then process the raw optaa data.]
-        if process_optaa: 
-
-
-            
+        ## [If this flag is set to True then process the raw optaa data as demonstrated by Chris Winegard.]
+        if optaa_processed: 
+            process_optaa.Process_Optaa(optaa_dat)
 
         ## [Make into profiles if flag True.]
         if profiled: 
@@ -191,6 +193,7 @@ def Download_OOI_Data(savefile_head, download, site, node, method, deployment, p
         return flort_dat, spkir_dat, optaa_dat, flort_profiles, spkir_profiles, optaa_profiles
     else:
         return flort_dat, spkir_dat, optaa_dat
+
 
 def Process_Profile(profile, drop_time=60, chris_method=True): 
     """
