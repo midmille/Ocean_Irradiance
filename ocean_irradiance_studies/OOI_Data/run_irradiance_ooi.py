@@ -162,6 +162,14 @@ def Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_
 
     return irr_field, irr_field_ab
 
+
+def Comp_OOI_CCI_Irr(flort_profs, irr_field, irr_field_ab, cci_url, download_cci=True): 
+    """
+    This function compares the ooi flourometric chla, the irradiance chla with dutkiewicz absorption/scattering,
+    the irradiance chla with ooi abs/scat, and the chla from cci satellite.
+    """
+
+
 def OOI_Abs_Scat(optaa_prof, lam, smooth=True):
     """
     This function gets the OOI absorption and scattering for a given profile index and data sets.
