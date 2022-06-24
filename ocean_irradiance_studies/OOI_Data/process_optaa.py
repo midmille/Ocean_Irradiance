@@ -257,7 +257,7 @@ def estimate_chl_poc(optaa, coeffs):
     return optaa
 
 
-def Process_Raw_Optaa(optaa_dat): 
+def Process_Optaa(optaa_dat): 
     """
     This function implements the functions provided by Chris Wingard to show the processing 
     of raw optaa data to get final absorption adn attenuation products.
