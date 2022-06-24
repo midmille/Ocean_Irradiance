@@ -271,6 +271,8 @@ def Process_Profile(profile, drop_time=60, chris_method=True):
     ## [Sort ascending in time.]
     profile = profile.sortby('time')
 
+    ## [Make the depth coordinate negative.]
+    profile['depth'] = - profile['depth']
         
     return profile
 
