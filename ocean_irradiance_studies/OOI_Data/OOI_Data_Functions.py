@@ -80,7 +80,7 @@ def Download_Data(site, node, sensor, method, deployment, stream, tag):
     return data
 
 
-def Download_OOI_Data(savefile_head, download, site, node, method, deployment, profiled=True, optaa_processed=True):
+def Download_OOI_Data(savefile_head, download, site, node, method, deployment, profiled=True, optaa_process_raw=True):
     """
     This function is for the download xor load of the desired OOI data. If the files already exists then pass
     the download argument as false. Otherwise if you want to download the data from OOI servers, 
@@ -129,32 +129,34 @@ def Download_OOI_Data(savefile_head, download, site, node, method, deployment, p
     flort_savefile = f'{savefile_head}_{deployment}_flort.p'
     optaa_savefile = f'{savefile_head}_{deployment}_optaa.p'
 
-    ## [The pickle file names of the processed data.]
-    spkir_savefile = f'{savefile_head}_{deployment}_spkir_profiles.p'
-    flort_savefile = f'{savefile_head}_{deployment}_flort_profiles.p'
-    optaa_savefile = f'{savefile_head}_{deployment}_optaa_profiles.p'
+    ## [The pickle file names of the processed and profiled data.]
+    spkir_profiles_savefile = f'{savefile_head}_{deployment}_spkir_profiles.p'
+    flort_profiles_savefile = f'{savefile_head}_{deployment}_flort_profiles.p'
+    optaa_profiles_savefile = f'{savefile_head}_{deployment}_optaa_profiles.p'
 
     ## [Download OOI data.]
     if download: 
         ## [Download the data.]
+        ## [Form the tag deployement, i.e. pad with zeros.]
+        tagdepl = str(deployment).zfill(4)
         ## [The Chla data.]
         sensor = '07-FLORTJ000' 
         stream = 'flort_sample'
-        tag = f'.*deployment00{deployment}.*FLORT.*\\.nc$'
+        tag = f'.*deployment{tagdepl}.*FLORT.*\\.nc$'
         flort_dat = Download_Data(site, node, sensor, method, deployment, stream, tag)
         ## [The spkir data.]
         sensor = '06-SPKIRJ000' 
         stream = 'spkir_abj_cspp_instrument_recovered'
-        tag = f'.*deployment00{deployment}.*SPKIR.*\\.nc$'
+        tag = f'.*deployment{tagdepl}.*SPKIR.*\\.nc$'
         spkir_dat = Download_Data(site, node, sensor, method, deployment, stream, tag)
         ## [The OPTAA data.]
-        sensor = '04-OTAAJ000' 
+        sensor = '04-OPTAAJ000' 
         stream = 'optaa_dj_cspp_instrument_recovered'
-        tag = f'.*deployment00{deployment}.*OPTAA.*\\.nc$'
+        tag = f'.*deployment{tagdepl}.*OPTAA.*\\.nc$'
         optaa_dat = Download_Data(site, node, sensor, method, deployment, stream, tag)
 
         ## [If this flag is set to True then process the raw optaa data as demonstrated by Chris Winegard.]
-        if optaa_processed: 
+        if optaa_process_raw: 
             process_optaa.Process_Optaa(optaa_dat)
 
         ## [Make into profiles if flag True.]
@@ -215,13 +217,11 @@ def Process_Profile(profile, drop_time=60, chris_method=True):
         The processed profile.
     """
 
-#    if chris_method:
-
     ## [First remove the first 60 seconds of the profile. This is because the filter wheel spin-up and 
     ##  the lamp warmup occur during this time.]
-    profile = profile.where(profile['on_seconds'] > drop_time, drop=True)
+    profile = profile.where(profile['time'] - profile['time'][0] > np.timedelta64(drop_time, 'ns'), drop=True)
 
-    ## [Bin the data into 25cm depth bins.]
+    ## [Bin the data into 25cm depth bins and take median value in each bin.]
     ## [The bins centers.]
     bin_centers = np.arange(0.125, 75.125, 0.25)
     ## [This results in a GroupBy Object with key, value pairs for each group.]
@@ -247,6 +247,30 @@ def Process_Profile(profile, drop_time=60, chris_method=True):
     profile = xr.concat(binned, 'time')  
     ## [Sort ascending in time.]
     profile = profile.sortby('time')
+
+
+    ## [Bin the data again but this time into 100 cm bins and then take the mean.]
+    bin_centers = np.arange(0.5, 75.5, 1.0)
+    ## [This results in a GroupBy Object with key, value pairs for each group.]
+    bins = profile.groupby_bins('depth', bin_centers) 
+
+    binned = []
+    ## [Loop over each bin. Each bin is a group of a interval key and a xarray.DataArray object value, 
+    ##  thus each group will be indexed with grp[1], for the group value.]
+    for grp in bins: 
+        ## [Taking the mean of each bin.]
+        avg = grp[1].mean('time', keepdims=True, keep_attrs=True)
+        avg = avg.assign_coords({'time': np.atleast_1d(grp[1]['time'].mean().values)})
+        ## [Set the depth coordinate to the bin midpoint.]
+        avg['depth'] = avg['depth']*0 + grp[0].mid
+        ## [Append the median data set back into a list of bins.]
+        binned.append(avg)
+
+    ## [Recombine the data into a single data set.]
+    profile = xr.concat(binned, 'time')  
+    ## [Sort ascending in time.]
+    profile = profile.sortby('time')
+
         
     return profile
 
