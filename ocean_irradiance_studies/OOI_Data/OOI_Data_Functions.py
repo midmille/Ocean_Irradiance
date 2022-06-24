@@ -162,12 +162,12 @@ def Download_OOI_Data(savefile_head, download, site, node, method, deployment, p
         ## [Make into profiles if flag True.]
         if profiled: 
             ## [Making Flort profiles, no profile processing for now.]
-            flort_profiles = Create_Profiles(flort_dat, process_profile=False)
+            flort_profiles = Create_Profiles(flort_dat, process_profile=True)
             ## [Spkir profiles.]
-            spkir_profiles = Create_Profiles(spkir_dat, process_profile=False)
+            spkir_profiles = Create_Profiles(spkir_dat, process_profile=True)
             ## [The optaa profiles, does include processing since the optaa data set 
             ##  has the on_seconds variable.]
-            optaa_profiles = Create_Profiles(optaa_dat, process_profile=False)
+            optaa_profiles = Create_Profiles(optaa_dat, process_profile=True)
 
             ## [Save the profiled data into pickles.]
             pickle.dump(flort_profiles, open(flort_profiles_savefile, 'wb'))
@@ -249,7 +249,7 @@ def Process_Profile(profile, drop_time=60, chris_method=True):
     profile = profile.sortby('time')
 
 
-    ## [Bin the data again but this time into 100 cm bins and then take the mean.]
+    ## [Bin the data again but this time into 500 cm bins and then take the mean.]
     bin_centers = np.arange(0.5, 75.5, 1.0)
     ## [This results in a GroupBy Object with key, value pairs for each group.]
     bins = profile.groupby_bins('depth', bin_centers) 

@@ -46,7 +46,7 @@ def Days_To_Julian_Date(start_date, days_array):
 
     return julian_date, year
 
-def Get_PML_OC_Data_Set(erddap_url, year_lims, julian_date_lims, lat_lims, lon_lims):
+def Download_PML_Data(erddap_url, year_lims, julian_date_lims, lat_lims, lon_lims):
     """
     This function returns the Rrs443, Rrs560, and chla arrays for the given 
     date_time domain and lattitude/longitude domain.

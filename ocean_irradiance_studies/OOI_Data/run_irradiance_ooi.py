@@ -20,6 +20,7 @@ from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as esd
 from ocean_irradiance_module import Wavelength_To_RGB
+import plymouth_data
 
 ## [External Modules]
 import numpy as np
@@ -66,7 +67,7 @@ def Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_
             optaa_prof = optaa_profs[k]
 
             chla = flort_prof['fluorometric_chlorophyll_a'].data
-            flort_z = -flort_prof['depth'].data
+            flort_z = flort_prof['depth'].data
             phy = OI.Phy(flort_z, chla, esd(phy_type), 
                         abscat(lam, phy_type, C2chla='default', dut_txt=False)[0], 
                         abscat(lam, phy_type, C2chla='default', dut_txt=False)[1])
@@ -163,11 +164,17 @@ def Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_
     return irr_field, irr_field_ab
 
 
-def Comp_OOI_CCI_Irr(flort_profs, irr_field, irr_field_ab, cci_url, download_cci=True): 
+def Comp_OOI_CCI_Irr(flort_profs, irr_field, irr_field_ab, cci_url, download_cci): 
     """
     This function compares the ooi flourometric chla, the irradiance chla with dutkiewicz absorption/scattering,
     the irradiance chla with ooi abs/scat, and the chla from cci satellite.
+
+
     """
+    
+
+
+    return 
 
 
 def OOI_Abs_Scat(optaa_prof, lam, smooth=True):
@@ -175,12 +182,9 @@ def OOI_Abs_Scat(optaa_prof, lam, smooth=True):
     This function gets the OOI absorption and scattering for a given profile index and data sets.
     """
 
-    optaa_z = - optaa_prof['depth'].data
-    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
-    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
-    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
-    wavelength_c = optaa_prof['wavelength_c'].data.transpose()
-    wavelength_a = optaa_prof['wavelength_a'].data.transpose()
+    optaa_z = optaa_prof['depth'].data
+    wavelength_c = optaa_prof['wavelength_c'].data
+    wavelength_a = optaa_prof['wavelength_a'].data
     optaa_c = optaa_prof['beam_attenuation'].data
     optaa_a = optaa_prof['optical_absorption'].data
     for k in range(len(optaa_z)): 
@@ -217,7 +221,7 @@ def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam)
     """
     
     chla = flort_prof['fluorometric_chlorophyll_a'].data
-    flort_z = -flort_prof['depth'].data
+    flort_z = flort_prof['depth'].data
     phy = OI.Phy(flort_z, chla, esd(phy_type), 
                  abscat(lam, phy_type, C2chla='default', dut_txt=False)[0], 
                  abscat(lam, phy_type, C2chla='default', dut_txt=False)[1])
@@ -302,7 +306,7 @@ def Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_types, flort_prof, optaa_prof,
     return 
 
 
-def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, assembly, method): 
+def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method): 
 
     """
     This function plots downwelling irradiance stream solved for using the chla profiles
@@ -382,7 +386,6 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
     txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
     ## [Adding the txt.]
     ax.text(txt_x, txt_y, f'SITE: {site}')   
-    ax.text(txt_x, txt_y+txt_dz, f'ASSEMBLY: {assembly}')   
     ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: SPKIR')   
     ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
 
@@ -393,7 +396,7 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
 
     return 
 
-def Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, start, stop, site_name, assembly, method):
+def Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, start, stop, site, assembly, method):
     """
     This plot creates a plot similiar to the one Chris Wingard sent in his email on 4/9/2022. 
     """
@@ -435,7 +438,7 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, start, stop, site_name, a
     ## [The change in txt location in vertical.]
     txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
     ## [Adding the txt.]
-    ax.text(txt_x, txt_y, f'SITE: {site_name}')   
+    ax.text(txt_x, txt_y, f'SITE: {site}')   
     ax.text(txt_x, txt_y+txt_dz, f'ASSEMBLY: {assembly}')   
     ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: OPTAA')   
     ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
@@ -447,7 +450,7 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, start, stop, site_name, a
     return
     
 
-def Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, start, stop, site_name, assembly, method):
+def Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, start, stop, site, assembly, method):
     """
     This plot creates a plot similiar to the one Chris Wingard sent in his email on 4/9/2022. 
     The main difference between this function and Plot_OOI_Abs_Wavelength_Time() is that this function
@@ -493,7 +496,7 @@ def Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, start, stop, site_name, 
     ## [The change in txt location in vertical.]
     txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
     ## [Adding the txt.]
-    ax.text(txt_x, txt_y, f'SITE: {site_name}')   
+    ax.text(txt_x, txt_y, f'SITE: {site}')   
     ax.text(txt_x, txt_y+txt_dz, f'ASSEMBLY: {assembly}')   
     ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: OPTAA')   
     ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
@@ -507,76 +510,52 @@ def Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, start, stop, site_name, 
  
 if __name__ == '__main__':
 
-#    import argparse
-#
-#    parser = argparse.ArgumentParser(description='Run irradiance model using OOI profile input.')
-#    parser.add_argument('--download', action='store_true', help='Download the data from OOI [This takes time], must specify file head')
-#    parser.add_argument('--site_name', help='site name')
-#    parser.add_argument('--assembly', help= 'assembly')
-#    parser.add_argument('--method', help = 'method')
-#    parser.add_argument('--start', help='start')
-#    parser.add_argument('--stop', help='stop')
-#    parser.add_argument('--ooi_savefile_head', help='The name of the pickle file in which the ooi data is saved.'\
-#                                               'If this argument is given then the ooi data will be loaded'\
-#                                               ' from file and not downloaded from source.', 
-#                                               type=str, required=True)
-#    args = parser.parse_args()
-
     ## [The data request parameters.]
-    site_name = "CE02SHSP"
-    assembly = "profiler"
-    method = "recovered_cspp"
-    start = "2021-04-01"
-    stop = "2021-04-30"
+    ## [Data load flag, false means load data from pickle.]
+    download = True
+    savefile_head = "ooi_data/ooi_dat"
+    site = "CE02SHSP"
+    node = 'SP001'
+    method = 'recovered_cspp'
+    deployment = 16
+    ## [Makes the OOI data into profiles.]
+    profiled = True
+    ## [Processes the optaa data according to Chris Winegards script.]
+    optaa_process_raw = False
 
-    ## [File name parameter.]
-    ooi_savefile_head = "ooi_data/ooi_dat"
-    optaa_profs_save = "ooi_data/ooi_dat_rawoptaaprofs.p"
-
-    ## [Data load flag, fale means load data from pickle.]
-    download = False
+    ## [CCI sattelite data parameters.]
+    ply_dat_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
 
     ## [Functional parameters.]
+    ## [The number of levels for irradiance run.]
     N=100
 #    wavelengths = np.arange(425, 725, 25)
-#    wavelengths = np.arange(425, 725, 75)
     wavelengths = [443, 551]
 #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
     phy_species = [ 'Cocco', 'Diat', 'Syn'] 
-#    phy_species = [ 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
-#    phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
     prof_index = 0
     depthz = 5
-    ## [The absorption or scattering flag.]
-    ab = 'b'
-    ## [The number of profiles for the Hoffmuller.]
-    N_profs = 50
-    ## [Number of depths for the depth Hoffmuller.]
-    N_depths = 270
-#    N_depths = 20
 
     ## [Get color list for each species of phy.]
     color_dict = ODF.Get_Phy_Cmap_Dict()
 
+    ## [Download the plymouth CCI data set object.]
+#    cci_ds = plymouth_data.
+
     ## [Download or load the data sets.]
-    ooi_data = ODF.Download_OOI_Data(ooi_savefile_head, 
+    ooi_data = ODF.Download_OOI_Data(savefile_head, 
                                      download, 
-                                     site_name, 
-                                     assembly, 
+                                     site,
+                                     node,
                                      method, 
-                                     start, 
-                                     stop)
+                                     deployment,
+                                     profiled = profiled, 
+                                     optaa_process_raw = optaa_process_raw)
 
     flort_dat, spkir_dat, optaa_dat, flort_profs, spkir_profs, optaa_profs = ooi_data
 
-    ## [Use the processed raw optaa profs.]
-    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
-    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
-    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
-    optaa_profs = pickle.load(open(optaa_profs_save,'rb'))
-                                                            
     ## [Index the profiles for the given index.]
     flort_prof = flort_profs[prof_index]
     optaa_prof = optaa_profs[prof_index]
@@ -590,12 +569,6 @@ if __name__ == '__main__':
     phy_type = 'Syn'
     irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_reflam)
     ## [Plot the resulting irradiance profiles.]
-    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site_name, assembly, method)
+    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
 
     Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
-
-    #for d in depth:
-    #depth_ref = -10
-    #Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, args.start, args.stop, args.site_name, args.assembly, args.method)
-    #Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, args.start, args.stop, args.site_name, args.assembly, args.method)
-
