@@ -300,7 +300,7 @@ def Create_Profiles(ooi_dat, dt_sep=120, process_profile=True):
     """
 
     ## [This gets the index of each profile split.]
-    dt = ooi_dat.where(ooi_dat['time'].diff('time') > np.timedelta64(120, 's'), drop=True).get_index('time') 
+    dt = ooi_dat.where(ooi_dat['time'].diff('time') > np.timedelta64(300, 's'), drop=True).get_index('time') 
 
     ## [Init the list of profiled xarrays.]
     profiles = []

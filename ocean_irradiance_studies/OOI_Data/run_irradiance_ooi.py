@@ -20,6 +20,7 @@ from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as esd
 from ocean_irradiance_module import Wavelength_To_RGB
+import ocean_irradiance_visualization.Plot_Comparison as PC
 import plymouth_data
 
 ## [External Modules]
@@ -29,6 +30,78 @@ from ooi_data_explorations.data_request import data_request
 import matplotlib.pyplot as plt
 import scipy
 import geopy.distance
+
+
+def OOI_Abs_Scat(optaa_prof, lam, smooth=True):
+    """
+    This function gets the OOI absorption and scattering for a given profile index and data sets.
+    """
+
+    optaa_z = optaa_prof['depth'].data
+    wavelength_c = optaa_prof['wavelength_c'].data.transpose()
+    wavelength_a = optaa_prof['wavelength_a'].data.transpose()
+    optaa_c = optaa_prof['beam_attenuation'].data
+    optaa_a = optaa_prof['optical_absorption'].data
+    for k in range(len(optaa_z)): 
+        optaa_c[k,:] = np.interp(wavelength_a[k,:], wavelength_c[k,:], optaa_c[k,:])
+
+    ## [The scattering is simply the attenuation minus the absorption]
+    optaa_b = optaa_c - optaa_a
+
+    ## [Must get the wavelength index.]
+    lam_i = ODF.Get_Wavelength_Index(wavelength_a[0,:], lam)
+    lam_ooi = wavelength_a[0,lam_i]
+
+    ##[Labeling the ooi z-grids and a, b_b.]
+    z = optaa_z
+    ## [The squeese makes the array 1-D.]
+    ## [Removing the water.]
+    a = np.squeeze(optaa_a[:, lam_i])
+    b = np.squeeze(optaa_b[:, lam_i])
+
+    ## [Smoothing the data using the 55 Smoothing algorithm.] 
+#    z_s, a_s = ODF.Smooth_Profile_55(z, a)
+#    z_s, b_s = ODF.Smooth_Profile_55(z, b)
+    z_s = z
+    a_s = a
+    b_s = b
+
+    return z_s, a_s, b_s, lam_ooi
+
+
+def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam): 
+    """
+    This function compares the absorption and backscatter as calculated by the irradiance model with Dutkiewicz
+    coefficients to the values given by OO.
+    """
+    
+    chla = flort_prof['fluorometric_chlorophyll_a'].data
+    flort_z = flort_prof['depth'].data
+    phy = OI.Phy(flort_z, chla, esd(phy_type), 
+                 abscat(lam, phy_type, C2chla='default', dut_txt=False)[0], 
+                 abscat(lam, phy_type, C2chla='default', dut_txt=False)[1])
+
+    ## [Get the z_a, a, and lam_ooi for the CDOM_refa object.]
+    z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam, smooth=True)
+
+    ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
+    CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam)
+    print('CDOM', CDOM)
+
+            
+    z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(flort_z[0], 
+                                                                   abscat(lam, 'water', dut_txt=False), 
+                                                                   N,
+                                                                   phy=phy, 
+                                                                   CDOM_refa=CDOM, 
+                                                                   pt1_perc_zbot=False, 
+                                                                   pt1_perc_phy=False)
+
+    ## [Get the ooi absorption and scattering, along with their corresponding grids.]
+    z_ooi, a_ooi, b_ooi, lam_ooi = OOI_Abs_Scat(optaa_prof, lam, smooth=True)
+
+
+    return  z_irr, a_irr, b_irr, z_ooi, a_ooi, b_ooi, lam_ooi
 
 
 def Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_reflam):
@@ -49,8 +122,8 @@ def Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_
     PI = Param_Init()
 
     ## [The number of profiles.]
-    #N_profs = len(depth_profs)
-    N_profs = 1
+#    N_profs = len(flort_profs)
+    N_profs = 30
 
     ## [Irradiance field dictionary.]
     irr_field = {}
@@ -182,11 +255,11 @@ def Get_CCI_Data(pml_url, flort_dat):
 
     ## [The lattitude limits.]
     lat = flort_dat.attrs['geospatial_lat_min']
-    lat_lims = [lat[0] + 1, lat[0] - 1]
+    lat_lims = [lat[0] + 0.3, lat[0] - 0.3]
 
     ## [The longitude limits.]
     lon = flort_dat.attrs['geospatial_lon_min']
-    lon_lims = [lon[0] - 1.2, lon[0] + 1.2]
+    lon_lims = [lon[0] - 0.5, lon[0] + 0.5]
 
     ## [Download the pml cci data set.]
     cci_dat = plymouth_data.Download_PML_Data(pml_url, year_lims, jd_lims, lat_lims, lon_lims)
@@ -194,98 +267,197 @@ def Get_CCI_Data(pml_url, flort_dat):
     return cci_dat
 
 
-def Comp_OOI_CCI_Irr(flort_profs, irr_field, irr_field_ab, cci_url, download_cci): 
+def Get_OOI_CCI_Match(cci_ds, flort_dat, flort_profs): 
     """
-    This function compares the ooi flourometric chla, the irradiance chla with dutkiewicz absorption/scattering,
-    the irradiance chla with ooi abs/scat, and the chla from cci satellite.
-
+    This function is for finding the CCI nearest neighbour to the OOI mooring.
     """
 
     ## [The latitude and longitude coordinates for the OOI platform.]
     ooi_lat = flort_dat.attrs['geospatial_lat_min'][0]
     ooi_lon = flort_dat.attrs['geospatial_lon_min'][0]
 
-    ## [Get the lat, lon for cci.]
+    ## [The latitured and longitude of cci data.]
+    cci_lat = cci_ds.variables['lat'][:]
+    cci_lon = cci_ds.variables['lon'][:]
 
+    ## [The cci time array.]
+    time = cci_ds.variables['time'][:]
 
-    
-    ## [Loop over the time coordinates of the cci.]
-    for k, t in enumerate(cci_ds.variables['time'][:]): 
-        pass
+    ## [The CCI chla mask.]
+    chla = cci_ds.variables['chlor_a'][:]
+    mask = chla.mask
+
+    ## [Init the return array.]
+    ## [The four is for the resulting indexes i.e.
+    ##  res[:,0] = dti, res[:,1] = loni, res[:,2] = lati, res[:,3] = distnn
+    res = np.zeros((len(flort_profs), 4)) 
+
+    ## [loop over the OOI profiles.]  
+    for k, prof in enumerate(flort_profs): 
+
+        ## [First find the CCI data fro the given day.]
+        ## [Convert the day of the flort profile to julian day.]
+        ooi_dt = str(prof['time'].data.astype('datetime64[D]')[0])
+        ## [This concatinates the year with julain date.]
+        ooi_jd = plymouth_data.Date_to_Julian_Date(ooi_dt)
+        ## [Conver the CCI data from days since 1970 to julian day, year.]
+        cci_jd, cci_year = plymouth_data.Days_To_Julian_Date('01/01/1970',time)
+        ## [The date time index.]
+        dti = np.where(cci_jd == ooi_jd)[0]
         
-    return 
+        ## [Loop over the lon.]
+        cnt = 0
+        ## [Init values s.t. if the mask is false or chla>1e30 then NaN.]
+        jnn = 0
+        inn = 0
+        distnn = np.NaN
+
+        ## [print dti]
+        print(dti)
+        for i, lon in enumerate(cci_lon): 
+            ## [Loop over the lat.]
+            for j, lat in enumerate(cci_lat): 
+                ## [check the existence of chla.]
+                if (mask[dti, j, i] == True) and (chla[dti, j, i] < 1e30): 
+                    
+                    ## [Calculate the distance from the OOi morring.]
+                    dist = geopy.distance.distance((ooi_lat, ooi_lon), (lat, lon)).kilometers
+
+                    ## [Init for the first loop.]
+                    if cnt == 0: 
+                        ## [Nearest neighbour distance.]
+                        distnn = dist
+                        inn =  i 
+                        jnn = j
+                    elif dist < distnn: 
+                        ## [Nearest neighbour distance.]
+                        distnn = dist
+                        inn =  i 
+                        jnn = j
+
+                    cnt += 1
+ 
+        ## [Write the result.]
+        res[k,:] = np.array([dti, jnn, inn, distnn])
 
 
-def OOI_Abs_Scat(optaa_prof, lam, smooth=True):
+    return res
+
+
+def Calc_Chla_Irr(prof_index, irr_field): 
     """
-    This function gets the OOI absorption and scattering for a given profile index and data sets.
+    This function calculates the chla at the surface using the OCx algorithm and RRs ratios. It takes the 
+    irradiance field as an argument and returns the chla.
+
+    ASSUMES TWO STREAM IRRADIANCE
     """
 
-    optaa_z = optaa_prof['depth'].data
-    wavelength_c = optaa_prof['wavelength_c'].data.transpose()
-    wavelength_a = optaa_prof['wavelength_a'].data.transpose()
-    optaa_c = optaa_prof['beam_attenuation'].data
-    optaa_a = optaa_prof['optical_absorption'].data
-    for k in range(len(optaa_z)): 
-        optaa_c[k,:] = np.interp(wavelength_a[k,:], wavelength_c[k,:], optaa_c[k,:])
+    ## [The blue wavelength.]
+    lamb = 443
+    ## [The green wavelength.]
+    lamg = 551
 
-    ## [The scattering is simply the attenuation minus the absorption]
-    optaa_b = optaa_c - optaa_a
+    rrsb = OIR.R_RS(irr_field[lamb][-1,prof_index,0], 0, irr_field[lamb][-1,prof_index,2])
+    rrsg = OIR.R_RS(irr_field[lamg][-1,prof_index,0], 0, irr_field[lamg][-1,prof_index,2])
 
-    ## [Must get the wavelength index.]
-    lam_i = ODF.Get_Wavelength_Index(wavelength_a[0,:], lam)
-    lam_ooi = wavelength_a[0,lam_i]
-
-    ##[Labeling the ooi z-grids and a, b_b.]
-    z = optaa_z
-    ## [The squeese makes the array 1-D.]
-    ## [Removing the water.]
-    a = np.squeeze(optaa_a[:, lam_i])
-    b = np.squeeze(optaa_b[:, lam_i])
-
-    ## [Smoothing the data using the 55 Smoothing algorithm.] 
-#    z_s, a_s = ODF.Smooth_Profile_55(z, a)
-#    z_s, b_s = ODF.Smooth_Profile_55(z, b)
-    z_s = z
-    a_s = a
-    b_s = b
-
-    return z_s, a_s, b_s, lam_ooi
+    chla = OIR.OCx_alg(rrsb, rrsg)
 
 
-def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam): 
+    return chla
+
+
+def Comp_OOI_CCI_Irr(PI, N, wavelengths, phy_type,  cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam): 
     """
-    This function compares the absorption and backscatter as calculated by the irradiance model with Dutkiewicz
-    coefficients to the values given by OO.
+    This function compares the ooi flourometric chla, the irradiance chla with dutkiewicz absorption/scattering,
+    the irradiance chla with ooi abs/scat, and the chla from cci satellite.
     """
     
-    chla = flort_prof['fluorometric_chlorophyll_a'].data
-    flort_z = flort_prof['depth'].data
-    phy = OI.Phy(flort_z, chla, esd(phy_type), 
-                 abscat(lam, phy_type, C2chla='default', dut_txt=False)[0], 
-                 abscat(lam, phy_type, C2chla='default', dut_txt=False)[1])
+    ## [The numer of OOI profiles.]
+#    Nprofs = len(flort_profs)
+    Nprofs = 30
 
-    ## [Get the z_a, a, and lam_ooi for the CDOM_refa object.]
-    z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam, smooth=True)
+    ## [Calculate the irradiance feilds.]
+    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_reflam)
+    ## [Get the nearest neighbour CCI indexes.]
+    res = Get_OOI_CCI_Match(cci_ds, flort_dat, flort_profs)
 
-    ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
-    CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam)
-    print('CDOM', CDOM)
-
-            
-    z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(flort_z[0], 
-                                                                   abscat(lam, 'water', dut_txt=False), 
-                                                                   N,
-                                                                   phy=phy, 
-                                                                   CDOM_refa=CDOM, 
-                                                                   pt1_perc_zbot=False, 
-                                                                   pt1_perc_phy=False)
-
-    ## [Get the ooi absorption and scattering, along with their corresponding grids.]
-    z_ooi, a_ooi, b_ooi, lam_ooi = OOI_Abs_Scat(optaa_prof, lam, smooth=True)
+    ## [The chla arrays.]
+    ## [This one is the Dut. ab coefficients.]
+    ooi_chla = np.zeros(Nprofs)
+    ## [This one is ab from ooi.]
+    ooi_chla_ab = np.zeros(Nprofs)
+    ## [Fluorometric chla.]
+    flort_chla = np.zeros(Nprofs)
+    ## [The CCI chlor_A]
+    cci_chla = np.zeros(Nprofs)
 
 
-    return  z_irr, a_irr, b_irr, z_ooi, a_ooi, b_ooi, lam_ooi
+    ## [Loop over the time coordinates of the cci.]
+    for k in range(Nprofs): 
+        ## [The indexes at the given oor profile.] 
+        dti = int(res[k,0])
+        jnn = int(res[k,1])
+        inn = int(res[k,2])
+        dist =  res[k,3]
+
+        ## [If the CCI data is bad for the entire search square ignore it.]
+        if dist == np.NaN: 
+            ooi_chla[k] = np.NaN
+            ooi_chla_ab[k] = np.NaN
+            flort_chla = np.NaN
+            cci_chla[k] = np.NaN
+
+        else:
+            ## [Calculate the chla from irradiance.]
+            ooi_chla[k] = Calc_Chla_Irr(k, irr_field)
+            ooi_chla_ab[k] = Calc_Chla_Irr(k, irr_field_ab)
+
+            ## [Get the fluorometric chla from data.]
+            flort_chla[k] = flort_profs[k].variables['fluorometric_chlorophyll_a'].data[-1]
+
+            ## [Get the chla from the cci_ds.]
+            cci_chla[k] = cci_ds.variables['chlor_a'][:][dti, jnn, inn]
+
+
+    if True: 
+        
+        fig, axs = plt.subplots(ncols=3, nrows=2)
+
+        title = 'CCI Chla against OOI Irradiance Derived Chla, Dut. ab Coefficients'
+        label = 'phy_type'
+        xlabel = 'CCI Chla' 
+        ylabel = 'OOI Chla'
+        PC.Plot_Comparison(axs[0,0], cci_chla, ooi_chla, title, label, xlabel, ylabel)
+
+        title = 'CCI Chla against OOI Irradiance Derived Chla, OOI ab Coefficients'
+        label = 'phy_type'
+        xlabel = 'CCI Chla' 
+        ylabel = 'OOI Chla'
+        PC.Plot_Comparison(axs[0,1], cci_chla, ooi_chla_ab, title, label, xlabel, ylabel)
+        
+        title = 'CCI Chla against OOI flort chla'
+        label = 'phy_type'
+        xlabel = 'CCI Chla' 
+        ylabel = 'OOI Chla Flort'
+        PC.Plot_Comparison(axs[0,2], cci_chla, flort_chla, title, label, xlabel, ylabel)
+ 
+        title = 'OOI FLORT chla against OOI Irradiance Derived Chla, Dut. ab Coefficients'
+        label = 'phy_type'
+        xlabel = 'OOI FLORT Chla' 
+        ylabel = 'OOI Chla IRR'
+        PC.Plot_Comparison(axs[1,0], flort_chla, ooi_chla, title, label, xlabel, ylabel)
+
+        title = 'OOI FLORT chla against OOI Irradiance Derived Chla, OOI ab Coefficients'
+        label = 'phy_type'
+        xlabel = 'OOI FLORT Chla' 
+        ylabel = 'OOI Chla IRR w/ OOI ab'
+        PC.Plot_Comparison(axs[1,1], flort_chla, ooi_chla_ab, title, label, xlabel, ylabel)
+
+        fig.show()
+
+        
+    return ooi_chla, ooi_chla_ab, cci_chla
+
 
 
 def Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_types, flort_prof, optaa_prof, cdom_reflam): 
@@ -530,15 +702,6 @@ def Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, start, stop, site, assem
     return
 
 
-def Get_OOI_CCI_Match(): 
-    """
-    This function is for finding the CCI nearest neighbour to the OOI mooring.
-    """
-
-
-    return 
-
-
 def Plot_OOI_CCI_Loc(cci_ds, flort_dat, flort_profs): 
     """
     This function plots the location comparisons of the CCI and OOI data.
@@ -552,50 +715,22 @@ def Plot_OOI_CCI_Loc(cci_ds, flort_dat, flort_profs):
     cci_lat = cci_ds.variables['lat'][:]
     cci_lon = cci_ds.variables['lon'][:]
 
-
     ## [Plotting Result]
     fig, ax = plt.subplots()
 
     ## [plot the location of the OOI mooring.]
     ax.plot(ooi_lon, ooi_lat, 'k*')
 
-    ## [loop over the OOI profiles.]  
+    ## [Finding the cci indexing of the nearest neighbour satellite point to OI mooring.]
+    res = Get_OOI_CCI_Match(cci_ds, flort_dat, flort_profs)
+
+    ## [Loop the flort profiles.]
     for k, prof in enumerate(flort_profs): 
-        ## [The CCI chla mask.]
-        mask = cci_ds.variables['chlor_a'][:].mask
-
-        ## [First find the CCI data fro the given day.]
-        ## [Convert the day of the flort profile to julian day.]
-        ooi_dt = str(prof['time'].data.astype('datetime64[D]')[0])
-        ## [This concatinates the year with julain date.]
-        ooi_jd = plymouth_data.Date_to_Julian_Date(ooi_dt)
-        ## [Conver the CCI data from days since 1970 to julian day, year.]
-        cci_jd, cci_year = plymouth_data.Days_To_Julian_Date('01/01/1970', cci_ds.variables['time'][:])
-        ## [The date time index.]
-        dti = np.where(cci_jd == ooi_jd)[0]
-        
-        ## [Loop over the lon.]
-        for i, lon in enumerate(cci_lon): 
-            ## [Loop over the lat.]
-            for j, lat in enumerate(cci_lat): 
-                ## [check the existence of chla.]
-                if mask[dti, j, i] == True: 
-                    
-                    ## [Calculate the distance from the OOi morring.]
-                    dist = geopy.distance.distance((ooi_lat, ooi_lon), (lat, lon)).miles
-
-                    ## [Init for the first loop.]
-                    if i == 0: 
-                        ## [Nearest neighbour distance.]
-                        distnn = dist
-                        inn =  i 
-                        jnn = j
-                    elif dist < distnn: 
-                        ## [Nearest neighbour distance.]
-                        distnn = dist
-                        inn =  i 
-                        jnn = j
-        
+        dti = int(res[k,0])
+        jnn = int(res[k,1])
+        inn = int(res[k,2])
+        dist =  res[k,3]
+        print("Dist:", dist)
         ## [Plot the OOI nearest neighbour.]
         ax.plot(cci_lon[inn], cci_lat[jnn], 'bo')
 
@@ -664,8 +799,10 @@ if __name__ == '__main__':
 
     ## [Run the irradiance model using the profiles, over all profiles.]
     phy_type = 'Syn'
-    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_reflam)
+    #irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_reflam)
     ## [Plot the resulting irradiance profiles.]
 #    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
+
+    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, phy_type,  cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
