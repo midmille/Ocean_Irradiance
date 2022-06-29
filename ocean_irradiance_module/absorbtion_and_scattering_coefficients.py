@@ -177,7 +177,7 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default', dut_txt=T
             if constituent == 'Syn':
                 spec_name = "Syn"
                 if C2chla == 'default': 
-                    C2chla == SC2chla
+                    C2chla = SC2chla
             if constituent == 'HLPro':
                 spec_name = "HLPro"
             if constituent == 'LLPro':
@@ -185,7 +185,7 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default', dut_txt=T
             if constituent == 'Diat':
                 spec_name = "Diatom"
                 if C2chla == 'default': 
-                    C2chla == LC2chla
+                    C2chla = LC2chla
             if constituent == 'Cocco':
                 spec_name = "Coccoli"
             if constituent == 'Tricho':
@@ -224,7 +224,7 @@ def equivalent_spherical_diameter(species):
     if species == 'HLPro': 
         return 0.6 
     if species == 'Cocco': 
-        return 4 
+        return 4
     if species == 'Diat':
         return 17
     if species == 'Generic': 

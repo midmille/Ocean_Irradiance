@@ -366,7 +366,7 @@ def Calc_Chla_Irr(prof_index, irr_field):
     return chla
 
 
-def Comp_OOI_CCI_Irr(PI, N, wavelengths, phy_type,  cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam): 
+def Comp_OOI_CCI_Irr(PI, N, wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam, plot=True): 
     """
     This function compares the ooi flourometric chla, the irradiance chla with dutkiewicz absorption/scattering,
     the irradiance chla with ooi abs/scat, and the chla from cci satellite.
@@ -375,83 +375,98 @@ def Comp_OOI_CCI_Irr(PI, N, wavelengths, phy_type,  cci_ds, flort_dat, flort_pro
     ## [The numer of OOI profiles.]
 #    Nprofs = len(flort_profs)
     Nprofs = 30
+    ## [The number of phy_species.]
+    Nphy = len(phy_species)
 
-    ## [Calculate the irradiance feilds.]
-    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_reflam)
-    ## [Get the nearest neighbour CCI indexes.]
-    res = Get_OOI_CCI_Match(cci_ds, flort_dat, flort_profs)
-
-    ## [The chla arrays.]
+    ## [The empty chla arrays.]
     ## [This one is the Dut. ab coefficients.]
-    ooi_chla = np.zeros(Nprofs)
+    ooi_chla = np.zeros((Nprofs, Nphy))
     ## [This one is ab from ooi.]
-    ooi_chla_ab = np.zeros(Nprofs)
+    ooi_chla_ab = np.zeros((Nprofs, Nphy))
     ## [Fluorometric chla.]
-    flort_chla = np.zeros(Nprofs)
+    flort_chla = np.zeros((Nprofs, Nphy))
     ## [The CCI chlor_A]
-    cci_chla = np.zeros(Nprofs)
+    cci_chla = np.zeros((Nprofs, Nphy))
 
 
-    ## [Loop over the time coordinates of the cci.]
-    for k in range(Nprofs): 
-        ## [The indexes at the given oor profile.] 
-        dti = int(res[k,0])
-        jnn = int(res[k,1])
-        inn = int(res[k,2])
-        dist =  res[k,3]
+    ## [Loop the phy_species.]
+    for ip, phy_type in enumerate(phy_species):     ## [Calculate the irradiance feilds.]
 
-        ## [If the CCI data is bad for the entire search square ignore it.]
-        if dist == np.NaN: 
-            ooi_chla[k] = np.NaN
-            ooi_chla_ab[k] = np.NaN
-            flort_chla = np.NaN
-            cci_chla[k] = np.NaN
+        irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_reflam)
+        ## [Get the nearest neighbour CCI indexes.]
+        res = Get_OOI_CCI_Match(cci_ds, flort_dat, flort_profs)
+    
+        ## [Loop over the time coordinates of the cci.]
+        for k in range(Nprofs): 
+            ## [The indexes at the given oor profile.] 
+            dti = int(res[k,0])
+            jnn = int(res[k,1])
+            inn = int(res[k,2])
+            dist =  res[k,3]
+    
+            ## [If the CCI data is bad for the entire search square ignore it.]
+            if dist == np.NaN: 
+                ooi_chla[k,ip] = np.NaN
+                ooi_chla_ab[k,ip] = np.NaN
+                flort_chla[k,ip] = np.NaN
+                cci_chla[k,ip] = np.NaN
+    
+            else:
+                ## [Calculate the chla from irradiance.]
+                ooi_chla[k,ip] = Calc_Chla_Irr(k, irr_field)
+                ooi_chla_ab[k,ip] = Calc_Chla_Irr(k, irr_field_ab)
+    
+                ## [Get the fluorometric chla from data.]
+                flort_chla[k,ip] = flort_profs[k].variables['fluorometric_chlorophyll_a'].data[-1]
+    
+                ## [Get the chla from the cci_ds.]
+                cci_chla[k,ip] = cci_ds.variables['chlor_a'][:][dti, jnn, inn]
 
-        else:
-            ## [Calculate the chla from irradiance.]
-            ooi_chla[k] = Calc_Chla_Irr(k, irr_field)
-            ooi_chla_ab[k] = Calc_Chla_Irr(k, irr_field_ab)
-
-            ## [Get the fluorometric chla from data.]
-            flort_chla[k] = flort_profs[k].variables['fluorometric_chlorophyll_a'].data[-1]
-
-            ## [Get the chla from the cci_ds.]
-            cci_chla[k] = cci_ds.variables['chlor_a'][:][dti, jnn, inn]
+                if ooi_chla[k,ip] > 100: 
+                    print('ATTENTION BAD profile', k)
+                    irr_field_save = irr_field
+                   
 
 
-    if True: 
+    if plot:  
         
         fig, axs = plt.subplots(ncols=3, nrows=2)
 
-        title = 'CCI Chla against OOI Irradiance Derived Chla, Dut. ab Coefficients'
-        label = 'phy_type'
-        xlabel = 'CCI Chla' 
-        ylabel = 'OOI Chla'
-        PC.Plot_Comparison(axs[0,0], cci_chla, ooi_chla, title, label, xlabel, ylabel)
+        for ip, phy_type in enumerate(phy_species):
 
-        title = 'CCI Chla against OOI Irradiance Derived Chla, OOI ab Coefficients'
-        label = 'phy_type'
-        xlabel = 'CCI Chla' 
-        ylabel = 'OOI Chla'
-        PC.Plot_Comparison(axs[0,1], cci_chla, ooi_chla_ab, title, label, xlabel, ylabel)
-        
-        title = 'CCI Chla against OOI flort chla'
-        label = 'phy_type'
-        xlabel = 'CCI Chla' 
-        ylabel = 'OOI Chla Flort'
-        PC.Plot_Comparison(axs[0,2], cci_chla, flort_chla, title, label, xlabel, ylabel)
- 
-        title = 'OOI FLORT chla against OOI Irradiance Derived Chla, Dut. ab Coefficients'
-        label = 'phy_type'
-        xlabel = 'OOI FLORT Chla' 
-        ylabel = 'OOI Chla IRR'
-        PC.Plot_Comparison(axs[1,0], flort_chla, ooi_chla, title, label, xlabel, ylabel)
+            title = 'CCI Chla against OOI \n Irradiance Chla Dut. ab Coefficients'
+            label = phy_type
+            xlabel = 'CCI Chla' 
+            ylabel = 'OOI Chla Irr'
+            PC.Plot_Comparison(axs[0,0], cci_chla[:,ip], ooi_chla[:,ip], title, label, xlabel, ylabel)
+    
+            title = 'CCI Chla against OOI \n Irradiance Derived Chla OOI ab Coefficients'
+            xlabel = 'CCI Chla' 
+            ylabel = 'OOI Chla Irr'
+            PC.Plot_Comparison(axs[0,1], cci_chla[:,ip], ooi_chla_ab[:,ip], title, label, xlabel, ylabel)
+            
+            title = 'CCI Chla against OOI Fluorometric Chla'
+            xlabel = 'CCI Chla' 
+            ylabel = 'OOI Chla Flort'
+            PC.Plot_Comparison(axs[0,2], cci_chla[:,ip], flort_chla[:,ip], title, label, xlabel, ylabel)
+     
+            title = 'OOI fluorometric chla against OOI\n  Irradiance Derived Chla Dut. ab Coefficients'
+            xlabel = 'OOI Chla Flort' 
+            ylabel = 'OOI Chla Irr'
+            PC.Plot_Comparison(axs[1,0], flort_chla[:,ip], ooi_chla[:,ip], title, label, xlabel, ylabel)
+    
+            title = 'OOI fluorometric chla against OOI \n Irradiance Derived Chla OOI ab Coefficients'
+            xlabel = 'OOI Chla Flort' 
+            ylabel = 'OOI Chla Irr ab'
+            PC.Plot_Comparison(axs[1,1], flort_chla[:,ip], ooi_chla_ab[:,ip], title, label, xlabel, ylabel)
 
-        title = 'OOI FLORT chla against OOI Irradiance Derived Chla, OOI ab Coefficients'
-        label = 'phy_type'
-        xlabel = 'OOI FLORT Chla' 
-        ylabel = 'OOI Chla IRR w/ OOI ab'
-        PC.Plot_Comparison(axs[1,1], flort_chla, ooi_chla_ab, title, label, xlabel, ylabel)
+            title = 'OOI Irradiance Derived Chla OOI ab Coefficients'
+            xlabel = 'OOI Chla Irr ab' 
+            ylabel = 'OOI Chla Irr'
+            PC.Plot_Comparison(axs[1,2], ooi_chla_ab[:,ip], ooi_chla[:,ip], title, label, xlabel, ylabel)
+
+        for ax in axs.flatten(): 
+            ax.legend()
 
         fig.show()
 
@@ -760,11 +775,11 @@ if __name__ == '__main__':
 
     ## [Functional parameters.]
     ## [The number of levels for irradiance run.]
-    N=100
+    N=1000
 #    wavelengths = np.arange(425, 725, 25)
     wavelengths = [443, 551]
 #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
-    phy_species = [ 'Cocco', 'Diat', 'Syn'] 
+    phy_species = [ 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
     prof_index = 0
@@ -805,4 +820,4 @@ if __name__ == '__main__':
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
-    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, phy_type,  cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)

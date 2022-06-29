@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None, marker='o', color=None): 
+def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None, marker='o', color=None, title_fontsize=10): 
     """
     Plots the given values on a given axes
     """
@@ -30,9 +30,9 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
     high_lim_max = max(ylims[1], xlims[1])
     ax.plot([low_lim_min, high_lim_max], [low_lim_min, high_lim_max], 'k')
 
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.set_title(title, fontsize =title_fontsize)
+    ax.set_xlabel(xlabel, fontsize =title_fontsize)
+    ax.set_ylabel(ylabel, fontsize =title_fontsize)
     
     return ax 
 
