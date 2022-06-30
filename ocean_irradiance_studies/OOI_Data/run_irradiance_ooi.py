@@ -104,7 +104,7 @@ def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam)
     return  z_irr, a_irr, b_irr, z_ooi, a_ooi, b_ooi, lam_ooi
 
 
-def Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_reflam):
+def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam):
     """
     This function runs the irradiance model over all the different chla profiles.
     
@@ -162,8 +162,9 @@ def Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_
 
             ## [This solves for the irradiance solution using Dutkiewicz coefficients and 
             ##  CDOM.]
+            Ed0 = spkir_profs[k]['spkir_abj_cspp_downwelling_vector'][-1, ODF.Get_Wavelength_Index(spkir_wavelengths, lam)]
             ocean_irr_sol = OIS.ocean_irradiance_shubha_ooi(flort_z[0], 
-                                                        PI.Ed0+PI.Es0, 
+                                                        Ed0, 
                                                         PI.coefficients, 
                                                         z_irr, 
                                                         a_irr, 
@@ -216,7 +217,7 @@ def Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_
 
             ## [Now running the irr model using abs and scat from ooi.]
             ocean_irr_sol_ab = OIS.ocean_irradiance_shubha_ooi(z_ooi[0], 
-                                                              PI.Ed0+PI.Es0, 
+                                                              Ed0, 
                                                               PI.coefficients, 
                                                               z_ooi,  
                                                               a_ooi, 
@@ -366,7 +367,7 @@ def Calc_Chla_Irr(prof_index, irr_field):
     return chla
 
 
-def Comp_OOI_CCI_Irr(PI, N, wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam, plot=True): 
+def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam, plot=True): 
     """
     This function compares the ooi flourometric chla, the irradiance chla with dutkiewicz absorption/scattering,
     the irradiance chla with ooi abs/scat, and the chla from cci satellite.
@@ -392,7 +393,8 @@ def Comp_OOI_CCI_Irr(PI, N, wavelengths, phy_species, cci_ds, flort_dat, flort_p
     ## [Loop the phy_species.]
     for ip, phy_type in enumerate(phy_species):     ## [Calculate the irradiance feilds.]
 
-        irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_reflam)
+        irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+
         ## [Get the nearest neighbour CCI indexes.]
         res = Get_OOI_CCI_Match(cci_ds, flort_dat, flort_profs)
     
@@ -820,4 +822,4 @@ if __name__ == '__main__':
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
-    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
