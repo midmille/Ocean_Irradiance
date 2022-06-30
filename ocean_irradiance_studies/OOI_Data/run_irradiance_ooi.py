@@ -85,7 +85,7 @@ def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam)
     z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam, smooth=True)
 
     ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
-    CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam)
+    CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
     print('CDOM', CDOM)
 
             
@@ -150,7 +150,7 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
             z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam, smooth=True)
 
             ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
-            CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam)
+            CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1)
             
             z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(flort_z[0], 
                                                                             abscat(lam, 'water', dut_txt=False), 
