@@ -78,8 +78,8 @@ def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam)
     chla = flort_prof['fluorometric_chlorophyll_a'].data
     flort_z = flort_prof['depth'].data
     phy = OI.Phy(flort_z, chla, esd(phy_type), 
-                 abscat(lam, phy_type, C2chla='default', dut_txt=False)[0], 
-                 abscat(lam, phy_type, C2chla='default', dut_txt=False)[1])
+                 abscat(lam, phy_type, C2chla='default')[0], 
+                 abscat(lam, phy_type, C2chla='default')[1])
 
     ## [Get the z_a, a, and lam_ooi for the CDOM_refa object.]
     z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam, smooth=True)
@@ -90,7 +90,7 @@ def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam)
     print('CDOM', CDOM)
             
     z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(flort_z[0], 
-                                                                   abscat(lam, 'water', dut_txt=False), 
+                                                                   abscat(lam, 'water'), 
                                                                    N,
                                                                    phy=phy, 
                                                                    CDOM_refa=CDOM, 
@@ -143,20 +143,28 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
             chla = flort_prof['fluorometric_chlorophyll_a'].data
             flort_z = flort_prof['depth'].data
             phy = OI.Phy(flort_z, chla, esd(phy_type), 
-                        abscat(lam, phy_type, C2chla='default', dut_txt=False)[0], 
-                        abscat(lam, phy_type, C2chla='default', dut_txt=False)[1])
+                        abscat(lam, phy_type, C2chla='default')[0], 
+                        abscat(lam, phy_type, C2chla='default')[1])
     
             ## [Get the z_a, a, and lam_ooi for the CDOM_refa object.]
             z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam, smooth=True)
 
             ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
             CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
+
+            ## [The detritus parameter.]
+            det_val = 0
+            det = OI.Det(flort_z, np.full(len(flort_z), det_val), 
+                         abscat(lam, 'detritus')[0], 
+                         abscat(lam, 'detritus')[1], 
+                         abscat(lam, 'detritus')[2])
             
             z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(flort_z[0], 
-                                                                            abscat(lam, 'water', dut_txt=False), 
+                                                                            abscat(lam, 'water'), 
                                                                             N,
                                                                             phy=phy, 
                                                                             CDOM_refa=CDOM, 
+                                                                            det = det,
                                                                             pt1_perc_zbot=False, 
                                                                             pt1_perc_phy=False)
 
@@ -211,8 +219,8 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
             bb_r = OI.Backscatter_Ratio(esd_v)
 
             ## [Add water into the absorption/scattering.]
-            a_ooi = a_ooi + abscat(lam, 'water', dut_txt=False)[0]
-            bb_wat = 0.551 * abscat(lam, 'water', dut_txt=False)[1]
+            a_ooi = a_ooi + abscat(lam, 'water')[0]
+            bb_wat = 0.551 * abscat(lam, 'water')[1]
             b_ooi = b_ooi*bb_r + bb_wat
 
             ## [Now running the irr model using abs and scat from ooi.]
@@ -501,8 +509,8 @@ def Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_types, flort_prof, optaa_prof,
 #            a_ooi = a_ooi + abscat(lam, 'water')[0]
 #            b_ooi = b_ooi + abscat(lam, 'water')[1]
             ## [Removing water from irr.]
-            a_irr = a_irr - abscat(lam, 'water', dut_txt=False)[0]
-            b_irr = b_irr - abscat(lam, 'water', dut_txt=False)[1]
+            a_irr = a_irr - abscat(lam, 'water')[0]
+            b_irr = b_irr - abscat(lam, 'water')[1]
 
 
             ## [Plotting Absorption comparison.]
@@ -820,6 +828,6 @@ if __name__ == '__main__':
     ## [Plot the resulting irradiance profiles.]
 #    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
 
-    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
+#    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
-#    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)

@@ -26,11 +26,73 @@ import numpy as np
 from ocean_irradiance_module import PARAMS
 import pandas
 
-def absorbtion_scattering(wavelength, constituent, C2chla = 'default', dut_txt=True):
+def Load_Coefficient(wavelength, constituent, opt_wat, opt_det, opt_phy, C2chla, LC2chla, SC2chla):
     """
-    
-    
+    This loads the coefficient for the desired wavelength and constituent
+    """
+    if constituent == 'water': 
 
+        a = opt_wat[opt_wat["wavelength"] == wavelength].values[0,1]
+        b = opt_wat[opt_wat["wavelength"] == wavelength].values[0,2]
+
+        return a,b
+
+    if constituent == 'detritus': 
+        
+        ## [Retrieve the absorption, scattering, and back scattering from the data frame.]
+        a = opt_det[opt_det['wavelength'] == wavelength].values[0,1]
+        b = opt_det[opt_det['wavelength'] == wavelength].values[0,2]
+        b_b = opt_det[opt_det['wavelength'] == wavelength].values[0,3]
+
+        return a, b, b_b
+
+    else: 
+
+        ## [The if constituent == species_name syntax is used because we name some of 
+        ##  the species differently then the text file does.]
+        if constituent == 'Micromonas':
+            spec_name = "Micromonas"
+        if constituent == 'Syn':
+            spec_name = "Syn"
+            if C2chla == 'default': 
+                C2chla = SC2chla
+        if constituent == 'HLPro':
+            spec_name = "HLPro"
+        if constituent == 'LLPro':
+            spec_name = "LLPro"
+        if constituent == 'Diat':
+            spec_name = "Diatom"
+            if C2chla == 'default': 
+                C2chla = LC2chla
+        if constituent == 'Cocco':
+            spec_name = "Coccoli"
+        if constituent == 'Tricho':
+            spec_name = "Tricho"
+        if constituent == 'n2unicell':
+            spec_name = "n2unicell"
+        if constituent == 'Lgeuk':
+            spec_name = "Lgeuk"
+        if constituent == 'Generic':
+            spec_name = "MEAN"
+        if constituent == 'zooplankton':
+            spec_name = "zooplankton"
+        if constituent == 'heterobacteria':
+            spec_name = "heterobacteria"
+        ## [Retrieveing the species specific absorption and scattering for desired wavelength.]
+        ## [Species specific portion of the data frame.]
+        spec_df = opt_phy[opt_phy["species"] == spec_name]
+        ## [Getting the wavelength specific values.]
+        a = spec_df[spec_df["wavelength"] == wavelength].values[0,2]
+        ## [Total Scattering is still in units of Carbon]
+        b = spec_df[spec_df["wavelength"] == wavelength].values[0,4] * C2chla
+            
+        return a, b
+
+
+    return
+
+def absorbtion_scattering(wavelength, constituent, C2chla = 'default'):
+    """
     Parameters
     ----------
     wavelength : int
@@ -63,6 +125,126 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default', dut_txt=T
         LC2chla = C2chla
         SC2chla = C2chla
 
+    path = PI.path
+
+    ## [The wavelengths of which the coefficients are explicitly defined.]
+    wavelengths = np.arange(400, 725, 25)
+
+    ## [The water data frame.]
+    ## [Water data fram column names.]
+    wat_cols = ['wavelength', 'a', 'b']
+    opt_wat = pandas.read_csv(path + "optics_water.txt", header=None, sep=' ', skiprows=7, names=wat_cols)
+
+    ## [Get the detritus data frame.]
+    ## [The column labels for the data frame.]
+    det_cols = ['wavelength', 
+                'absorption (m2 particle-1)', 
+                'scattering (m2 particle-1)', 
+                'backscattering (m2 particle-1)']
+    opt_det = pandas.read_csv(path+'optics_detritus.txt', header=None, sep=' ', skiprows=6, names=det_cols)
+
+    ## [The phytoplankton data frame.]
+    ## [Phytoplankton column names.]
+    phy_cols = ["species", 
+                "wavelength",
+                "a (m2 mgChl-1)",
+                "a_photosynthetic (m2 mgChl-1)",
+                "b_tot (m2 mgC-1)",
+                "non-spec bb coef (m2 mgC-1)",
+                "a (m2 mgC-1)" ]
+    opt_phy = pandas.read_csv(path + "optics_plankton.txt", 
+                                header=None, 
+                                sep=" ", 
+                                skiprows=8, 
+                                comment="*", 
+                                names=phy_cols)
+
+
+    ## [if the requested wavelenth is in the waveband of definde coefficients.]
+    if np.any(wavelengths == wavelength): 
+        if constituent == 'detritus':
+            ## [Detritus returns thebackscattering coefficient as well.]
+            a, b, b_b = Load_Coefficient(wavelength, constituent, opt_wat, opt_det, opt_phy, C2chla, LC2chla, SC2chla)
+            return a, b, b_b
+        else: 
+            a, b = Load_Coefficient(wavelength, constituent, opt_wat, opt_det, opt_phy, C2chla, LC2chla, SC2chla)
+            return a, b
+
+    ## [If the requested wavelength is NOT in the waveband of defined coefficients
+    ##  then an interpolation is performed.]
+    else: 
+        ## [The number of defined wavlengths.]
+        Nlam = len(wavelengths)
+
+        if constituent == 'detritus': 
+            ## [The 1-D Arrays of the absorption, scattering, and back scattering for detritus.]
+            a_arr = np.zeros(Nlam)
+            b_arr = np.zeros(Nlam)
+            b_b_arr = np.zeros(Nlam)
+
+            ## [Loop over the wavelengths.]
+            for k, lam in enumerate(wavelengths): 
+                a, b, b_b = Load_Coefficient(lam, constituent, opt_wat, opt_det, opt_phy, C2chla, LC2chla, SC2chla)
+                a_arr[k] = a
+                b_arr[k] = b
+                b_b_arr[k] = b_b
+
+            ## [interpolate to the desired wavelength.]
+            a = np.interp(wavelength, wavelengths, a_arr)
+            b = np.interp(wavelength, wavelengths, b_arr)
+            b_b = np.interp(wavelength, wavelengths, b_b_arr)
+
+            return a, b, b_b
+
+        ## [If not detritus.]
+        else:
+            ## [The 1-D Arrays of the absorption, scattering, and back scattering for detritus.]
+            a_arr = np.zeros(Nlam)
+            b_arr = np.zeros(Nlam)
+
+            ## [Loop over the wavelengths.]
+            for k, lam in enumerate(wavelengths): 
+                a, b = Load_Coefficient(lam, constituent, opt_wat, opt_det, opt_phy, C2chla, LC2chla, SC2chla)
+                a_arr[k] = a
+                b_arr[k] = b
+
+            ## [interpolate to the desired wavelength.]
+            a = np.interp(wavelength, wavelengths, a_arr)
+            b = np.interp(wavelength, wavelengths, b_arr)
+
+            return a, b
+
+
+def equivalent_spherical_diameter(species):
+    """
+    Retrieves the equivalent spherical diameter for each species of phytoplankton
+    
+    The ESD is returned in units of micro meters.
+
+    See Notes for 12/7
+    """ 
+
+    if species == 'HLPro': 
+        return 0.6 
+    if species == 'Cocco': 
+        return 4
+    if species == 'Diat':
+        return 17
+    if species == 'Generic': 
+        return 10 
+    if species == 'Syn':
+        return .98 
+    
+
+
+
+
+
+
+"""
+
+The old eyeballed coefficients
+------------------------------
 
     if dut_txt == False: 
         ## [The start of the different coefficient dictionaries.]
@@ -138,104 +320,5 @@ def absorbtion_scattering(wavelength, constituent, C2chla = 'default', dut_txt=T
             return Generic[wavelength]
         if constituent == 'Syn':
             return Syn[wavelength]
- 
-    ## [Use the Dutkiewicz text file coefficients.]
-    if dut_txt == True: 
-        path = PI.path
-        ## [The water data frame.]
-        ## [Water data fram column names.]
-        wat_cols = ['wavelength', 'a', 'b']
-        opt_wat = pandas.read_csv(path + "optics_water.txt", header=None, sep=' ', skiprows=7, names=wat_cols)
-
-        ## [The phytoplankton data frame.]
-        ## [Phytoplankton column names.]
-        phy_cols = phy_cols = ["species", 
-                               "wavelength",
-                               "a (m2 mgChl-1)",
-                               "a_photosynthetic (m2 mgChl-1)",
-                               "b_tot (m2 mgC-1)",
-                               "non-spec bb coef (m2 mgC-1)",
-                               "a (m2 mgC-1)" ]
-
-        opt_phy = pandas.read_csv(path + "optics_plankton.txt", 
-                                   header=None, 
-                                   sep=" ", 
-                                   skiprows=8, 
-                                   comment="*", 
-                                   names=phy_cols)
-
-        if constituent == 'water': 
-            a = opt_wat[opt_wat["wavelength"] == wavelength].values[0,1]
-            b = opt_wat[opt_wat["wavelength"] == wavelength].values[0,2]
-            return a,b
-
-        else: 
-            ## [The if constituent == species_name syntax is used because we name some of 
-            ##  the species differently then the text file does.]
-            if constituent == 'Micromonas':
-                spec_name = "Micromonas"
-            if constituent == 'Syn':
-                spec_name = "Syn"
-                if C2chla == 'default': 
-                    C2chla = SC2chla
-            if constituent == 'HLPro':
-                spec_name = "HLPro"
-            if constituent == 'LLPro':
-                spec_name = "LLPro"
-            if constituent == 'Diat':
-                spec_name = "Diatom"
-                if C2chla == 'default': 
-                    C2chla = LC2chla
-            if constituent == 'Cocco':
-                spec_name = "Coccoli"
-            if constituent == 'Tricho':
-                spec_name = "Tricho"
-            if constituent == 'n2unicell':
-                spec_name = "n2unicell"
-            if constituent == 'Lgeuk':
-                spec_name = "Lgeuk"
-            if constituent == 'Generic':
-                spec_name = "MEAN"
-            if constituent == 'zooplankton':
-                spec_name = "zooplankton"
-            if constituent == 'heterobacteria':
-                spec_name = "heterobacteria"
-
-            ## [Retrieveing the species specific absorption and scattering for desired wavelength.]
-            ## [Species specific portion of the data frame.]
-            spec_df = opt_phy[opt_phy["species"] == spec_name]
-            ## [Getting the wavelength specific values.]
-            a = spec_df[spec_df["wavelength"] == wavelength].values[0,2]
-            ## [Total Scattering is still in units of Carbon]
-            b = spec_df[spec_df["wavelength"] == wavelength].values[0,4] * C2chla
-            
-            return a, b
-
-    
-def equivalent_spherical_diameter(species):
-    """
-    Retrieves the equivalent spherical diameter for each species of phytoplankton
-    
-    The ESD is returned in units of micro meters.
-
-    See Notes for 12/7
-    """ 
-
-    if species == 'HLPro': 
-        return 0.6 
-    if species == 'Cocco': 
-        return 4
-    if species == 'Diat':
-        return 17
-    if species == 'Generic': 
-        return 10 
-    if species == 'Syn':
-        return .98 
-    
-
-
-
-
-
-
+"""
 

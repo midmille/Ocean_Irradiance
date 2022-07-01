@@ -148,6 +148,23 @@ class CDOM_refa:
         return 
 
 
+class Det: 
+    """
+    This class is the class for the detritus. It includes its absorption, 
+    scattering, and backscatter coefficients. It also includes the
+    concentration profile of detritus and the associated depths.
+    """
+
+    def __init__(self, z, det, a, b, b_b): 
+        self.z = z
+        self.det = det
+        self.a = a
+        self.b = b 
+        self.b_b = b_b
+
+        return 
+
+
 def Backscatter_Ratio(esd):
     """ 
     This calculates the backscatter ratio for a given equivalent spherical diameter. 

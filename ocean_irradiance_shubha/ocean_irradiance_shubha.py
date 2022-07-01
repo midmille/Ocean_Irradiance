@@ -70,7 +70,7 @@ def numerical_Eu(z, Ed, a, b_b, v_u, v_d):
     return Eu
 
 
-def ocean_irradiance_two_stream_ab(hbot, ab_wat, N, phy=None, CDOM_sal=None, CDOM_dens=None, CDOM_refa=None, pt1_perc_zbot=True, pt1_perc_phy=True):
+def ocean_irradiance_two_stream_ab(hbot, ab_wat, N, phy=None, CDOM_sal=None, CDOM_dens=None, CDOM_refa=None, det=None, pt1_perc_zbot=True, pt1_perc_phy=True):
 
     """
     This function calculates the irradiance grid, calculates the absorption, scattering, and backscatter 
@@ -172,6 +172,23 @@ def ocean_irradiance_two_stream_ab(hbot, ab_wat, N, phy=None, CDOM_sal=None, CDO
             ## [On the cdom grid.]
             a += a_cdom
 
+    ## [The inclusion of detritus.]
+    if det: 
+        ## [unpack the onject.]
+        z_det = det.z
+        det_prof = det.det
+        a_det = det.a
+        b_det = det.b
+        b_b_det = det.b_b
+        ## [If phy interpolate to the phy grid.]
+        if phy: 
+            det_prof = np.interp(z_phy, z_det, det_prof)
+            a += a_det * det_prof
+            b += b_det * det_prof
+            b_b_det = b_b_det * det_prof
+            
+            
+
     ## [One estimation of CDOM at a time.]
     if CDOM_sal and CDOM_dens:
         raise Exception("Can't have both CDOM versions at same time")
@@ -214,6 +231,8 @@ def ocean_irradiance_two_stream_ab(hbot, ab_wat, N, phy=None, CDOM_sal=None, CDO
         print('a_interp_post:', a)
         b = np.interp(z,z_phy,b)
         b_b_phy = np.interp(z, z_phy, b_b_phy)
+        if det: 
+            b_b_det = np.interp(z, z_phy, b_b_det)
     elif CDOM_sal or CDOM_dens or CDOM_refa: 
         a = np.interp(z,z_cdom,a)
         ## no scattering for cdom, thus just water scattering.
