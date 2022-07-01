@@ -26,7 +26,8 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, optaa_prof, phy_species, A, y, x, phycol
     """
     
     ## [The number of phy species corresponds to the number of columns]
-    N_phy = A.shape[1]
+#    Nphy = A.shape[1]
+    Nphy = len(phy_species)
 
     y_est = A@x
 
@@ -62,7 +63,7 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, optaa_prof, phy_species, A, y, x, phycol
                 ab_str = 'Scattering'
 
             ## [Plot the species coefficients]
-            for i in range(N_phy): 
+            for i in range(Nphy): 
                 ax.plot(wavelengths, A[k::2, i], lw='2', color = phycolors[phy_species[i]], label = f'{phy_species[i]}: {abs(round(x[i],2))}') 
 
             ax.plot(wavelengths, y[k::2], 'k', lw='2', label = f"OOI Total Effective {ab_str}")
@@ -86,7 +87,7 @@ def Plot_Abs_Est_LstSq_Sol(wavelengths, optaa_prof, phy_species, A, y, x, phycol
         fig, ax = plt.subplots()
      
         ## [Plot the species coefficients]
-        for k in range(N_phy): 
+        for k in range(Nphy): 
             ax.plot(wavelengths, A[:, k], lw='2', color= phycolors[phy_species[k]], label = f'{phy_species[k]}: {abs(round(x[k],2))}') 
     
         ax.plot(wavelengths, y, 'k', lw='2', label = f"OOI Total Effective {ab_str}")

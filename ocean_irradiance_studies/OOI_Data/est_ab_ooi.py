@@ -71,9 +71,11 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
     """
 
     ## [The number of species.]
-    N_phy = len(phy_species)
+    Nphy = len(phy_species)
+    Nphyp1 = Nphy + 1
+    Nphyp2 = Nphy + 2
     ## [The number of wavelengths.]
-    N_lam = len(wavelengths)
+    Nlam = len(wavelengths)
 
     ## [Get the depth index for optaa.]
     zi_optaa = (abs(optaa_prof['depth'] - depthz)).argmin()
@@ -112,24 +114,25 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
     ## [The default weight is the ratio of spectral mean absorption to spectral mean scattering.]
     else:
         ## [Since the weiht is a ratio of a/b, then only multiply scattering by weight.]
-        weighta = 1 / np.nanmean(optaa_a[zi_optaa,:])
-        weightb = 1 / np.nanmean(optaa_b[zi_optaa,:])
+        weighta = 1 / np.nanmean(optaa_b[zi_optaa,:])
+        weightb = 1 / np.nanmean(optaa_a[zi_optaa,:])
 
     ## [The array of indexes that corresponds to desired wavelength.] 
-    lam_is = np.zeros(N_lam, dtype=np.int8)
+    lam_is = np.zeros(Nlam, dtype=np.int8)
     ## [Loop over the wavelengths to get the corresponding ooi wavelength nearest neighbour.]
-    for i in range(N_lam): 
+    for i in range(Nlam): 
         ## [Must get the wavelength index.]
         lam_is[i] = ODF.Get_Wavelength_Index(wavelength_a[0,:], wavelengths[i])
 
     ## [The coupled scattering and absorption problem.]
     if ab == 'ab': 
         ## [Construct the empty matrix system.]
-        A = np.zeros((2*N_lam,N_phy))
-        y = np.zeros(2*N_lam)
+        ## [The Nphyp1 is to include the cdom estimation in the system.]
+        A = np.zeros((2*Nlam,Nphyp2))
+        y = np.zeros(2*Nlam)
     
         ## [Loop over the wavelengths.]
-        for i in range(N_lam): 
+        for i in range(Nlam): 
     
             ## [Absorption and scattering for current wavelength]
             a = np.squeeze(optaa_a[:,lam_is[i]])
@@ -154,7 +157,7 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
             a_cdom = CDOM.a
     
             ## [Loop over the phytoplankton species.]
-            for k in range(N_phy): 
+            for k in range(Nphy): 
                 ## [Filling the A array, recall we are solving for a single z location. 
                 ##  Each row corresponds to a wavelength and each column a different species.]
                 ## [Absorption array.]
@@ -163,15 +166,19 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
                 A[2*i,k] = ((abscat(wavelengths[i], phy_species[k], C2chla='default')[0] * chla_s_interp[zi_optaa])) * weighta 
 
                 A[2*i+1,k] = (abscat(wavelengths[i], phy_species[k], C2chla='default')[1] * chla_s_interp[zi_optaa]) * weightb
+            ## [Adding the cdom colummn.]
+            A[2*i, Nphy] = a_cdom*weighta
+            ## [The scattering for cdom is zero.]
+            A[2*i+1, Nphy] = 0.0
+
+            ## [Adding the detritus column.]
+            A[2*i,Nphyp1] = abscat(wavelengths[i], 'detritus')[0] * weighta
+            A[2*i+1,Nphyp1] = abscat(wavelengths[i], 'detritus')[1] * weighta
     
-            ## [The rhs y, is simply the a_ooi minus the a_wat from Dut.]
-            ## [The water absorption subtraction is commented out at the momment because it leads to negative.]
     
-            ## WARNING 
             ## WARNING The abs should be removed and the negative absorption problem should be fixed, this is temp. 
-            ## WARNING 
             ## [The cdom is subtracted.]
-            y[2*i] = (abs(a_s[zi_optaa]) - a_cdom) * weighta  
+            y[2*i] = (abs(a_s[zi_optaa])) * weighta  
             y[2*i+1] = abs(b_s[zi_optaa]) * weightb
 
 
@@ -238,20 +245,20 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
 
     ## [Solvving the problem as a convex optimization problem using the cvxpy.]
     ## [This is a least squares implementation fo the problem with constraints.]
-    x = cp.Variable(N_phy)
+    x = cp.Variable(Nphyp2)
     print('y', y)
     objective = cp.Minimize(cp.sum_squares(A@x - y))
-    constraints = [0 <= x, cp.sum(x) == 1.0]
+    constraints = [0 <= x, cp.sum(x[:Nphy]) == 1.0]
     prob = cp.Problem(objective, constraints)
     result = prob.solve()
     x = x.value
 
     ## [If coupled then remove weight from returned array.]
     if ab == 'ab':
-        A[0:2*N_lam:2, :] = A[0:2*N_lam:2, :] / weighta
-        A[1:2*N_lam:2, :] = A[1:2*N_lam:2, :] / weightb
-        y[0:2*N_lam:2] = y[0:2*N_lam:2] / weighta
-        y[1:2*N_lam:2] = y[1:2*N_lam:2] / weightb
+        A[0:2*Nlam:2, :] = A[0:2*Nlam:2, :] / weighta
+        A[1:2*Nlam:2, :] = A[1:2*Nlam:2, :] / weightb
+        y[0:2*Nlam:2] = y[0:2*Nlam:2] / weighta
+        y[1:2*Nlam:2] = y[1:2*Nlam:2] / weightb
     ## [Solving the least square system for the phy ratios.]
     #x = np.linalg.lstsq(A, b)
 #    x = scipy.optimize.nnls(A,y)[0]
