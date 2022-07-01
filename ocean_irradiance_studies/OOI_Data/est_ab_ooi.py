@@ -85,10 +85,7 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
 
     ## [This retreives the profiles]
     optaa_dt = optaa_prof['time'].data
-    optaa_z = -optaa_prof['depth'].data
-    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
-    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
-    ## !!!!!!!!!!!!!!!!TRANSPOSE IS TEMPORARY PUT THIS EARLIER ON IN OOI_DATA_FUNCTIONS
+    optaa_z = optaa_prof['depth'].data
     wavelength_c = optaa_prof['wavelength_c'].data.transpose()
     wavelength_a = optaa_prof['wavelength_a'].data.transpose()
     optaa_c = optaa_prof['beam_attenuation'].data
@@ -105,9 +102,8 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
     optaa_b = optaa_c - optaa_a
 
     ## [The flort data.]
-    flort_z = -flort_prof['depth'].data
+    flort_z = flort_prof['depth'].data
     flort_chla = flort_prof['fluorometric_chlorophyll_a'].data
-    z_chla_s, chla_s = ODF.Smooth_Profile_55(flort_z, flort_chla)
 
     ## [The wieghting for the leats squares problem.]
     ## [If the weights are provided are argument, unpack and use.]
@@ -147,7 +143,7 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
 #            z_s, b_s = ODF.Smooth_Profile_55(optaa_z, b)
             
             ## [Chla being interpolated to absorption grid.]
-            chla_s_interp = np.interp(z_s, z_chla_s, chla_s)
+            chla_s_interp = np.interp(optaa_z, flort_z, flort_chla )
 
             ## [Get the cdom absorption]
             lam_cdom_i = ODF.Get_Wavelength_Index(wavelength_a[0,:], cdom_reflam)
@@ -352,20 +348,19 @@ def Run_Lstsq_Depth(N_depths, PI, wavelengths, phy_species, flort_prof, optaa_pr
 
 
 if __name__ == '__main__': 
-    
+
     ## [The data request parameters.]
-    site_name = "CE02SHSP"
-    assembly = "profiler"
-    method = "recovered_cspp"
-    start = "2021-04-01"
-    stop = "2021-04-30"
-
-    ## [File name parameter.]
-    ooi_savefile_head = "ooi_data/ooi_dat"
-    optaa_profs_save = "ooi_data/ooi_dat_rawoptaaprofs.p"
-
-    ## [Data load flag, fale means load data from pickle.]
+    ## [Data load flag, false means load data from pickle.]
     download = False
+    savefile_head = "ooi_data/ooi_dat"
+    site = "CE02SHSP"
+    node = 'SP001'
+    method = 'recovered_cspp'
+    deployment = 15
+    ## [Makes the OOI data into profiles.]
+    profiled = True
+    ## [Processes the optaa data according to Chris Winegards script.]
+    optaa_process_raw = True
 
     ## [Functional parameters.]
     N=100
@@ -375,8 +370,8 @@ if __name__ == '__main__':
 #    phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
-    prof_index = 15
-    depthz = 5
+    prof_index = 1
+    depthz = -9
     ## [The absorption or scattering flag.]
     ab = 'ab'
     ## [The number of profiles for the Hoffmuller.]
@@ -389,22 +384,17 @@ if __name__ == '__main__':
     color_dict = ODF.Get_Phy_Cmap_Dict()
 
     ## [Download or load the data sets.]
-    ooi_data = ODF.Download_OOI_Data(ooi_savefile_head, 
+    ooi_data = ODF.Download_OOI_Data(savefile_head, 
                                      download, 
-                                     site_name, 
-                                     assembly, 
+                                     site,
+                                     node,
                                      method, 
-                                     start, 
-                                     stop)
+                                     deployment,
+                                     profiled = profiled, 
+                                     optaa_process_raw = optaa_process_raw)
 
     flort_dat, spkir_dat, optaa_dat, flort_profs, spkir_profs, optaa_profs = ooi_data
-
-    ## [Use the processed raw optaa profs.]
-    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
-    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
-    ## !!!!! ALSO TEMPORARY PUT EARLIER ON...
-    optaa_profs = pickle.load(open(optaa_profs_save,'rb'))
-                                                            
+                                                           
     ## [Index the profiles for the given index.]
     flort_prof = flort_profs[prof_index]
     optaa_prof = optaa_profs[prof_index]
@@ -414,15 +404,14 @@ if __name__ == '__main__':
                         spkir_dat.variables['spkir_abj_cspp_downwelling_vector']))
 
     ## [Running the least square estimation of the ratio of phytoplankton.]
-#    A, y, x = Est_Spec_Lstsq(PI, 
-#                             wavelengths,
-#                             depthz,
-#                            phy_species,
-#                             flort_prof, 
-#                             optaa_prof,
-#                             ab=ab,
-#                             weight = [0.4, 0.04])
-#    PLOT.Plot_Abs_Est_LstSq_Sol(wavelengths, optaa_prof, phy_species, A, y, x, color_dict, ab=ab)
+    A, y, x = Est_Spec_Lstsq(PI, 
+                             wavelengths,
+                             depthz,
+                            phy_species,
+                             flort_prof, 
+                             optaa_prof,
+                             ab=ab)
+    PLOT.Plot_Abs_Est_LstSq_Sol(wavelengths, optaa_prof, phy_species, A, y, x, color_dict, ab=ab)
 
     ## [Running the least squares problem over many profiles.]
 #    x_profs, residuals = Run_Lstsq_Time(N_profs, 
@@ -436,11 +425,11 @@ if __name__ == '__main__':
 #    PLOT.Plot_Spec_Lstsq_Hoffmuller_Time(N_profs, depthz, flort_profs, optaa_profs, phy_species, x_profs, color_dict, plot_residuals=True, residuals=residuals)
 
     ## [Running the least squares problem over many depths in single profile.]
-    x_profs, residuals = Run_Lstsq_Depth(N_depths, 
-                                        PI, 
-                                        wavelengths, 
-                                        phy_species, 
-                                      flort_prof, 
-                                        optaa_prof,
-                                       ab=ab)
-    PLOT.Plot_Spec_Lstsq_Hoffmuller_Depth(N_depths, flort_prof, optaa_prof, phy_species, x_profs, color_dict, plot_residuals=True, residuals=residuals)
+#    x_profs, residuals = Run_Lstsq_Depth(N_depths, 
+#                                        PI, 
+#                                        wavelengths, 
+#                                        phy_species, 
+#                                      flort_prof, 
+#                                        optaa_prof,
+#                                       ab=ab)
+#    PLOT.Plot_Spec_Lstsq_Hoffmuller_Depth(N_depths, flort_prof, optaa_prof, phy_species, x_profs, color_dict, plot_residuals=True, residuals=residuals)
