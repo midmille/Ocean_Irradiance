@@ -114,8 +114,8 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
     ## [The default weight is the ratio of spectral mean absorption to spectral mean scattering.]
     else:
         ## [Since the weiht is a ratio of a/b, then only multiply scattering by weight.]
-        weighta = 1 / np.nanmean(optaa_b[zi_optaa,:])
-        weightb = 1 / np.nanmean(optaa_a[zi_optaa,:])
+        weighta = 1 / np.nanmean(optaa_a[zi_optaa,:])
+        weightb = 1 / np.nanmean(optaa_b[zi_optaa,:])
 
     ## [The array of indexes that corresponds to desired wavelength.] 
     lam_is = np.zeros(Nlam, dtype=np.int8)
