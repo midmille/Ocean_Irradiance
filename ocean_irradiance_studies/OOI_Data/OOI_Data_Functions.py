@@ -169,6 +169,9 @@ def Download_OOI_Data(savefile_head, download, site, node, method, deployment, p
             ##  has the on_seconds variable.]
             optaa_profiles = Create_Profiles(optaa_dat, process_profile=True)
 
+            ## [This gives the same number of profiles for each oisntrument and ensures the align in time.]
+            flort_profiles, spkir_profiles, optaa_profiles = Sync_Profiles(flort_profiles, spkir_profiles, optaa_profiles)
+
             ## [Save the profiled data into pickles.]
             pickle.dump(flort_profiles, open(flort_profiles_savefile, 'wb'))
             pickle.dump(spkir_profiles, open(spkir_profiles_savefile, 'wb'))
@@ -195,6 +198,55 @@ def Download_OOI_Data(savefile_head, download, site, node, method, deployment, p
         return flort_dat, spkir_dat, optaa_dat, flort_profiles, spkir_profiles, optaa_profiles
     else:
         return flort_dat, spkir_dat, optaa_dat
+
+
+def Sync_Profiles(flort_profiles, spkir_profiles, optaa_profiles): 
+    """
+    This function synchronizes the profiles for the optta, flort, and spkir instruments
+    """
+
+    ## [The difference in start time between instum,ents profiles for sync.]
+    tdiff = np.timedelta64(1, 's')
+
+    ## [The number of profiles in the flort, spkir, and optaa.]
+    Nf = len(flort_profiles)
+    Ns = len(spkir_profiles)
+    No = len(optaa_profiles)
+
+    ## [The number of synchronized profiles will be the minimum profiles.]
+    if np.argmin([Nf, Ns, No]) == 0: 
+        profiles = flort_profiles
+    elif np.argmin([Nf, Ns, No]) == 1: 
+        profiles = spkir_profiles
+    elif np.argmin([Nf, Ns, No]) == 2: 
+        profiles = optaa_profiles
+
+    ## [The empty lists for the synced arrays.]
+    flort_profs_sync = []
+    spkir_profs_sync = []
+    optaa_profs_sync = []
+
+    ## [Loop over the minimum profiles.]
+    for k, prof in enumerate(profiles) : 
+        
+        ## [Loop over the flort profs.]
+        for j, fprof in enumerate(flort_profiles): 
+            ## [The flort sync.]
+            if (np.absolute(prof['time'].data[0] - fprof['time'].data[0]) < tdiff): 
+                ## [Loop over the spkir profs.]
+                for j, sprof in enumerate(spkir_profiles): 
+                    ## [The spkir sync.]
+                    if (np.absolute(prof['time'].data[0] - sprof['time'].data[0]) < tdiff): 
+                        ## [Loop over the flort profs.]
+                        for j, oprof in enumerate(optaa_profiles): 
+                            ## [The flort sync.]
+                            if (np.absolute(prof['time'].data[0] - oprof['time'].data[0]) < tdiff): 
+                
+                                flort_profs_sync.append(fprof)
+                                spkir_profs_sync.append(sprof)
+                                optaa_profs_sync.append(oprof)
+    
+    return flort_profs_sync, spkir_profs_sync, optaa_profs_sync
 
 
 def Process_Profile(profile, drop_time=60, chris_method=True): 
@@ -300,7 +352,7 @@ def Create_Profiles(ooi_dat, dt_sep=120, process_profile=True):
     """
 
     ## [This gets the index of each profile split.]
-    dt = ooi_dat.where(ooi_dat['time'].diff('time') > np.timedelta64(300, 's'), drop=True).get_index('time') 
+    dt = ooi_dat.where(ooi_dat['time'].diff('time') > np.timedelta64(dt_sep, 's'), drop=True).get_index('time') 
 
     ## [Init the list of profiled xarrays.]
     profiles = []

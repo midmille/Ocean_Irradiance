@@ -172,9 +172,16 @@ def Est_Spec_Lstsq(PI, wavelengths, depthz, phy_species, flort_prof, optaa_prof,
             A[2*i+1, Nphy] = 0.0
 
             ## [Adding the detritus column.]
-            A[2*i,Nphyp1] = abscat(wavelengths[i], 'detritus')[0] * weighta
-            A[2*i+1,Nphyp1] = abscat(wavelengths[i], 'detritus')[1] * weighta
+            A[2*i,Nphyp1] = abscat(wavelengths[i], 'detritus')[0] * weighta  * 1e17
+            A[2*i+1,Nphyp1] = abscat(wavelengths[i], 'detritus')[1] * weightb  * 1e15
+
+
+            ## [TEMP Make non-detritus parts of matrix zero.]
+#            A[:,:Nphy] = 0.0
+
     
+            print('weighta', weighta)
+            print('weightb', weightb)
     
             ## WARNING The abs should be removed and the negative absorption problem should be fixed, this is temp. 
             ## [The cdom is subtracted.]
@@ -377,7 +384,7 @@ if __name__ == '__main__':
 #    phy_species = ['HLPro', 'Cocco', 'Diat', 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
-    prof_index = 1
+    prof_index = 10
     depthz = -9
     ## [The absorption or scattering flag.]
     ab = 'ab'
