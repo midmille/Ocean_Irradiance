@@ -1,0 +1,12 @@
+The shape of the array should be: 
+
+[Nvariables, Nprofs, Ndepths, Nwavelengths]
+
+Where Nvariables = 6 for variables time, depth, wavelength, absorption, scattering, and fluorometric_chla. 
+
+arr[0, :,:,:] = time
+arr[1, :,:,:] = depth
+arr[2, :,:,:] = wavelength
+arr[3, :,:,:] = absorption
+arr[4, :,:,:] = scattering
+arr[5, :,:,:] = chla

@@ -32,7 +32,7 @@ import scipy
 import geopy.distance
 
 
-def OOI_Abs_Scat(optaa_prof, lam, smooth=True):
+def OOI_Abs_Scat(optaa_prof, lam):
     """
     This function gets the OOI absorption and scattering for a given profile index and data sets.
     """
@@ -632,58 +632,159 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
 
     return 
 
-def Plot_OOI_Abs_Wavelength_Time(optaa_dat, depth_ref, start, stop, site, assembly, method):
+def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict):
     """
     This plot creates a plot similiar to the one Chris Wingard sent in his email on 4/9/2022. 
+
+    It also bins the data into 3 chla concentration bins.
     """
 
-    ## [The optaa data.]
-    depth_profs, dt_profs, abs_profs, wavelength_profs = Get_Optaa_Profiles(optaa_dat, abs_cor=True)
 
     ## [The number of profiles.]
-    N = len(depth_profs)
+    Nprofs = len(optaa_profs)
+    ## [The number of bins.]
+    Nbins = len(bin_edges)-1
     ## [The number of wavelengths.]
-    optaa_wavelengths = np.squeeze(wavelength_profs[0][0,:])
-    N_lam = len(optaa_wavelengths)
+    Nlam = optaa_profs[0]['wavelength_a'].transpose().shape[1]
+    ## [The number of phytopplankton species.]
+    Nphy = len(phy_species)
+    ## [The number of depths levels.]
+    Nz = len(optaa_profs[0]['depth'].data)
 
     ## [The absorption in time.]
-    abs_t = np.zeros((N, N_lam))
+    abs_t = np.zeros((Nprofs, Nz, Nlam))
+    scat_t = np.zeros((Nprofs, Nz, Nlam))
+
+    ## [This desginates the bins that the data goes into.]
+    bin_loc = np.zeros((Nprofs, Nz, Nlam)) 
+
+    ## [The array to save the data as pickloe file for Chris and jonathan.]
+    save_arr = np.zeros((6, Nprofs, Nz, Nlam))
+            
     ## [Loop over the profiles.]
-    for k in range(N): 
-        depth = depth_profs[k].data
+    for k in range(Nprofs): 
+        optaa = optaa_profs[k]
+        flort = flort_profs[k]
+        optaa_depth = optaa['depth'].data
+        optaa_time = optaa['time'].data
+        flort_depth = flort['depth'].data
         ## [The depth index.]
-        d_i = np.argmin(abs(depth-depth_ref)) 
-        ## [The absorption in time.]
-        abs_t[k,:] = abs_profs[k][d_i, :] 
+        optaa_di = np.argmin(abs(optaa_depth-depthz)) 
+        ## [The depth index for flort.]
+        flort_di = np.argmin(abs(flort_depth-depthz)) 
+        ## [The chla concentration.]
+        chla = flort['fluorometric_chlorophyll_a'].data
+        optaa_z = optaa_prof['depth'].data
+        wavelength_c = optaa_prof['wavelength_c'].data.transpose()
+        wavelength_a = optaa_prof['wavelength_a'].data.transpose()
+        optaa_c = optaa_prof['beam_attenuation'].data
+        optaa_a = optaa_prof['optical_absorption'].data
+        for iz in range(len(optaa_z)): 
+            optaa_c[iz,:] = np.interp(wavelength_a[iz,:], wavelength_c[iz,:], optaa_c[iz,:])
+            ## [Now label the bin_loc dependent on the bin.]
+#            for j in range(Nbins): 
+#                if (bin_edges[j] <= chla < bin_edges[j+1]): 
+#                    bin_loc[k,iz,:] = j
 
+        ## [The scattering is simply the attenuation minus the absorption]
+        optaa_b = optaa_c - optaa_a
+
+        ## [Get the absorption due to cdom assumed.]
+        ## [Get the z_a, a, and lam_ooi for the CDOM_refa object.]
+        z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa, cdom_reflam)
+
+        ## [Loop wavelengths to remove cdom.]
+        for i, lam in enumerate(wavelength_a[k,:]):
+            print(lam)
+            ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
+            CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
+            ## [The absorption in time.]
+            abs_t[k,:,i] = optaa_a[:, i] - CDOM.a[:]
+            scat_t[k,:,i] = optaa_b[:, i] 
+
+            ## [Filling the save array.]
+            save_arr[0,k,:,i] = optaa_time
+            save_arr[1,k,:,i] = optaa_depth
+            save_arr[5,k,:,i] = chla
+        save_arr[2,k,:,:] = wavelength_a 
+        save_arr[3,k,:,:] = optaa_a
+        save_arr[4,k,:,:] = optaa_b
+
+        ## [Save as pickle.]
+        pickle.dump(save_arr, open('OOI_abscat.p', 'wb'))
+            
+    return
+"""
     ## [Plotting.]
-    fig, ax = plt.subplots()
+    fig, axs = plt.subplots(nrows=2, ncols = Nbins)
     
-    ## [The actual plotting]
-    ax.plot(optaa_wavelengths, np.transpose(abs_t), 'b', linewidth=.7)  
+    for j in range(Nbins): 
 
-    ## [Labels.]
-    ax.set_xlabel(f"Wavelength [{optaa_dat.variables['wavelength_a'].attrs['units']}]")
-    ax.set_ylabel(f"Absorption [{optaa_dat.variables['optical_absorption'].attrs['units']}]")
-    ax.set_title(f"OOI OPTAA optical_absorption Multiple Profiles Single Depth ({depth_ref} [m]) \n START: {start} to STOP: {stop}")
-    ## [Putting some identifying text on the figure.]
-    ## [10% up the vertical location]
-    txt_y = ax.get_ylim()[0] + 0.5 * (ax.get_ylim()[1]  - ax.get_ylim()[0])
-    ## [10% of the horizontal location.]
-    txt_x = ax.get_xlim()[0] + 0.6 * (ax.get_xlim()[1] - ax.get_xlim()[0])
-    ## [The change in txt location in vertical.]
-    txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
-    ## [Adding the txt.]
-    ax.text(txt_x, txt_y, f'SITE: {site}')   
-    ax.text(txt_x, txt_y+txt_dz, f'ASSEMBLY: {assembly}')   
-    ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: OPTAA')   
-    ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
+        print('bin_edges:', bin_edges[j], bin_edges[j+1])
+        mask = bin_loc == j
 
-    ax.grid()
+        print(mask)
+        ax0 = axs[0,:].flatten()[j]
+        ax1 = axs[1,:].flatten()[j]
+
+        ## [The masked absorption variable.]
+        abs_tm = abs_t[mask]
+        scat_tm = scat_t[mask]
+        ## [Reshape to the corect shape,]
+        abs_tm = abs_tm.reshape((int(len(abs_tm)/Nlam), Nz, Nlam))
+        scat_tm = scat_tm.reshape((int(len(scat_tm)/Nlam), Nz, Nlam))
+        ## [The lower quantile of the data for absorption and scattering.]
+        lquanta = np.quantile(abs_tm, 0.2, axis=0)
+        lquantb = np.quantile(scat_tm, 0.2, axis=0)
+        ## [upper quantile.]
+        uquanta = np.quantile(abs_tm, 0.8, axis=0)
+        uquantb = np.quantile(scat_tm, 0.8, axis=0)
+        ## [The actual plotting]
+        ax0.fill_between(wavelength_a[0,:], lquanta, uquanta)
+        ax1.fill_between(wavelength_a[0,:], lquantb, uquantb)
+        ax0.fill_between(wavelength_a[0,:], abs_tm.min(axis=0), abs_tm.max(axis=0), alpha=0.2)
+        ax1.fill_between(wavelength_a[0,:], scat_tm.min(axis=0), scat_tm.max(axis=0), alpha=0.2)
+        ax0.plot(wavelength_a[0,:], abs_tm.mean(axis=0), '-', color ='k')
+        ax1.plot(wavelength_a[0,:], scat_tm.mean(axis=0), '-', color ='k')
+        ## [Plot the mean.]
+        print(abs_t[mask].min(axis=0))
+
+        phy_abs = np.zeros(Nlam)
+        phy_scat = np.zeros(Nlam)
+        ## [plot the phytoplankton absroption.]
+        for pi, phy_type in enumerate(phy_species): 
+            for i, lam in enumerate(wavelength_a[0,:]):
+                phy_abs[i] = abscat(lam, phy_type, C2chla='default')[0]
+                phy_scat[i] = abscat(lam, phy_type, C2chla='default')[1]
+
+            ## [Plot the phy absorption line.]
+            ax0.plot(wavelength_a[0,:], phy_abs, label=phy_type, color = color_dict[phy_type])
+            ax1.plot(wavelength_a[0,:], phy_scat, label=phy_type, color = color_dict[phy_type])
+
+        ## [Set the lower ylim to 0.]
+        ylims = ax0.get_ylim()
+        ax0.set_ylim([0,ylims[1]])
+        ylims = ax1.get_ylim()
+        ax1.set_ylim([0,ylims[1]])
+
+        ## [Labels.]
+        ax0.set_xlabel(f"Wavelength [{optaa_profs[0].variables['wavelength_a'].attrs['units']}]")
+        ax0.set_ylabel(r"Absorption [m^2 mgChla^-1]")
+        ax0.set_title(f'Bin [{bin_edges[j]}, {bin_edges[j+1]}], {len(abs_tm[:,0])} points')
+
+        ax1.set_xlabel(f"Wavelength [{optaa_profs[0].variables['wavelength_a'].attrs['units']}]")
+        ax1.set_ylabel(r"Scattering [m^2 mgChla^-1]")
+
+        ax0.grid()
+        ax0.legend()
+
+        ax1.grid()
+        ax1.legend()
     
     fig.show()
 
     return
+"""
     
 
 def Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, start, stop, site, assembly, method):
@@ -770,7 +871,7 @@ if __name__ == '__main__':
     ## [The data request parameters.]
     ## [Data load flag, false means load data from pickle.]
     download = False
-    savefile_head = "ooi_data/ooi_dat"
+    savefile_head = "ooi_data/.archive/ooi_dat"
     site = "CE02SHSP"
     node = 'SP001'
     method = 'recovered_cspp'
@@ -788,8 +889,8 @@ if __name__ == '__main__':
     N=1000
 #    wavelengths = np.arange(425, 725, 25)
     wavelengths = [443, 551]
-#    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
-    phy_species = [ 'Syn'] 
+    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
+#    phy_species = [ 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
     prof_index = 0
@@ -809,6 +910,14 @@ if __name__ == '__main__':
                                      optaa_process_raw = optaa_process_raw)
 
     flort_dat, spkir_dat, optaa_dat, flort_profs, spkir_profs, optaa_profs = ooi_data
+    flort_profs, spkir_profs, optaa_profs = ODF.Sync_Profiles(flort_profs, spkir_profs, optaa_profs)
+
+    ## [Rempove any profile in list with Nz< 74]
+    for k,prof in enumerate(optaa_profs): 
+        if len(prof['depth'].data) < 74: 
+            optaa_profs.pop(k)
+            flort_profs.pop(k)
+            spkir_profs.pop(k)
 
     ## [Index the profiles for the given index.]
     flort_prof = flort_profs[prof_index]
@@ -830,4 +939,9 @@ if __name__ == '__main__':
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
-    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+#    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+
+    
+    ## [Plot the absorption in time and chla bins.]
+    bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
+    Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)
