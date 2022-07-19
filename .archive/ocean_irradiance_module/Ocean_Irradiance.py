@@ -308,7 +308,7 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, phy=None, CDOM_refa=None, det=None, grid='
         b_b_phy = np.interp(z, z_phy, b_b_phy)
         if det: 
             b_b_det = np.interp(z, z_phy, b_b_det)
-    elif CDOM_refa: 
+    elif CDOM_sal or CDOM_dens or CDOM_refa: 
         a = np.interp(z,z_cdom,a)
         ## no scattering for cdom, thus just water scattering.
         b = np.full(N, b)
@@ -323,7 +323,7 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, phy=None, CDOM_refa=None, det=None, grid='
     return z, a, b, b_b
  
 
-def analytical_Ed(zarr, c, Ed0): 
+def analytical_Ed(zarr,c, Ed0): 
     
     
     """
@@ -362,6 +362,39 @@ def numerical_Ed(z, c_d, Ed0):
         dEddz4 = c_d[k]*(Ed[k+1]+(dEddz3*dz))
         Ed[k] = Ed[k+1] + (( (dEddz1/6)+(dEddz2/3)+(dEddz3/3)+(dEddz4/6) )*dz)
         
+    return Ed
+
+
+def numerical_Ed_2(z, c, Ed0):
+    
+    N = len(z)
+    Nm1 = N-1
+    Nm2 = N-2
+    #assert N == len(c)
+    A = np.zeros((N,N))
+    dz = abs(zarr[0] - zarr[1])
+    m = 1/(2*dz)
+    row_index = [i for i in range(Nm2,0,-1)]
+    j = -1
+    for i in row_index: 
+        A[i,j] = m
+        A[i,j-1] = -c[i]
+        A[i,j-2] = -m
+        j -= 1 
+    A[-1, -1] = 1
+    A[0,0] = -(c[0]+2*m)
+    A[0,1] = 2*m 
+    B = np.zeros(N) #must have same number of rows as A 
+    B[-1] = Ed0 ##setting the first number to the amplitude at surface
+    lu, piv = sp.linalg.lu_factor(A)
+    Ed = sp.linalg.lu_solve((lu, piv), B)
+    """
+    At = np.transpose(A)
+    AtA = At @ A
+    AtA_inverse = np.linalg.inv(AtA)
+    AtB = At @ B
+    x = (AtA_inverse @ AtB)
+    """
     return Ed
 
 
@@ -511,13 +544,6 @@ def ocean_irradiance_scipy(zarr, Ed0, Es0, Euh, a, b, coefficients):
     
     return Ed, Es, Eu 
 
-
-def dEdz_three_stream(): 
-    """
-    The rhs of the derivative of the equations for 
-    """
-
-    return
 
 def Irradiance_RK4(Nm1, Ed, Es, Eu, z, a, b, c_d, b_b, b_f, r_s, r_u, v_d, v_s, v_u, 
                    direction = 'up'):
