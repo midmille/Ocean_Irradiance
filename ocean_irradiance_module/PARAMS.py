@@ -90,6 +90,12 @@ class Param_Init:
                             'Tricho', 
                             'Lgeuk', 
                             'Generic']
+        ## [The irradiance grid structure keyword.]
+        self.grid = 'log'
+        self.pt1_perc_zbot = True
+        self.pt1_perc_phy = False
+
+
         ##############################################################################
         ##############################################################################
         
