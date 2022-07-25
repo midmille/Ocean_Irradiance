@@ -150,6 +150,7 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
     a_wat,b_wat = ab_wat 
     a = a_wat
     b = b_wat 
+    b_b_wat = 0.551*b_wat
 
 
     r_s, r_u, v_d, v_s, v_u = coefficients
@@ -223,14 +224,13 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
     ## [Forming the irradiance grid.]
     if pt1_perc_zbot == True :
         
-        light_frac_phy = 0.00000001
+        light_frac_phy = 0.001
         light_frac_wat = 0.001
         ## Finding the zbot at the .1% light level. 
         if pt1_perc_phy == True:
-            print('HERE')
-            zbot_pt1perc = zbot_func(hbot, Ed0, a, b, v_d, light_frac=light_frac_phy, phy=True, z=z_phy) 
+            zbot_pt1perc = zbot_func(hbot, Ed0, a, b_b_phy, coefficients, light_frac=light_frac_phy, phy=True, z=z_phy)
         else:    
-            zbot_pt1perc = zbot_func(hbot, Ed0, a_wat, b_wat, v_d, light_frac=light_frac_wat, phy=False)
+            zbot_pt1perc = zbot_func(hbot, Ed0, a_wat, b_b_wat, coefficients, light_frac=light_frac_wat, phy=False)
         if zbot_pt1perc == None:
             print('bad pt1 perc light level')
             zbot_pt1perc = -100
@@ -238,6 +238,7 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
         zbot = -min(abs(hbot), abs(zbot_pt1perc))
     elif pt1_perc_zbot == False: 
         zbot = hbot 
+    
 
     ## [construct the vertical grid to the designated depth.]
     if grid == 'log': 
@@ -262,7 +263,6 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
         a = np.full(N, a)
         b = np.full(N, b)
         
-    b_b_wat = .551*b_wat
 
     ## [The total back scattering.]
     b_b = b_b_wat + b_b_phy
@@ -273,7 +273,7 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
     return z, a, b, b_b, b_f
  
 
-def analytical_Ed(zarr, c, Ed0): 
+def analytical_Ed_3stream(zarr, Ed0, a, b, coefficients): 
     
     
     """
@@ -289,11 +289,31 @@ def analytical_Ed(zarr, c, Ed0):
 
     """
    
-    Ed = Ed0*np.exp(c*zarr)
+    Ed = Ed0*np.exp(((a+b)/v_d)*zarr)
     return Ed 
 
 
-def numerical_Ed(z, c_d, Ed0):
+def analytical_Ed_2stream(zarr, Ed0, a, b_b, coefficients): 
+    
+    
+    """
+    Parameters
+    ----------
+    zarr : vertical 1-D array
+        The vertical array of the depth from 0 --> negative depth.
+
+    Returns
+    -------
+    Downward Direct Irradiance
+    
+
+    """
+   
+    Ed = Ed0*np.exp(((a+b_b)/v_d)*zarr)
+    return Ed 
+
+
+def numerical_Ed_3stream(z, Ed0, a, b, coefficients):
     
     N = len(z)
     Nm1 = N - 1
@@ -301,21 +321,37 @@ def numerical_Ed(z, c_d, Ed0):
     Ed = np.zeros(N)
     Ed[Nm1] = Ed0
 
-    for k in range(Nm1-1, -1, -1) :
+    ## [The function for the rhs of 
+
+    for k in range(Nm1, 0, -1):
         
-        dz = z[k] - z[k+1]
-        dzo2 = dz / 2
+        dz = z[k-1] - z[k]
         
-        dEddz1 = c_d[k]*Ed[k+1]
-        dEddz2 = c_d[k]*(Ed[k+1]+(dEddz1*dzo2))
-        dEddz3 = c_d[k]*(Ed[k+1]+(dEddz2*dzo2))
-        dEddz4 = c_d[k]*(Ed[k+1]+(dEddz3*dz))
-        Ed[k] = Ed[k+1] + (( (dEddz1/6)+(dEddz2/3)+(dEddz3/3)+(dEddz4/6) )*dz)
-        
+        Ed[k-1] = RK45(dEddz_3stream, dz, z[k], Ed[k], a[k], b[k], None, None, coefficients)
+
     return Ed
 
 
-def zbot_func(hbot, Ed0, a, b, v_d, light_frac = .01, phy=False, z=None):
+def numerical_Ed_2stream(z, Ed0, a, b_b, coefficients):
+    
+    N = len(z)
+    Nm1 = N - 1
+    
+    Ed = np.zeros(N)
+    Ed[Nm1] = Ed0
+
+    ## [The function for the rhs of 
+
+    for k in range(Nm1, 0, -1):
+        
+        dz = z[k-1] - z[k]
+        
+        Ed[k-1] = RK45(dEddz_2stream, dz, z[k], Ed[k], a[k], None, b_b[k], None, coefficients)
+
+    return Ed
+
+
+def zbot_func(hbot, Ed0, a, b_b, coefficients, light_frac = .01, phy=False, z=None):
     """
     Finds the zbot for at which light ha attenuated to .1% of its surface value 
     for water only coeffients
@@ -346,21 +382,18 @@ def zbot_func(hbot, Ed0, a, b, v_d, light_frac = .01, phy=False, z=None):
     
     ## For now let the scattering be zero. 
     zlim = -1000
-    c = (a+b) / v_d
-#    zbots = np.linspace(zlim, 0, 1000) 
+
     zbots = Log_Trans_Grid(max(zlim,hbot), 5000) 
     
     if phy==True: 
-        print('HERE2')
-        c = np.interp(zbots, z, c)
-        Ed = numerical_Ed(zbots, c, Ed0)
-        print(Ed)
+        a = np.interp(zbots, z, a)
+        b_b = np.interp(zbots, z, b_b)
+        Ed = numerical_Ed_2stream(zbots, Ed0, a, b_b, coefficients)
     else:
-        Ed = analytical_Ed(zbots, c, Ed0)
+        Ed = analytical_Ed_2stream(zbots, Ed0, a, b_b, coefficients)
     ## The flipping is so the iteration starts at the surface.
     for k, Ed_i in enumerate(np.flip(Ed)) :
         EdoEd0 = Ed_i / Ed0
-        #print(EdoEd0, light_frac, np.flip(zbots)[k], phy, Ed_i)
         if EdoEd0 < light_frac :
             zbot = np.flip(zbots)[k] 
             return zbot
@@ -409,29 +442,58 @@ def RK45(dEdz, dz, z, E, a, b, b_b, b_f, coefficients):
     return Ep1
 
 
-def dEdz_Three_Stream(z, E, a, b, b_b, b_f, coefficients): 
+def dEddz_3stream(z, Ed, a, b, b_b, b_f, coefficients): 
+    """
+
+    This the rhs of the ODE for the independent downward direct stream for the three stream
+    method. 
+
+    """
+
+    r_s, r_u, v_d, v_s, v_u = coefficients
+
+    dEddz = ((a+b)/v_d) * Ed
+
+    return dEddz
+
+
+def dEddz_2stream(z, Ed, a, b, b_b, b_f, coefficients): 
+    """
+
+    This the rhs of the ODE for the independent downward direct stream for the three stream
+    method. 
+
+    """
+
+    r_s, r_u, v_d, v_s, v_u = coefficients
+
+    dEddz = ((a+b_b)/v_d) * Ed
+
+    return dEddz
+
+
+
+def dEdz_3stream(z, E, a, b, b_b, b_f, coefficients): 
     """
     The rhs of the derivative of the equations for the irradiance model. This three stream model comes
     from Dutkiewicz et. al (2015) and, unlike Dutkiewicz, assumes a negative z grid.
     
     Parameters
     ----------
-    E: 1-D Array, [3]
-        E[0] = Ed, E[1] = Es, E[2] = Eu
+    E: 1-D Array, [2]
+        E[0] = Es, E[1] = Eu
 
     Returns 
     -------
-    dEdz: 1-D Array, [3]
+    dEdz: 1-D Array, [2]
         The solution for the rhs derivatives of the irradiance system.
     """
-
 
     r_s, r_u, v_d, v_s, v_u = coefficients
 
 
     dEdz = np.zeros_like(E)
 
-    dEdz[0] = ((a+b)/v_d) * E[0]
     dEdz[1] = -(b_f/v_d)*E[0] + ((a+r_s*b_b)/v_s)*E[1] - ((r_u*b_b)/v_u)*E[2]
     dEdz[2] = (b_b/v_d)*E[0] + ((r_s*b_b)/v_s)*E[1]  - ((a+r_u*b_b)/v_u)*E[2] 
 
@@ -482,12 +544,17 @@ def ocean_irradiance_scipy(PI,
         b_b_r = np.interp(z,zarr,b_b)
         b_f_r = np.interp(z,zarr,b_f)
         
-        dEdz = dEdz_Three_Stream(z, E, a_r, b_r, b_b_r, b_f_r, coefficients)
+        dEdz = np.zeros_like(E)
+
+        ## [The independent solution for Ed.]
+        dEdz[0] = dEddz_Three_Stream(z, E[0], a_r, b_r, coefficients)
+        
+        ## [The Es and Eu streams.]
+        dEdz[1:] = dEdz_Three_Stream(z, E, a_r, b_r, b_b_r, b_f_r, coefficients)[1:]
 
         return dEdz
         
     def Ebcs(E_at_h, E_at_0):
-
         
         return np.array([E_at_0[0] - Ed0, E_at_0[1] - Es0, E_at_h[2] - Euh])
 
@@ -607,7 +674,9 @@ def ocean_irradiance_shoot(PI,
                                             grid=PI.grid, 
                                             pt1_perc_zbot=PI.pt1_perc_zbot, 
                                             pt1_perc_phy=PI.pt1_perc_phy)
-    
+
+    ## [Calculate the independent solution for Ed]
+    E[:,0] = numerical_Ed_3stream(z, Ed0, a, b, coefficients)
     
     Eu0_tried = []
     Fmetric = []
@@ -633,7 +702,7 @@ def ocean_irradiance_shoot(PI,
         ## [Solving the initial value problem here.]
         for k in range(Nm1, 0, -1): 
             dz = z[k-1] - z[k]
-            E[k-1,:] = RK45(dEdz_Three_Stream, dz, z[k], E[k,:], a[k], b[k], b_b[k], b_f[k], coefficients)
+            E[k-1,1:] = RK45(dEdz_3stream, dz, z[k], E[k,:], a[k], b[k], b_b[k], b_f[k], coefficients)[1:]
              
         Fmetric.append(E[0,2] - Euh)
 
@@ -872,7 +941,7 @@ def ocean_irradiance_semianalytic_inversion(PI,
     A[0,1] = (r_m[0])*np.exp(-(kap_m[0])*(z[1])) ## = E_s0 - x[0] * E_d0
 
     # E_d = analytical_Ed(z, c, Ed0)
-    E_d =  np.flip(numerical_Ed(np.flip(z), np.flip(c_Ed_z), Ed0))
+    E_d =  np.flip(numerical_Ed_3stream(np.flip(z), Ed0, np.flip(a), np.flip(b), coefficients))
     
     E_d2 = np.zeros(2*N)
     
@@ -903,12 +972,11 @@ def ocean_irradiance_semianalytic_inversion(PI,
     #z_out = np.linspace(z[0] ,z[-1], N-1) ##z array for E_s_z and E_u_z 
     z_out = np.linspace(0,z[-1] + dz/2, N-1)
 
-    Ed = np.flip(numerical_Ed(np.flip(z_out), np.flip(c_Ed_z), Ed0))
+    Ed =  np.flip(numerical_Ed_3stream(np.flip(z_out), Ed0, np.flip(a2), np.flip(b2), coefficients))
     Es = E_s_z(z_out, z, c_p, c_m, Ed)
     Eu = E_u_z(z_out, z, c_p, c_m, Ed)
 
     
-    # print(c_Ed_z)
     #Es = x_lu[:N]
     #Eu = x_lu[N:] 
     #Ed = analytical_Ed(zarr, c)
@@ -1169,7 +1237,7 @@ def Demo():
 
     phy_type = 'Syn'
 
-    phy_prof = artificial_phy_prof(z_phy, -10, 20, 1, prof_type = 'gauss')
+    phy_prof = artificial_phy_prof(z_phy, -10, 20, 10, prof_type = 'gauss')
 
     fig, axes = plt.subplots(1, 3, sharey=True)
     ax1 = axes[0]
@@ -1183,9 +1251,9 @@ def Demo():
         ## Define the Phytoplankton class.
         phy = Phy(z_phy, phy_prof, esd(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
 
-        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shoot(PI, hbot, ab_wat, phy=phy, N=N)
-#        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
  
 
         markers = ['-', '-'] 
