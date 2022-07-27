@@ -247,6 +247,8 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
     elif grid == 'linear': 
         ## linear z 
         z = np.linspace(zbot, 0, N)
+    else: 
+        raise ValueError("Invalid grid keyword, either 'log' or 'linear'")
     
     ## Interpolating a,b vectors from z_phy to z.
     if phy: 
@@ -1192,7 +1194,8 @@ def ocean_irradiance_semianalytic_inversion(PI,
     
       
     #z_out = np.linspace(z[0] ,z[-1], N-1) ##z array for E_s_z and E_u_z 
-    z_out = np.linspace(0,z[-1] + dz/2, N-1)
+    #z_out = np.linspace(0,z[-1] + dz/2, N-1)
+    z_out = z
 
     Ed =  np.flip(numerical_Ed_3stream(np.flip(z_out), Ed0, np.flip(a2), np.flip(b2), coefficients))
     Es = E_s_z(z_out, z, c_p, c_m, Ed)
@@ -1415,7 +1418,8 @@ def ocean_irradiance_semianalytic_inversion_ROMS(PI,
           c_m[i-1] = x_lu[2*(i-1)]
     
     
-    z = np.linspace(zarr[Nm1], 0, Nm1) ##z array for E_s_z and E_u_z 
+    #z = np.linspace(zarr[Nm1], 0, Nm1) ##z array for E_s_z and E_u_z 
+    z = zarr
     
     Ed_zarr = numerical_Ed(zarr, c_d, Ed0)
     Es = E_s_z(Nm1, Ed_zarr, z, zarr, c_p, c_m)
@@ -1433,21 +1437,22 @@ def ocean_irradiance(PI,
                      method='shootdown', 
                      phy=None,
                      CDOM_refa=None, 
-                     det=None): 
+                     det=None,
+                     N=30): 
     """
     This function runs the ocean irradiance algorithm for the given method.
     """
 
     if method=='shootdown': 
-        ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det)
+        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det, N=N)
     elif method=='shootup': 
-        ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det)
+        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det, N=N)
     elif method=='scipy':
-        ocean_irradiance_scipy(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det)
+        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det, N=N)
     elif method=='dutkiewicz':
-        ocean_irradiance_semianalytical_inversion(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det)
+        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det, N=N)
     elif method=='analytical': 
-        ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det)
+        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det, N=N)
     else: 
         raise ValueError('Ocean irradiance method unrecognized. Please use one of the follwing methods: \n shootup \n shootdown \n scipy \n dutkiewicz \n analytical')
         
@@ -1504,9 +1509,9 @@ def Demo():
         phy = Phy(z_phy, phy_prof, esd(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
 
 #        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
-        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, N=N)
-#        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
  
 
