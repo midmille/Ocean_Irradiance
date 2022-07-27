@@ -943,5 +943,5 @@ if __name__ == '__main__':
 
     
     ## [Plot the absorption in time and chla bins.]
-    bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
-    Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)
+#    bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
+#    Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)

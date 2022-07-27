@@ -288,6 +288,7 @@ def analytical_Ed_3stream(zarr, Ed0, a, b, coefficients):
     
 
     """
+    r_s, r_u, v_d, v_s, v_u = coefficients
    
     Ed = Ed0*np.exp(((a+b)/v_d)*zarr)
     return Ed 
@@ -308,6 +309,7 @@ def analytical_Ed_2stream(zarr, Ed0, a, b_b, coefficients):
     
 
     """
+    r_s, r_u, v_d, v_s, v_u = coefficients
    
     Ed = Ed0*np.exp(((a+b_b)/v_d)*zarr)
     return Ed 
@@ -500,6 +502,102 @@ def dEdz_3stream(z, E, a, b, b_b, b_f, coefficients):
     return dEdz
 
 
+def ocean_irradiance_analytical(PI, 
+                                hbot, 
+                                ab_wat, 
+                                phy=None, 
+                                CDOM_refa=None, 
+                                det=None, 
+                                N=30): 
+    """
+    This is the analytical solution for the three stream irradiance model. The coefficients of 
+    absorption are necessarily constant for this method. This means either water only, or a constant profile
+    of constituents absorption. 
+
+    """
+
+    ##N centers
+    Nm1 = N - 1  
+
+    Ed0 = PI.Ed0
+    Es0 = PI.Es0
+    Euh = PI.Euh
+
+    coefficients = PI.coefficients
+    r_s, r_u, v_d, v_s, v_u = coefficients
+ 
+    ## Default number of shots for BVP shoot method solution
+    shots = 3 
+
+    z, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+                                            ab_wat, 
+                                            N, 
+                                            Ed0,
+                                            coefficients,
+                                            phy=phy, 
+                                            CDOM_refa=CDOM_refa, 
+                                            det=det, 
+                                            grid=PI.grid, 
+                                            pt1_perc_zbot=PI.pt1_perc_zbot, 
+                                            pt1_perc_phy=PI.pt1_perc_phy)
+
+    ## [For the analytical solution ensure that the coefficients are constant profiles.]
+    assert ~np.any(a != a[Nm1])
+    assert ~np.any(b != b[Nm1])
+
+    ## [The attenuation depth as calculated from zbot function.]
+    Ha = z[0]
+
+    ## [Make the coeffcients into scaalars.]
+    a = a[Nm1]
+    b = b[Nm1]
+    b_b = b_b[Nm1]
+    b_f = b_f[Nm1]
+
+    
+    ## [Analytical Solution Start.]
+    Cs = (a+r_s*b_b)/v_s
+    Bu = (r_u*b_b)/v_u
+    Fd = b_f/v_d
+    Bs = (r_s*b_b)/v_s
+    Cu =  (a+r_u*b_b)/v_u
+    Bd = b_b/v_d
+    Cd = (a+b)/v_d
+
+    D = 0.5*((Cs+Cu) + np.sqrt((Cu+Cs)**2 + 4*Bs*Bu))
+
+    x = -(1/(-(Cs-Cd)*(Cu+Cd) + Bs*Bu)) * ((Cu+Cd)*Fd + Bu*Bd)
+    y = -(1/(-(Cs-Cd)*(Cu+Cd) + Bs*Bu)) * (Bs*Fd + Bd*(Cs-Cd))
+
+    ## [The eigenvalues.]
+    ## [Lambda minnus. also lambda one in notes.]
+    lamm = D - Cu 
+    lamp = Cs - D
+
+    ## [Ed at H]
+    Edh = analytical_Ed_3stream(Ha, Ed0, a, b, coefficients)
+
+    ## [The numerator of c2.]
+    c2num = (Es0*np.exp(lamm*Ha)*(Bs/D) - x*Ed0*np.exp(lamm*Ha)*(Bs/D) + y*Edh)
+    c2den = ((Bu/D)*(Bs/D)*np.exp(lamm*Ha) - np.exp(lamp*Ha))
+    c2 = c2num / c2den
+
+    c1 = Es0 - x*Ed0 - c2*(Bu/D)
+
+    ## [The solution for Ed]
+    Ed = analytical_Ed_3stream(z, Ed0, a, b, coefficients)
+
+    ## [The solution for Es.]
+    Es = c1*np.exp(lamm*z) + c2*np.exp(lamp*z)*(Bu/D) + x*Ed
+
+    print(c1, c2)
+
+    ## [The solution for Eu.]
+    Eu = c1*np.exp(lamm*z)*(Bs/D) + c2*np.exp(lamp*z) + y*Ed
+
+    return Ed, Es, Eu, z
+
+
 def ocean_irradiance_scipy(PI, 
                            hbot, 
                            ab_wat, 
@@ -547,10 +645,10 @@ def ocean_irradiance_scipy(PI,
         dEdz = np.zeros_like(E)
 
         ## [The independent solution for Ed.]
-        dEdz[0] = dEddz_Three_Stream(z, E[0], a_r, b_r, coefficients)
+        dEdz[0] = dEddz_3stream(z, E[0], a_r, b_r, b_b_r, b_f_r, coefficients)
         
         ## [The Es and Eu streams.]
-        dEdz[1:] = dEdz_Three_Stream(z, E, a_r, b_r, b_b_r, b_f_r, coefficients)[1:]
+        dEdz[1:] = dEdz_3stream(z, E, a_r, b_r, b_b_r, b_f_r, coefficients)[1:]
 
         return dEdz
         
@@ -590,13 +688,13 @@ def ocean_irradiance_scipy(PI,
     return Ed, Es, Eu, zarr
 
 
-def ocean_irradiance_shoot(PI, 
-                           hbot, 
-                           ab_wat, 
-                           phy = None, 
-                           CDOM_refa = None, 
-                           det = None,
-                           N = 30):
+def ocean_irradiance_shootdown(PI, 
+                                hbot, 
+                                ab_wat, 
+                                phy = None, 
+                                CDOM_refa = None, 
+                                det = None,
+                                N = 30):
     
     
     """
@@ -711,6 +809,130 @@ def ocean_irradiance_shoot(PI,
     Eu = E[:,2]
 
     return Ed, Es, Eu, z
+
+
+def ocean_irradiance_shootup(PI, 
+                             hbot, 
+                             ab_wat, 
+                             phy = None, 
+                             CDOM_refa = None, 
+                             det = None,
+                             N = 30):
+    
+    
+    """
+    The main ocean_irradiance function that calculates the three stream model solution 
+    following the equations and coefficients of Dutkiewicz (2015) and solved as a boundary 
+    value problem using the shooting method. 
+
+    Parameters
+    ----------
+    hbot : Float  
+        True bottom depth of water column. 
+    E_d_0 : Float
+        Initial value of downward direct irradiance. 
+    E_s_0 : Float
+        Initial value of downward diffuse irradiance. 
+    E_u_h : Float
+        Boundary Condition on upwelling irradiance at h. 
+    ab_wat : Tuple, length==2, (a_wat,b_wat).  
+        Absorbtion and scattering coefficients for water. 
+    coeffcients : Tuple, length == 5. 
+        Coefficients taken from Dutkiewicz such as the average of cosines and sines. 
+    phy : optional, default is None, else Phy object. 
+        Gives information as according to Phy class on phytoplankton profile(s), 
+        corresponding z-grid, and coefficients of absorbtion and scattering for each
+        respective species of phytoplankton. 
+    N : Float, default is 30
+        The number of layers in the logarithmic grid. 
+    pt1_perc_zbot : Boolean, default is True
+        True refers to using the .1% light level as the zbot so long as that the magnitude 
+        of the .1% light level is smaller than the magnitude of hbot. False refers
+        to just using given hbot as zbot. 
+
+    Returns
+    -------
+    Ed : 1-D Array
+        Downward direct irradiance. 
+    Es : 1-D Array
+        Downward diffuse irradiance. 
+    Eu : 1-D Array
+        Downward diffuse irradiance. 
+    z : 1-D Array
+        The grid that the irradiances are calculated on. 
+
+    """
+    ##N centers
+    Nm1 = N - 1  
+
+    Ed0 = PI.Ed0
+    Es0 = PI.Es0
+    Euh = PI.Euh
+
+    coefficients = PI.coefficients
+ 
+    ##initial guess... doesn't matter too much
+    init_guess = Es0
+
+    E = np.full((N,3), init_guess)
+    
+    ## BCs included in the initial guess arrays
+    E[Nm1,0] = Ed0 ##surface 
+    E[Nm1,1] = Es0 ##surface 
+    E[0,2] = Euh ##bottom
+    
+    ## Default number of shots for BVP shoot method solution
+    shots = 3 
+
+    z, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+                                            ab_wat, 
+                                            N, 
+                                            Ed0,
+                                            coefficients,
+                                            phy=phy, 
+                                            CDOM_refa=CDOM_refa, 
+                                            det=det, 
+                                            grid=PI.grid, 
+                                            pt1_perc_zbot=PI.pt1_perc_zbot, 
+                                            pt1_perc_phy=PI.pt1_perc_phy)
+
+    ## [Calculate the independent solution for Ed]
+    E[:,0] = numerical_Ed_3stream(z, Ed0, a, b, coefficients)
+    
+    Esh_tried = []
+    Fmetric = []
+     
+    for jsh in range(shots) :
+    # Integrate down from the top to ensure Ed(1) and Es(1) are good.
+ 
+        if jsh == 0:
+            dEs = 0 #-Eu[Nm1]
+        elif jsh == 1:
+        # for the first case, need some adjustment to get gradient.
+            dEs = max(0.01,0.03*E[Nm1,1])
+        else: 
+            Jslope = (Fmetric[jsh-2]-Fmetric[jsh-1]) / (Esh_tried[jsh-2] - Esh_tried[jsh-1]) 
+            dEs = -Fmetric[jsh-1]/Jslope
+ 
+#        dEu = max(-E[Nm1,2], dEu)
+#        dEu = min(1-E[Nm1,2], dEu)
+        E[0,1] = E[0,1] + dEs
+        Esh_tried.append(E[0,1])
+
+        ## [Solving the initial value problem here.]
+        for k in range(Nm1): 
+            
+            dz = z[k+1] - z[k]
+            E[k+1,1:] = RK45(dEdz_3stream, dz, z[k], E[k,:], a[k], b[k], b_b[k], b_f[k], coefficients)[1:]
+             
+        Fmetric.append(E[Nm1,1] - Es0)
+
+    Ed = E[:,0]
+    Es = E[:,1]
+    Eu = E[:,2]
+
+    return Ed, Es, Eu, z
+
 
 
 def ocean_irradiance_semianalytic_inversion(PI, 
@@ -1202,6 +1424,35 @@ def ocean_irradiance_semianalytic_inversion_ROMS(PI,
     
     
     return Ed, Es, Eu, z
+
+
+
+def ocean_irradiance(PI, 
+                     hbot, 
+                     ab_wat, 
+                     method='shootdown', 
+                     phy=None,
+                     CDOM_refa=None, 
+                     det=None): 
+    """
+    This function runs the ocean irradiance algorithm for the given method.
+    """
+
+    if method=='shootdown': 
+        ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det)
+    elif method=='shootup': 
+        ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det)
+    elif method=='scipy':
+        ocean_irradiance_scipy(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det)
+    elif method=='dutkiewicz':
+        ocean_irradiance_semianalytical_inversion(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det)
+    elif method=='analytical': 
+        ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det)
+    else: 
+        raise ValueError('Ocean irradiance method unrecognized. Please use one of the follwing methods: \n shootup \n shootdown \n scipy \n dutkiewicz \n analytical')
+        
+
+    return Ed, Es, Eu, z
     
 
 def artificial_phy_prof(z,loc,width,conc, prof_type='gauss'):
@@ -1238,6 +1489,7 @@ def Demo():
     phy_type = 'Syn'
 
     phy_prof = artificial_phy_prof(z_phy, -10, 20, 10, prof_type = 'gauss')
+#    phy_prof = np.full(N, 1)
 
     fig, axes = plt.subplots(1, 3, sharey=True)
     ax1 = axes[0]
@@ -1252,8 +1504,10 @@ def Demo():
         phy = Phy(z_phy, phy_prof, esd(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
 
 #        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
-#        Ed, Es, Eu, z = ocean_irradiance_shoot(PI, hbot, ab_wat, phy=phy, N=N)
-        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
  
 
         markers = ['-', '-'] 
