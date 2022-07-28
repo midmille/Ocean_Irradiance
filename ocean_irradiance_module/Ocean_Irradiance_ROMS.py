@@ -16,7 +16,7 @@ from netCDF4 import Dataset
 # os.environ["PROJ_LIB"] = "C:/Users/Miles Miller/anaconda3/envs/pybasemap36/Library/share"
 # import seapy 
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
-from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
+from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as esd
 from ocean_irradiance_module import Ocean_Irradiance
 from ocean_irradiance_module import Wavelength_To_RGB
 import os
@@ -159,9 +159,8 @@ def ocean_color_sol(Eu_sol_dict, E_d_0, E_s_0):
     return OCx_sol
 
 
-def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt, 
-                  z_r, E_d_0, E_s_0, E_u_h, coefficients, N=30, pt1_perc_zbot = True,
-                  method='shoot_down', zbot_arr = 'bathemetry'):
+def Ocean_Irradiance_Field(PI, mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanophyt, 
+                  z_r, coefficients, N=30, method='shootdown', zbot_arr = 'bathemetry'):
     """
     
 
@@ -210,10 +209,13 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     ##Not a Number array so the land is Nan, not 0, helps make land white in pcolormesh
     ## The size four fourth dimension is for the irradiance field
     ## Ed, Es, Eu, z in that order.
-    if method == 'shoot_down' or method == 'shoot_up' or method =='shoot_fp' or method == 'scipy':
-        irr_arr = np.zeros((N,nyi,nxi,4)) * np.nan 
-    if method == 'Dut':
-        irr_arr = np.zeros((N-1,nyi,nxi,4)) * np.nan 
+#    if method == 'shoot_down' or method == 'shoot_up' or method =='shoot_fp' or method == 'scipy':
+#        irr_arr = np.zeros((N,nyi,nxi,4)) * np.nan 
+#    if method == 'Dut':
+#        irr_arr = np.zeros((N,nyi,nxi,4)) * np.nan 
+
+    irr_arr = np.zeros((N,nyi,nxi,4)) * np.nan 
+
     count = 0
     for j in range(nyi): 
         for i in range(nxi):
@@ -240,31 +242,16 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
                 a = np.array([ab_diat[0], ab_syn[0]])
                 b = np.array([ab_diat[1], ab_syn[1]])
                 
-                phy = Ocean_Irradiance.Phy(z_r0, phy_profs, [ESD('Diat'), ESD('Syn')], a, b)    
+                phy = Ocean_Irradiance.Phy(z_r0, phy_profs, [esd('Diat'), esd('Syn')], a, b)    
 
-                if method == 'shoot_down':
+                ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(PI, 
+                                                                  hbot, 
+                                                                  ab_wat, 
+                                                                  method = method, 
+                                                                  phy=phy, 
+                                                                  N=N)
+
                     
-                    ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
-                                                                      ab_wat, coefficients, phy, N=N)
-                elif method == 'shoot_up':
-                    
-                    ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_shoot_up(hbot,E_d_0,E_s_0,E_u_h,
-                                                                      ab_wat, coefficients, phy, N=N, 
-                                                                      pt1_perc_zbot = pt1_perc_zbot, )
-                elif method == 'shoot_fp':
-                    
-                    ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_shoot_fp(hbot,E_d_0,E_s_0,E_u_h,
-                                                                      ab_wat, coefficients, phy, N=N, 
-                                                                      pt1_perc_zbot = pt1_perc_zbot)
-                elif method == 'Dut':
-                    ocean_irr_sol = Ocean_Irradiance.ocean_irradiance_dutkiewicz(hbot,E_d_0,E_s_0,E_u_h,
-                                                                      ab_wat, coefficients, phy, N=N, 
-                                                                      pt1_perc_zbot = pt1_perc_zbot)
-                elif method == 'scipy':
-                    ocean_irr_sol = Ocean_Irradiance.ocean_irradiance(hbot,E_d_0,E_s_0,E_u_h,
-                                                                      ab_wat, coefficients, phy, N=N, 
-                                                                      pt1_perc_zbot = pt1_perc_zbot,
-                                                                      use_bvp_solver=True)
                 ## Ed
                 irr_arr[:,j,i,0] = ocean_irr_sol[0]
                 ## Es
@@ -278,18 +265,14 @@ def Ocean_Irradiance_Field(mask, ab_wat, ab_diat, ab_syn, chl_diatom, chl_nanoph
     return irr_arr
 
 
-def Irradiance_Run(R_nc, PI, nstp, N, save_dir, save_file, method, wavelengths):
+def Irradiance_Run(R_nc, PI, nstp, N, savefile, method, wavelengths):
     
     
-    ## The name of the file that the python Eu dict will be saved to as pickle.
-    # save_file = f'irr_dict_nstp_{nstp}.p'
-    # save_dir = 'Irr_Field_Out'
-    save_path = f'{save_dir}/{save_file}'
     ## Python calculated Eu at surface 
     ##---------------------------------
     ## Checking if save file exists
     ## if it doesn't exist then redo calculation
-    if os.path.exists(save_path) == False:
+    if os.path.exists(savefile) == False:
         ## User input required so not to overwrite or redo unnecessarily... 
         #y_or_n = input('File does not exist, continue with calculation? [y/n] ')
         #if y_or_n == 'n': 
@@ -302,6 +285,7 @@ def Irradiance_Run(R_nc, PI, nstp, N, save_dir, save_file, method, wavelengths):
         for lam in wavelengths:
             print('Current Wavelength:', lam)
             irr_field_py[lam] = Ocean_Irradiance_Field(
+                                              PI,
                                               R_nc.maskr, 
                                               abscat(lam, 'water'), 
                                               abscat(lam, 'Diat'), 
@@ -309,20 +293,17 @@ def Irradiance_Run(R_nc, PI, nstp, N, save_dir, save_file, method, wavelengths):
                                               R_nc.chl_diatom[nstp,:,:,:], 
                                               R_nc.chl_nanophyt[nstp,:,:,:], 
                                               R_nc.z_r[nstp,:,:,:], 
-                                              PI.Ed0, 
-                                              PI.Es0, 
-                                              PI.Euh,
                                               PI.coefficients,
                                               N= N, 
                                               method = method)
         
-        pickle.dump(irr_field_py, open(save_path, "wb"))
+        pickle.dump(irr_field_py, open(savefile, "wb"))
         print('Python calculation complete and saved')
         
     ## if the save file does exist then just load it. gity 
-    elif os.path.exists(save_path) == True:
-        print(f'Irradiance save file exists! Loading python calculated irradiance field from file "{save_file}"...')
-        irr_field_py = pickle.load(open(save_path,'rb'))
+    elif os.path.exists(savefile) == True:
+        print(f'Irradiance save file exists! Loading python calculated irradiance field from file "{savefile}"...')
+        irr_field_py = pickle.load(open(savefile,'rb'))
         print('Yay, file loaded :)')
 
     return irr_field_py
@@ -515,29 +496,31 @@ if __name__ == '__main__':
     from ocean_irradiance_module.PARAMS import Param_Init 
     
     parser = argparse.ArgumentParser(description='Ocean Irradiance ROMS Wrapper')
-    parser.add_argument('file', help = "Complete Path to ROMS nc file" )
-    parser.add_argument('save_file_name', help = "The name of the pickle file in which the result will be stored" )
-    parser.add_argument('save_dir', help = "The name and path of the direcotry in which the result will be stored" )
-    parser.add_argument('method', help = "Methods are: Dut, shoot_down, shoot_up, shoot_fp." )
+    parser.add_argument('romsnc_file', help = "Complete Path to ROMS nc file" )
+    parser.add_argument('savefile', help = "The name of the pickle file in which the result will be stored" )
+    parser.add_argument('method', help = "methods are: shootdown, shootup, scipy, dutkiewicz" )
     # parser.add_argument('dest_file', help='Path to Destination Directory. Saved as pickle')
     parser.add_argument('--plot', action='store_true', help="Visualization of Result")
     args = parser.parse_args()
     
 
     PI = Param_Init()
-    R_nc = ROMS_netcdf(args.file)
+
+    PI.pt1_perc_zbot = True
+    PI.pt1_perc_phy = True
+    R_nc = ROMS_netcdf(args.romsnc_file)
 
     ## updating default to wavelengths necessary for the OCx_algorithim
-    wavelengths = [443, 551, 638]
+    wavelengths = [443, 551]
 
     ## settting time step index
     time_step_index = 1
     
-    N = 200
+    N = 10
     
-    irr_field = Irradiance_Run(R_nc, PI, time_step_index, N, args.save_dir, args.save_file_name, args.method, wavelengths)
+    irr_field = Irradiance_Run(R_nc, PI, time_step_index, N, args.savefile, args.method, wavelengths)
 
-    Plot_Irradiance_Field(R_nc, irr_field, time_step_index, PI.Ed0, PI.Es0)
+#    Plot_Irradiance_Field(R_nc, irr_field, time_step_index, PI.Ed0, PI.Es0)
     
     
     

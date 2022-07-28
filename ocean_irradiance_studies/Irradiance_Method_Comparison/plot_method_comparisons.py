@@ -23,18 +23,17 @@ def Load_Fields(irr_out_dir):
     """
 
     
-    irr_out_scipy = pickle.load(open(f'{irr_out_dir}/irradiance_out_scipy.p', 'rb')) 
-    irr_out_shoot_down = pickle.load(open(f'{irr_out_dir}/irradiance_out_shoot_down_log.p', 'rb')) 
-    irr_out_shoot_up = pickle.load(open(f'{irr_out_dir}/irr_field_shoot_up.p', 'rb')) 
-    irr_out_shoot_fp = pickle.load(open(f'{irr_out_dir}/irradiance_out_shoot_fp_20_shots.p', 'rb')) 
-    irr_out_dut = pickle.load(open(f'{irr_out_dir}/irradiance_out_dut.p', 'rb')) 
+    irr_out_scipy = pickle.load(open(f'ocean_irradiance_out/oi_out_scipy.p', 'rb')) 
+    irr_out_shoot_down = pickle.load(open(f'ocean_irradiance_out/oi_out_shootdown.p', 'rb')) 
+    irr_out_shoot_up = pickle.load(open(f'ocean_irradiance_out/oi_out_shootup.p', 'rb')) 
+    irr_out_dut = pickle.load(open(f'ocean_irradiance_out/oi_out_dutkiewicz.p', 'rb')) 
 
 
-    return irr_out_scipy, irr_out_shoot_down, irr_out_shoot_up, irr_out_shoot_fp, irr_out_dut
+    return irr_out_scipy, irr_out_shoot_down, irr_out_shoot_up, irr_out_dut
 
 
 
-def Plot_Irradiance_Fields( Ei, fields, methods, wavelengths, R_nc, plot_surface=True, plot_min=True, plot_max=True, plot_surf_diff=True ): 
+def Plot_Irradiance_Fields(Ei, fields, methods, wavelengths, R_nc, plot_surface=True, plot_min=True, plot_max=True, plot_surf_diff=True ): 
 
     """ 
     This function is to plot the fields for comparison.
@@ -181,22 +180,23 @@ def Plot_Irradiance_Fields( Ei, fields, methods, wavelengths, R_nc, plot_surface
     return 
 
 
+def Count_Bad_Profs(array):
+   	
+    ## Number of points less than zero 
+    mask_lt0 = np.min(array) < -1e-7
+    nlt0 = array[:,:,:][mask_lt0].size
+    ## Number of points greater than one 
+    mask_gt1 = np.max(array) >1
+    ngt1 = array[:,:,:][mask_gt1].size
+        
+    return nlt0, ngt1
+
+
 def Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc):
     """
     This function will count the number of bad profiles in each method at each wave length.
     A bad profile is considered one in which the profile is either negative or greater than one. 
     """
-
-    def Count_Bad_Profs(array):
-   	
-        ## Number of points less than zero 
-        mask_lt0 = np.min(array, axis=0) <0 
-        nlt0 = array[0,:,:][mask_lt0].size
-        ## Number of points greater than one 
-        mask_gt1 = np.max(array, axis=0) >1
-        ngt1 = array[0,:,:][mask_gt1].size
-        
-        return nlt0, ngt1
 
     ## number of point less than zero for each method.
     Nlt0 = np.zeros((len(fields), len(wavelengths)))
@@ -207,20 +207,18 @@ def Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc):
         for k, lam in enumerate(wavelengths):
             Nlt0[j,k], Ngt1[j,k] = Count_Bad_Profs(field[lam][:,:,:,Ei])
  
-    fig, ax = plt.subplots()
+    fig, axs = plt.subplots(nrows=1, ncols=len(wavelengths))
     
-    pos1 = [0,2,4,6,8] 
-    pos2 = [1,3,5,7,9]
+    pos = list(range(len(methods)))
     for k,lam in enumerate(wavelengths):
+        ax = axs[k]
         rgb = W2RGB.wavelength_to_rgb(lam)
-        ## Normalizing the rgb values.
-        color = (rgb[0]/255, rgb[1]/255, rgb[2]/255)
         ## number of points greater than one.
-        ax.bar(pos1, Ngt1[:,k], tick_label=methods, color = color, align='center', edgecolor = 'black', linewidth=3, label=f'Profiles with Irradiances > 1 -- {lam}')
+        ax.bar(pos, Ngt1[:,k], tick_label=methods, color = rgb, align='center', hatch='xx', label=f'Profiles with Irradiances > 1')
         ## number of points less than 0
-        ax.bar(pos2, Nlt0[:,k], tick_label=methods, color = color, align='center', edgecolor = 'white', linewidth=3, label=f'Profiles with Irradiances < 0 -- {lam}')
+#        ax.bar(pos, Nlt0[:,k], bottom=Ngt1[:,k], tick_label=methods, color = rgb, align='center', hatch='//', label=f'Profiles with Irradiances < 0 ')
     
-    ax.legend() 
+        ax.legend() 
 
     fig.show()
 
@@ -235,7 +233,7 @@ def main():
     
     ## The irradiance index [ Edi=0, Esi=1, Eui=2, zarri=2] 
     ## Eu
-    Ei = 2 
+    Ei = 1
     
 
     #irr_out_scipy, irr_out_shoot_down, irr_out_shoot_up, irr_our_shoot_fp, irr_out_dut = Load_Fields(irr_out_dir)
@@ -245,7 +243,6 @@ def main():
                'Scipy',
                'Shoot Down', 
                'Shoot Up', 
-               'Shoot Fit Point', 
                'Dutkiewicz et al. (2015)'
               ]
 
@@ -255,11 +252,12 @@ def main():
     ## The ROMS output oobject 
     R_nc = RRO.ROMS_netcdf(ROMS_file)
 
-    Plot_Irradiance_Fields( Ei, fields, methods, wavelengths, R_nc, plot_surface=True, plot_min=True, plot_max=True, plot_surf_diff = True) 
+#    Plot_Irradiance_Fields( Ei, fields, methods, wavelengths, R_nc, plot_surface=True, plot_min=True, plot_max=True, plot_surf_diff = True) 
      
     Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc)
    
+    return fields
 
 if __name__ == '__main__':
 
-    main()
+    fields = main() 

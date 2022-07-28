@@ -92,8 +92,8 @@ class Param_Init:
                             'Generic']
         ## [The irradiance grid structure keyword.]
         self.grid = 'log'
-        self.pt1_perc_zbot = False
-        self.pt1_perc_phy = False
+        self.pt1_perc_zbot = True
+        self.pt1_perc_phy = True
 
 
         ##############################################################################

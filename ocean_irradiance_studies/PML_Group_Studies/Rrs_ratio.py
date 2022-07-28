@@ -18,7 +18,7 @@ import pickle
 
 ## User Mods
 import ocean_irradiance_module.Ocean_Irradiance as OI
-import ocean_irradiance_baird.ocean_irradiance_baird as OIB
+#import ocean_irradiance_baird.ocean_irradiance_baird as OIB
 import ocean_irradiance_module.Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 
     ## The irradiance method to use. 
-    method = 'shubha'
+    method = 'shootdown'
     
     ## Using the solve irradiance funtion from the file  reflectance_spectra.py
     Rrs_field_species = reflectance_spectra.Solve_Irradiance(PI, N,  wavelengths, species, chla_array, z, method=method)

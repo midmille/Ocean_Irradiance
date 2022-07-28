@@ -1057,6 +1057,7 @@ def ocean_irradiance_semianalytic_inversion(PI,
     Es0 = PI.Es0
     Euh = PI.Euh
 
+    N = N+1
     ##N centers
     Nm1 = N - 1  
 
@@ -1073,11 +1074,15 @@ def ocean_irradiance_semianalytic_inversion(PI,
                                             pt1_perc_zbot=PI.pt1_perc_zbot, 
                                             pt1_perc_phy=PI.pt1_perc_phy)
     z = np.flip(z)
-    z_out = np.zeros(Nm1)
-    for k in range(Nm1):   
-        dz = z[k+1] - z[k]  
-        z_out[k] = z[k] + dz/2 
-    z_out = np.flip(z_out)
+    a = np.flip(a)
+    b = np.flip(b)
+    b_b = np.flip(b_b)
+    b_f = np.flip(b_f)
+#    z_out = np.zeros(Nm1)
+#    for k in range(Nm1):   
+#        dz = z[k+1] - z[k]  
+#        z_out[k] = z[k] + dz/2 
+#    z_out = np.flip(z_out)
  
      ## Don't know much about this const/variable 
     c = (a+b)/v_d ##used for analytical 
@@ -1194,10 +1199,25 @@ def ocean_irradiance_semianalytic_inversion(PI,
     
       
     #z_out = np.linspace(z[0] ,z[-1], N-1) ##z array for E_s_z and E_u_z 
-    #z_out = np.linspace(0,z[-1] + dz/2, N-1)
-    z_out = z
+    #    ## [The absorption and scattering calcs.]
+    z_out, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+                                            ab_wat, 
+                                            N-1, 
+                                            Ed0,
+                                            coefficients,
+                                            phy=phy, 
+                                            CDOM_refa=CDOM_refa, 
+                                            det=det, 
+                                            grid=PI.grid, 
+                                            pt1_perc_zbot=PI.pt1_perc_zbot, 
+                                            pt1_perc_phy=PI.pt1_perc_phy)
+    z_out = np.flip(z_out)
+    a = np.flip(a)
+    b = np.flip(b)
+    b_b = np.flip(b_b)
+    b_f = np.flip(b_f)
 
-    Ed =  np.flip(numerical_Ed_3stream(np.flip(z_out), Ed0, np.flip(a2), np.flip(b2), coefficients))
+    Ed =  np.flip(numerical_Ed_3stream(np.flip(z_out), Ed0, np.flip(a), np.flip(b), coefficients))
     Es = E_s_z(z_out, z, c_p, c_m, Ed)
     Eu = E_u_z(z_out, z, c_p, c_m, Ed)
 
@@ -1481,9 +1501,9 @@ def Demo():
     PI.pt1_perc_phy = True
     PI.pt1_perc_zbot = True
 
-    PI.grid = 'linear'
+    PI.grid = 'log'
     
-    N = 200
+    N = 20
     Nm1 = N-1 
     wavelengths = [443, 551]
 
@@ -1493,8 +1513,8 @@ def Demo():
 
     phy_type = 'Syn'
 
-    phy_prof = artificial_phy_prof(z_phy, -10, 20, 10, prof_type = 'gauss')
-#    phy_prof = np.full(N, 1)
+#    phy_prof = artificial_phy_prof(z_phy, -10, 20, 10, prof_type = 'gauss')
+    phy_prof = np.full(N, 1)
 
     fig, axes = plt.subplots(1, 3, sharey=True)
     ax1 = axes[0]
@@ -1509,9 +1529,9 @@ def Demo():
         phy = Phy(z_phy, phy_prof, esd(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
 
 #        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
-#        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, N=N)
-        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
  
 

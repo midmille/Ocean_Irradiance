@@ -19,10 +19,10 @@ def resolution_sensitivity(PI, methods, Ns, wavelengths):
     
     """
 
-    hbot = -500
+    hbot = -200
     Nphy = 20
     z_phy = np.linspace(hbot, 0, Nphy)
-    phy_type = 'Diat'
+    phy_type = 'Syn'
     phy_conc = 1
     phy_prof = np.full(Nphy,phy_conc) 
 
@@ -47,7 +47,7 @@ def resolution_sensitivity(PI, methods, Ns, wavelengths):
                 ## [Compute the given method solution.]
                 Ed, Es, Eu, z = OI.ocean_irradiance(PI, hbot, ab_wat, method=method, phy=phy, N=N)
                 ## [Calculate the rmse.]
-                err_lin[i, k, j] = np.linalg.norm((Esa - Es), ord=2) + np.linalg.norm((Eua-Eu), ord=2)
+                err_lin[i, k, j] = np.sqrt(np.mean((Esa - Es)**2)) + np.sqrt(np.mean((Eua-Eu)**2))
 
                 ## [The log grid case.]
                 PI.grid = 'log'
@@ -56,7 +56,7 @@ def resolution_sensitivity(PI, methods, Ns, wavelengths):
                 ## [Compute the given method solution.]
                 Ed, Es, Eu, z = OI.ocean_irradiance(PI, hbot, ab_wat, method=method, phy=phy, N=N)
                 ## [Calculate the rmse.]
-                err_log[i, k, j] = np.linalg.norm((Esa - Es), ord=2) + np.linalg.norm((Eua-Eu), ord=2)
+                err_log[i, k, j] = np.sqrt(np.mean((Esa - Es)**2)) + np.sqrt(np.mean((Eua-Eu)**2))
 
                 
 
@@ -75,7 +75,7 @@ def plot_resolution_sensitivity(PI, methods, Ns, wavelengths, err_lin, err_log):
         for j, method in enumerate(methods): 
             
             l = ax.plot(Ns, err_lin[k,j,:], label=f'{method} linear grid')
-            ax.plot(Ns, err_log[k,j,:], '--', label=f'{method} log grid', color = l.get_color())
+            ax.plot(Ns, err_log[k,j,:], '--', label=f'{method} log grid', color = l[0].get_color())
 
         if k ==0: 
             ax.set_ylabel(r'Error [$|Es_{\mathrm{analytical}} - Es_{\mathrm{numerical}}|_2 + |Eu_{\mathrm{analytical}} - Eu_{\mathrm{numerical}}|_2$]')
@@ -94,11 +94,11 @@ def plot_resolution_sensitivity(PI, methods, Ns, wavelengths, err_lin, err_log):
 if __name__ == '__main__': 
     
     PI = Param_Init()
-    PI.pt1_perc_zbot = False
-    PI.pt1_perc_phy = False
+    PI.pt1_perc_zbot = True
+    PI.pt1_perc_phy = True
 
     ## [The number of vertical layers used for each method.]
-    Ns = np.arange(5, 20, 5)
+    Ns = np.arange(60, 200, 10)
     ## [The different methods]
     methods = ['shootdown', 'shootup', 'scipy', 'dutkiewicz']
     ## [The wavelengths for the study.]

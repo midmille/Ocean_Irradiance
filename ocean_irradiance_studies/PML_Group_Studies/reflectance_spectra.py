@@ -19,8 +19,8 @@ import pickle
 
 ## User Mods
 import ocean_irradiance_module.Ocean_Irradiance as OI
-import ocean_irradiance_baird.ocean_irradiance_baird as OIB
-import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
+#import ocean_irradiance_baird.ocean_irradiance_baird as OIB
+#import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
 import ocean_irradiance_module.Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
@@ -62,33 +62,26 @@ def Solve_Irradiance(PI, N, wavelengths, species, chla_array, z, method='shoot_u
                 ## The phy object creation
                 phy = OI.Phy(z, chla_array[:,k], ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
                 ## shoot up method using dutkiewicz model.
-                if method == 'shoot_up':
-                    ocean_irr_sol = OI.ocean_irradiance_shoot_up(
-                                                                 z[0],
-                                                                 PI.Ed0,
-                                                                 PI.Es0,
-                                                                 PI.Euh,
-                                                                 abscat(lam, 'water'),
-                                                                 PI.coefficients,
-                                                                 phy=phy,
-                                                                 CDOM=None,
-                                                                 N=N,
-                                                                 pt1_perc_zbot=True,
-                                                                 pt1_perc_phy=True
-                                                                 )
+                if method == 'shootdown':
+                    ocean_irr_sol = OI.ocean_irradiance(PI, 
+                                                        z[0], 
+                                                        abscat(lam, 'water'),
+                                                        method='shootdown', 
+                                                        phy=phy, 
+                                                        N=N)
                     Eu_surf = ocean_irr_sol[2][-1]
                 ## Shubha two stream model.
-                if method == 'shubha': 
-                    ocean_irr_sol = OIS.ocean_irradiance_shubha(z[0],
-                                                                PI.Ed0+PI.Es0, 
-                                                                abscat(lam, 'water'), 
-                                                                PI.coefficients, 
-                                                                phy=phy, 
-                                                                CDOM=None, 
-                                                                N=N, 
-                                                                pt1_perc_zbot =True, 
-                                                                pt1_perc_phy=True)
-                    Eu_surf = ocean_irr_sol[1][-1]
+#                if method == 'shubha': 
+#                    ocean_irr_sol = OIS.ocean_irradiance_shubha(z[0],
+#                                                                PI.Ed0+PI.Es0, 
+#                                                                abscat(lam, 'water'), 
+#                                                                PI.coefficients, 
+#                                                                phy=phy, 
+#                                                                CDOM=None, 
+#                                                                N=N, 
+#                                                                pt1_perc_zbot =True, 
+#                                                                pt1_perc_phy=True)
+#                    Eu_surf = ocean_irr_sol[1][-1]
 
                 Rrs_arr[k, j] = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf) 
      
@@ -149,7 +142,7 @@ if __name__ == '__main__':
     save_file = 'out/Rrs_field_species.p' 
     
     ## Method 
-    method = 'shoot_up'
+    method = 'shootdown'
 
     Rrs_field_species = Solve_Irradiance(PI, N, wavelengths, species, chla_array, z, method=method)
     Plot_Rrs_Field_Species(Rrs_field_species, wavelengths, species, chlas)
