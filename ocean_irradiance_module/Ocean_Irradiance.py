@@ -592,8 +592,6 @@ def ocean_irradiance_analytical(PI,
     ## [The solution for Es.]
     Es = c1*np.exp(lamm*z) + c2*np.exp(lamp*z)*(Bu/D) + x*Ed
 
-    print(c1, c2)
-
     ## [The solution for Eu.]
     Eu = c1*np.exp(lamm*z)*(Bs/D) + c2*np.exp(lamp*z) + y*Ed
 
@@ -1217,16 +1215,17 @@ def ocean_irradiance_semianalytic_inversion(PI,
     b_b = np.flip(b_b)
     b_f = np.flip(b_f)
 
-    Ed =  np.flip(numerical_Ed_3stream(np.flip(z_out), Ed0, np.flip(a), np.flip(b), coefficients))
-    Es = E_s_z(z_out, z, c_p, c_m, Ed)
-    Eu = E_u_z(z_out, z, c_p, c_m, Ed)
+    Ed = numerical_Ed_3stream(np.flip(z_out), Ed0, np.flip(a), np.flip(b), coefficients)
+    Es = np.flip(E_s_z(z_out, z, c_p, c_m, E_d))
+    Eu = np.flip(E_u_z(z_out, z, c_p, c_m, E_d))
+    z =np.flip(z_out)
 
     
     #Es = x_lu[:N]
     #Eu = x_lu[N:] 
     #Ed = analytical_Ed(zarr, c)
     
-    return Ed, Es, Eu, z_out
+    return Ed, Es, Eu, z
 
 
 def ocean_irradiance_semianalytic_inversion_ROMS(PI, 
@@ -1503,17 +1502,17 @@ def Demo():
 
     PI.grid = 'log'
     
-    N = 20
+    N = 60
     Nm1 = N-1 
     wavelengths = [443, 551]
 
-    hbot = -100
+    hbot = -700
     
     z_phy = np.linspace(hbot,0,N)
 
     phy_type = 'Syn'
 
-#    phy_prof = artificial_phy_prof(z_phy, -10, 20, 10, prof_type = 'gauss')
+    phy_prof = artificial_phy_prof(z_phy, -10, 20, 10, prof_type = 'gauss')
     phy_prof = np.full(N, 1)
 
     fig, axes = plt.subplots(1, 3, sharey=True)
@@ -1529,9 +1528,9 @@ def Demo():
         phy = Phy(z_phy, phy_prof, esd(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
 
 #        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
-        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, N=N)
-#        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
  
 

@@ -24,8 +24,9 @@ import sys
 import pickle
 import matplotlib as mpl 
 import matplotlib.pyplot as plt
-#import cartopy.crs as ccrs
-#import cartopy.feature as cfeature
+if os.environ['CONDA_DEFAULT_ENV'] == 'ocean_irradiance': 
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
 
 
 def CI_alg(R_rs_b, R_rs_g, R_rs_r, lam_b, lam_g, lam_r): 
@@ -508,6 +509,9 @@ if __name__ == '__main__':
 
     PI.pt1_perc_zbot = True
     PI.pt1_perc_phy = True
+
+    PI.grid = 'log'
+
     R_nc = ROMS_netcdf(args.romsnc_file)
 
     ## updating default to wavelengths necessary for the OCx_algorithim
@@ -516,11 +520,11 @@ if __name__ == '__main__':
     ## settting time step index
     time_step_index = 1
     
-    N = 10
+    N = 30
     
     irr_field = Irradiance_Run(R_nc, PI, time_step_index, N, args.savefile, args.method, wavelengths)
 
-#    Plot_Irradiance_Field(R_nc, irr_field, time_step_index, PI.Ed0, PI.Es0)
+    Plot_Irradiance_Field(R_nc, irr_field, time_step_index, PI.Ed0, PI.Es0)
     
     
     

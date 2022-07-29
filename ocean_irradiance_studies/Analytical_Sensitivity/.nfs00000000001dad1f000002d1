@@ -42,7 +42,7 @@ def resolution_sensitivity(PI, methods, Ns, wavelengths, Nprofs):
         for k, method in enumerate(methods): 
             print(method)
             for j, N in enumerate(Ns): 
-                print(j, '/', len(Ns))
+                print(j, '/', Ns)
                 
 
                 phy = OI.Phy(z_phy, phy_prof, esd(phy_type), ab_phy[0], ab_phy[1])
@@ -54,7 +54,7 @@ def resolution_sensitivity(PI, methods, Ns, wavelengths, Nprofs):
                 ## [Compute the given method solution.]
                 Ed, Es, Eu, z = OI.ocean_irradiance(PI, hbot, ab_wat, method=method, phy=phy, N=N)
                 ## [Calculate the rmse.]
-                err_lin[i, k, j] = np.sqrt(np.mean(((Esa - Es)/Esa[-1])**2)) + np.sqrt(np.mean(((Eua-Eu)/Eua[-1])**2))
+                err_lin[i, k, j] = np.sqrt(np.mean((Esa - Es)**2)) + np.sqrt(np.mean((Eua-Eu)**2))
                 ## [The log grid case.]
                 
                 PI.grid = 'log'
@@ -77,7 +77,7 @@ def resolution_sensitivity(PI, methods, Ns, wavelengths, Nprofs):
                     Ed, Es, Eu, z = OI.ocean_irradiance(PI, hbot, ab_wat, method=method, phy=phy, N=N)
 
                 ## [Calculate the rmse.]
-                err_log[i, k, j] = np.sqrt(np.mean(((Esa - Es)/Esa[-1])**2)) + np.sqrt(np.mean(((Eua-Eu)/Eua[-1])**2))
+                err_log[i, k, j] = np.sqrt(np.mean((Esa - Es)**2)) + np.sqrt(np.mean((Eua-Eu)**2))
                 
 
     return err_lin, err_log, ct
@@ -98,7 +98,7 @@ def plot_resolution_sensitivity(PI, methods, Ns, wavelengths, err_lin, err_log, 
             ax.plot(Ns, err_log[k,j,:], '--', label=f'{method} log grid', color = l[0].get_color())
 
         if k ==0: 
-            ax.set_ylabel(r'$\mathrm{RMS}\left(\frac{Es_{\mathrm{analytical}} - Es_{\mathrm{numerical}}}{Es_{0\mathrm{analytical}}}\right) + \mathrm{RMS} \left(\frac{Eu_{\mathrm{analytical}} - Eu_{\mathrm{numerical}}}{Eu_{0\mathrm{analytical}}}\right)$')
+            ax.set_ylabel(r'Error [$|Es_{\mathrm{analytical}} - Es_{\mathrm{numerical}}|_2 + |Eu_{\mathrm{analytical}} - Eu_{\mathrm{numerical}}|_2$]')
             ax.legend()
 
         ax.set_title(f'Wavelength {lam} [nm]')
@@ -109,8 +109,8 @@ def plot_resolution_sensitivity(PI, methods, Ns, wavelengths, err_lin, err_log, 
     ax = axs[-1]
 
     for j, method in enumerate(methods):
-        if method != 'scipy':
-            ax.plot(Ns, ct[j, :], label =method)
+
+        ax.plot(Ns, ct[j, :], label =method)
     ax.set_title('Method Efficiency')
     ax.set_xlabel('Number of Grid Points')
     ax.set_ylabel('Profile Compute Time [s]')
@@ -138,7 +138,7 @@ if __name__ == '__main__':
     ## [The wavelengths for the study.]
     wavelengths = [443, 551]
     ## [Number of profiles for timing loop.]
-    Nprofs=10
+    Nprofs=100
 
     err_lin, err_log, ct = resolution_sensitivity(PI, methods, Ns, wavelengths, Nprofs)
 

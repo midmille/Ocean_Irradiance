@@ -181,13 +181,14 @@ def Plot_Irradiance_Fields(Ei, fields, methods, wavelengths, R_nc, plot_surface=
 
 
 def Count_Bad_Profs(array):
+
    	
     ## Number of points less than zero 
-    mask_lt0 = np.min(array) < -1e-7
-    nlt0 = array[:,:,:][mask_lt0].size
+    mask_lt0 = np.min(array, axis=0) < -1e-7
+    nlt0 = array[0,:,:][mask_lt0].size
     ## Number of points greater than one 
-    mask_gt1 = np.max(array) >1
-    ngt1 = array[:,:,:][mask_gt1].size
+    mask_gt1 = np.max(array, axis=0) >1
+    ngt1 = array[0,:,:][mask_gt1].size
         
     return nlt0, ngt1
 
@@ -209,18 +210,20 @@ def Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc):
  
     fig, axs = plt.subplots(nrows=1, ncols=len(wavelengths))
     
-    pos = list(range(len(methods)))
+    pos = [k for k in range(len(methods))]
     for k,lam in enumerate(wavelengths):
         ax = axs[k]
         rgb = W2RGB.wavelength_to_rgb(lam)
         ## number of points greater than one.
         ax.bar(pos, Ngt1[:,k], tick_label=methods, color = rgb, align='center', hatch='xx', label=f'Profiles with Irradiances > 1')
         ## number of points less than 0
-#        ax.bar(pos, Nlt0[:,k], bottom=Ngt1[:,k], tick_label=methods, color = rgb, align='center', hatch='//', label=f'Profiles with Irradiances < 0 ')
+        ax.bar(pos, Nlt0[:,k], bottom=Ngt1[:,k], tick_label=methods, color = rgb, align='center', hatch='//', label=f'Profiles with Irradiances < 0 ')
     
         ax.legend() 
 
     fig.show()
+
+    return 
 
              
 def main(): 
@@ -252,7 +255,7 @@ def main():
     ## The ROMS output oobject 
     R_nc = RRO.ROMS_netcdf(ROMS_file)
 
-#    Plot_Irradiance_Fields( Ei, fields, methods, wavelengths, R_nc, plot_surface=True, plot_min=True, plot_max=True, plot_surf_diff = True) 
+    Plot_Irradiance_Fields( Ei, fields, methods, wavelengths, R_nc, plot_surface=True, plot_min=True, plot_max=True, plot_surf_diff = True) 
      
     Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc)
    
