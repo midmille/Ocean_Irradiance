@@ -10,6 +10,7 @@ ROMS wrapper for Ocean_Irradiance
 
 import numpy as np
 from netCDF4 import Dataset 
+from multiprocessing import Pool
 ## can not import seapy at this point
 # import os
 ## weird thing added because I am missing this value for some reason
@@ -22,6 +23,7 @@ from ocean_irradiance_module import Wavelength_To_RGB
 import os
 import sys
 import pickle
+import time
 import matplotlib as mpl 
 import matplotlib.pyplot as plt
 if os.environ['CONDA_DEFAULT_ENV'] == 'ocean_irradiance': 
@@ -309,6 +311,62 @@ def Irradiance_Run(R_nc, PI, nstp, N, savefile, method, wavelengths):
 
     return irr_field_py
 
+
+def run_irradiance_one(args): 
+    lam, PI, R_nc, N, method, nstp = args
+    irr_field_py = Ocean_Irradiance_Field(
+                                            PI,
+                                            R_nc.maskr, 
+                                            abscat(lam, 'water'), 
+                                            abscat(lam, 'Diat'), 
+                                            abscat(lam, 'Syn'), 
+                                            R_nc.chl_diatom[nstp,:,:,:], 
+                                            R_nc.chl_nanophyt[nstp,:,:,:], 
+                                            R_nc.z_r[nstp,:,:,:], 
+                                            PI.coefficients,
+                                            N= N, 
+                                            method = method)
+        
+        
+    return lam, irr_field_py 
+ 
+
+def Irradiance_Run_Parallel(R_nc, PI, nstp, N, savefile, method, wavelengths):
+
+   
+    ## [The number of processors is equal to the number of wavelengths.]
+    num_procs = len(wavelengths)
+    
+    ## Python calculated Eu at surface 
+    ##---------------------------------
+    ## Checking if save file exists
+    ## if it doesn't exist then redo calculation
+    if os.path.exists(savefile) == False:
+        irr_field_py = {}
+
+        ## [Run in parallel.]
+        args=[]
+        for lam in wavelengths: 
+            args.append([lam, PI, R_nc, N, method, nstp])
+
+        process_pool = Pool(num_procs)
+        result = process_pool.map(run_irradiance_one, args)
+        for res in result: 
+            irr_field_py[res[0]] = res[1]
+        process_pool.close()
+
+       
+        pickle.dump(irr_field_py, open(savefile, "wb"))
+        print('Python calculation complete and saved')
+        
+    ## if the save file does exist then just load it. gity 
+    elif os.path.exists(savefile) == True:
+        print("The file already exists! To load file please do not run with parallel flag.")
+
+    return 
+
+
+
 def Plot_Irradiance_Field(R_nc, irr_field, nstp, Ed0, Es0):
     """
     This function is to plot the irradiancee field and other values from an irradiance
@@ -502,6 +560,7 @@ if __name__ == '__main__':
     parser.add_argument('method', help = "methods are: shootdown, shootup, scipy, dutkiewicz" )
     # parser.add_argument('dest_file', help='Path to Destination Directory. Saved as pickle')
     parser.add_argument('--plot', action='store_true', help="Visualization of Result")
+    parser.add_argument('--parallel', action='store_true', help="Runs the wavelengths on seperate processors")
     args = parser.parse_args()
     
 
@@ -521,44 +580,19 @@ if __name__ == '__main__':
     time_step_index = 1
     
     N = 30
-    
-    irr_field = Irradiance_Run(R_nc, PI, time_step_index, N, args.savefile, args.method, wavelengths)
 
-    Plot_Irradiance_Field(R_nc, irr_field, time_step_index, PI.Ed0, PI.Es0)
-    
-    
-    
-    
-    
-    
-    ## THIS IS DEPRICATED!!! JUST ADD TO R_nc OBject.... R_nc does not inclued NetCDF object any more 
-    ## This is due to difficulty with pickling.
-    # lon_rho = R_nc.roms_nc.variables['lon_rho'][:]
-    # lat_rho = R_nc.roms_nc.variables['lat_rho'][:]
-
-    # ## Calculating Eu at Surface dictionary. 
-    # #--------------------------------------------------------------------------
-    # Eu_surface_dict = {}
-    # for lam in PI.wavelengths: 
+    if args.parallel: 
+        t1 = time.perf_counter()
+        Irradiance_Run_Parallel(R_nc, PI, time_step_index, N, args.savefile, args.method, wavelengths)
+        t2 = time.perf_counter()
+        print('Compute time: ', t2-t1)
+    else: 
+        t1 = time.perf_counter()
+        irr_field = Irradiance_Run(R_nc, PI, time_step_index, N, args.savefile, args.method, wavelengths)
+        if args.plot:
+            Plot_Irradiance_Field(R_nc, irr_field, time_step_index, PI.Ed0, PI.Es0)
+        t2 = time.perf_counter()
+        print('Compute time: ', t2-t1)
         
-    #     ##eyeballed absorbtion and scattering from Dut. 2015
-    #     ab_wat = abscat(lam, 'water')
-    #     ab_diat = abscat(lam, 'Diat') 
-    #     ab_syn = abscat(lam, 'Syn')
-        
-    #     Eu_surface_dict[lam] = Ocean_Irradiance_Field(lam, R_nc.maskr, ab_wat, ab_diat, ab_syn, 
-    #                                          R_nc.diatom, R_nc.nanophyt, R_nc.z_w, 
-    #                                          R_nc.z_r, PI.Ed0, PI.Es0, PI.Euh,
-    #                                          PI.coefficients, PI.Chl2NL, PI.Chl2NS)[-1, :,:, 2]
-    
-    # ## Ocean Color Calculation
-    # #--------------------------------------------------------------------------
-    # ocean_color = ocean_color_sol(Eu_surface_dict, PI.Ed0, PI.Es0)
-    # pickle.dump(ocean_color, open("ocean_color.p", "wb"))
-    
-    # ## Plotting
-    # #--------------------------------------------------------------------------
-    # if args.plot:
 
-    #     plot_ocean_color()
-    
+   
