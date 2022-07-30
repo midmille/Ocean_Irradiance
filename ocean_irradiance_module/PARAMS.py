@@ -26,7 +26,7 @@ class Param_Init:
         self.Euh = 0 
         
         ## Wavelengths taken from John Wilkin email regarding satelite wavelengths.
-        self.wavelengths = [410,443,486,551,638,671] 
+        self.wavelengths = [410,443,488,550,638,671] 
 
         ## [The path to the ocean_irradiance_module.]
         self.path = '~/Ocean_Irradiance/ocean_irradiance_module/'
@@ -83,8 +83,8 @@ class Param_Init:
 
         ## [The names of the phytoplankton species we have.]
         self.phy_species = ['Syn', 
-                            'HLPro', 
                             'LLPro', 
+                            'HLPro', 
                             'Diat', 
                             'Cocco', 
                             'Tricho', 

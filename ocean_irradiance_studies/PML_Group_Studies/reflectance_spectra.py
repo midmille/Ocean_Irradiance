@@ -62,14 +62,13 @@ def Solve_Irradiance(PI, N, wavelengths, species, chla_array, z, method='shoot_u
                 ## The phy object creation
                 phy = OI.Phy(z, chla_array[:,k], ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
                 ## shoot up method using dutkiewicz model.
-                if method == 'shootdown':
-                    ocean_irr_sol = OI.ocean_irradiance(PI, 
-                                                        z[0], 
-                                                        abscat(lam, 'water'),
-                                                        method='shootdown', 
-                                                        phy=phy, 
-                                                        N=N)
-                    Eu_surf = ocean_irr_sol[2][-1]
+                ocean_irr_sol = OI.ocean_irradiance(PI, 
+                                                    z[0], 
+                                                    abscat(lam, 'water'),
+                                                    method=method, 
+                                                    phy=phy, 
+                                                    N=N)
+                Eu_surf = ocean_irr_sol[2][-1]
                 ## Shubha two stream model.
 #                if method == 'shubha': 
 #                    ocean_irr_sol = OIS.ocean_irradiance_shubha(z[0],

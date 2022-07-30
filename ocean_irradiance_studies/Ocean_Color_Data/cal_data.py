@@ -491,18 +491,18 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
         #viirs_lon = np.zeros(N_cst)
 
         ## The Plymouth Marine Lab Data. 
-        #pml_chla = np.zeros(N_cst)
-        #pml_Rrs443 = np.zeros(N_cst)
-        #pml_Rrs560 = np.zeros(N_cst)
-        #pml_lat = np.zeros(N_cst)
-        #pml_lon = np.zeros(N_cst)
+        pml_chla = np.zeros(N_cst)
+        pml_Rrs443 = np.zeros(N_cst)
+        pml_Rrs560 = np.zeros(N_cst)
+        pml_lat = np.zeros(N_cst)
+        pml_lon = np.zeros(N_cst)
         ## Setting the cal cofi limits for the downloaded domain.
         year_lims = [year[0], year[-1]]
         julian_date_lims = [julian_day[0], julian_day[-1]]
         lat_lims = [lat[0], lon[-1]]
         lon_lims = [lon[0], lon[-1]]
         ## Downloading the sub plymouth data set correspoding to the cal cofi domain.
-        #pml_ds = plymouth_oc.Get_PML_OC_Data_Set(pml_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
+        pml_ds = plymouth_oc.Get_PML_OC_Data_Set(pml_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
         
         
         ## Now loop over the casts and calculate the irradiance chla each time.  
@@ -525,12 +525,12 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
 #             viirs_lon[k] = v_lon
 
              ## Getting the PML data.
-             #p_Rrs443, p_Rrs560, p_chla, p_lat, p_lon = plymouth_oc.Get_Point_PML_Dataset(pml_ds, year[k], julian_day[k], lat[k], lon[k]) 
-             #pml_chla[k] = p_chla
-             #pml_Rrs443[k] = p_Rrs443
-             #pml_Rrs560[k] = p_Rrs560
-             #pml_lat[k] = p_lat
-             #pml_lon[k] = p_lon
+             p_Rrs443, p_Rrs560, p_chla, p_lat, p_lon = plymouth_oc.Get_Point_PML_Dataset(pml_ds, year[k], julian_day[k], lat[k], lon[k]) 
+             pml_chla[k] = p_chla
+             pml_Rrs443[k] = p_Rrs443
+             pml_Rrs560[k] = p_Rrs560
+             pml_lat[k] = p_lat
+             pml_lon[k] = p_lon
 
 
         pickle.dump(cal_chla, open(f'{save_path}_cal_chla.p', "wb"))
@@ -539,11 +539,11 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
 #        pickle.dump(viirs_Rrs551, open(f'{save_path}_viirs_Rrs_551.p', "wb"))
 #        pickle.dump(viirs_lat, open(f'{save_path}_viirs_lat.p', "wb"))
 #        pickle.dump(viirs_lon, open(f'{save_path}_viirs_lon.p', "wb"))
-        #pickle.dump(pml_chla, open(f'{save_path}_pml_chla.p', 'wb'))
-        #pickle.dump(pml_Rrs443, open(f'{save_path}_pml_Rrs443.p', 'wb'))
-        #pickle.dump(pml_Rrs560, open(f'{save_path}_pml_Rrs551.p', 'wb'))
-        #pickle.dump(pml_lat, open(f'{save_path}_pml_lat.p', 'wb'))
-        #pickle.dump(pml_lon, open(f'{save_path}_pml_lon.p', 'wb'))
+        pickle.dump(pml_chla, open(f'{save_path}_pml_chla.p', 'wb'))
+        pickle.dump(pml_Rrs443, open(f'{save_path}_pml_Rrs443.p', 'wb'))
+        pickle.dump(pml_Rrs560, open(f'{save_path}_pml_Rrs551.p', 'wb'))
+        pickle.dump(pml_lat, open(f'{save_path}_pml_lat.p', 'wb'))
+        pickle.dump(pml_lon, open(f'{save_path}_pml_lon.p', 'wb'))
 
 
     elif os.path.exists(f'{save_path}_cal_chla.p') == True:
@@ -686,7 +686,7 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
         fig.show()
  
 
-    return cal_chla,  pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551
+    return cal_chla,  pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551, pml_ds
 
 
 def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, save_head, PI, N, wavelengths, species): 
@@ -933,8 +933,8 @@ if __name__ == '__main__':
     save_path = f'{args.save_dir}/{args.save_file_head}'
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
-    #cal_chla, viirs_chla, viirs_Rrs443, viirs_Rrs551 = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
-    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, ply_dat_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
+    cal_chla, pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551, pml_ds = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, ply_dat_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
+#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, ply_dat_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
 
     ## Running the comparison of viirs, calcofi, irr, and nomad

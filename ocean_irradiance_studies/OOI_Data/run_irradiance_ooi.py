@@ -15,7 +15,7 @@ To run:
 import OOI_Data_Functions as ODF 
 from ocean_irradiance_module import Ocean_Irradiance as OI
 from ocean_irradiance_module import Ocean_Irradiance_ROMS as OIR
-import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
+#import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as esd
@@ -89,13 +89,15 @@ def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam)
 
     print('CDOM', CDOM)
             
-    z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(flort_z[0], 
-                                                                   abscat(lam, 'water'), 
-                                                                   N,
-                                                                   phy=phy, 
-                                                                   CDOM_refa=CDOM, 
-                                                                   pt1_perc_zbot=False, 
-                                                                   pt1_perc_phy=False)
+    z_irr, a_irr, b_irr, b_b_irr = OI.Calc_Abscat_Grid(flort_z[0],
+                                                       abscat(lam, 'water'), 
+                                                       N, 
+                                                       Ed0, 
+                                                       coefficients, 
+                                                       phy=phy, 
+                                                       CDOM_refa = CDOM, 
+                                                       pt1_perc_zbot = False, 
+                                                       pt1_perc_phy = False)
 
     ## [Get the ooi absorption and scattering, along with their corresponding grids.]
     z_ooi, a_ooi, b_ooi, lam_ooi = OOI_Abs_Scat(optaa_prof, lam, smooth=True)
@@ -939,7 +941,7 @@ if __name__ == '__main__':
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
-#    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
 
     
     ## [Plot the absorption in time and chla bins.]

@@ -53,10 +53,8 @@ def CI_alg(R_rs_b, R_rs_g, R_rs_r, lam_b, lam_g, lam_r):
 
     return 
 
-def OCx_alg(R_rs_b, R_rs_g) :
+def OCx_alg(Rrs_443, Rrs_486, Rrs_550, method='OC3V', Rrs_510=None) :
     """
-    
-
     Parameters
     ----------
     R_rs_b : Float
@@ -70,12 +68,20 @@ def OCx_alg(R_rs_b, R_rs_g) :
         Value of chl_a
 
     """
+    OC3V = (0.2228, -2.4683, 1.5867, -0.4275, -0.7768) 
+    OC4 = (0.3272, -2.9940, 2.7218, -1.2259, -0.5683)
     ## the a values for OCx 0.2228	-2.4683	1.5867	-0.4275	-0.7768
-    a0 = .2228
-    a1 = -2.4683
-    a2 = 1.5867
-    a3 = -0.4275
-    a4 = -.7768
+    ## [These are the viirs values.]
+
+    if method == 'OC3V': 
+        a0, a1, a2, a3, a4 = OC3V
+        R_rs_b = np.maximum(Rrs_443, Rrs_486) 
+    elif method == 'OC4': 
+        a0, a1, a2, a3, a4 = OC4
+        R_rs_b = np.maximum(Rrs_443, Rrs_486) 
+        R_rs_b = np.maximum(R_rs_b, Rrs_510) 
+    
+    R_rs_g = Rrs_550
     
     
     log_10_chl_a = a0 ##log base 10 of chl-a conc. 

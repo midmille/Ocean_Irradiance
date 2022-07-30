@@ -32,7 +32,7 @@ def Get_Phy_Cmap_Dict():
     cmap = mpl.cm.get_cmap('Dark2')
 
     color_dict = {}
-    colors = ['g', 'tab:purple', 'b', 'm', 'c', 'tab:brown','r', 'y']
+    colors = ['g', 'tab:purple', 'b', 'm', 'c', 'tab:brown','y', 'r']
     for k,phy in enumerate(phy_species): 
 #        color_dict[phy] = (cmap(((k+ 0.5*(1/10))/ (10))))
         color_dict[phy] = colors[k]
