@@ -7,6 +7,7 @@ import numpy as np
 import scipy as sp 
 import matplotlib.pyplot as plt
 from scipy import integrate
+import ocean_irradiance_module.Wavelength_To_RGB as W2RGB
 
 
 
@@ -1534,7 +1535,7 @@ def Demo():
 #        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
  
 
-        markers = ['-', '-'] 
+        markers = ['-.', '-.'] 
         Ed_c = 'g'
         Es_c = 'b'
         Eu_c = 'r'
@@ -1572,10 +1573,97 @@ def Demo():
     return Ed, Es, Eu, z
 
 
+
+def Demo2(): 
+    import matplotlib.pyplot as plt
+    from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
+    from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as esd
+    from ocean_irradiance_module.PARAMS import Param_Init 
+    
+    PI = Param_Init()
+
+    PI.pt1_perc_phy = True
+    PI.pt1_perc_zbot = True
+
+    PI.grid = 'log'
+    
+    N = 40
+    Nm1 = N-1 
+    wavelengths = PI.wavelengths
+
+    hbot = -100
+    
+    z_phy = np.linspace(hbot,0,N)
+
+    phy_type = 'Syn'
+
+    phy_prof = artificial_phy_prof(z_phy, -10, 20, 1, prof_type = 'gauss')
+#    phy_prof = np.full(N, 1)
+
+    fig, axes = plt.subplots(1, 5, sharey=True)
+    ax1 = axes[0]
+    ax2 = axes[1]
+    ax3 = axes[2]
+    ax4 = axes[3]
+    ax5 = axes[4]
+    
+
+    for j, lam in enumerate(wavelengths):
+        ab_wat = abscat(lam, 'water')
+            
+        ## Define the Phytoplankton class.
+        phy = Phy(z_phy, phy_prof, esd(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
+
+#        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
+ 
+        rgb = W2RGB.wavelength_to_rgb(lam)
+
+        ax2.plot(Ed, z, color = rgb, ls='-', marker='o', fillstyle='none', label=lam, markersize =3)
+        ax3.plot(Es, z, color = rgb, ls='-', marker='o', fillstyle='none', markersize =3)
+        ax4.plot(Ed +Es, z, color = rgb, ls='-', marker='o', fillstyle='none', markersize =3)
+        ax5.plot(Eu, z, color = rgb, ls='-', marker='o', fillstyle='none', markersize =3)
+
+    ax1.plot(phy_prof, z_phy)
+
+    ax1.set_xlabel('Concentration [mg Chl-a m^-3]')
+    ax1.set_ylabel('Z [m]')
+    ax1.set_title(r'$\rho_{\mathrm{phy}}$')
+    ax1.grid()
+ 
+#    ax2.set_xlim(-0.1,1)
+    ax2.set_xlabel('Irradiance')
+    ax2.set_title(r'$E_d$')
+    ax2.legend(title='Wavelength [nm]')
+    ax2.grid()
+
+#    ax3.set_xlim(-0.1,1)
+    ax3.set_xlabel('Irradiance')
+    ax3.set_title(r'$E_s$')
+    ax3.grid()
+
+    ax4.set_xlabel('Irradiance')
+    ax4.set_title(r'$E_d + E_s$')
+    ax4.grid()
+
+#    ax4.set_xlim(-0.1,1)
+    ax5.set_xlabel('Irradiance')
+    ax5.set_title(r'$E_u$')
+    ax5.grid()
+    
+    fig.show()
+    
+    
+    return Ed, Es, Eu, z
+
+
 #-------------------------------------MAIN-------------------------------------
 
 if __name__ == '__main__':
     
-    Ed, Es, Eu, z = Demo()
+    Ed, Es, Eu, z = Demo2()
     
 

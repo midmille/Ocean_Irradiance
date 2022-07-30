@@ -40,8 +40,8 @@ import cartopy.feature as cfeature
 import geopy.distance
 ## User made mod
 import ocean_irradiance_module.Ocean_Irradiance as OI
-import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
-import ocean_irradiance_baird.ocean_irradiance_baird as OIB
+#import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
+#import ocean_irradiance_baird.ocean_irradiance_baird as OIB
 import ocean_irradiance_module.Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
@@ -172,21 +172,13 @@ def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chl
             chla_dat[k] = chla[-1]
             ## Calculating the irradiance
             phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
-            cdom = OI.CDOM(z, salt, lam)
+            #cdom = OI.CDOM(z, salt, lam)
 
-            irr_out = OI.ocean_irradiance_shoot_up(
-                                                   z[0],
-                                                   PI.Ed0,
-                                                   PI.Es0,
-                                                   PI.Euh,
-                                                   abscat(lam, 'water'),
-                                                   PI.coefficients,
-                                                   phy=phy,
-                                                   CDOM=None,
-                                                   N=1000,
-                                                   pt1_perc_zbot=True, 
-                                                   pt1_perc_phy=True    
-                                                   )
+            irr_out = OI.ocean_irradiance(PI, 
+                                          z[0], 
+                                          abscat(lam, 'water'), 
+                                          phy=phy, 
+                                          N=1000)
             Eu_surf[k] =  irr_out[2][-1]
         Eu_surf_dict[lam] = np.copy(Eu_surf)
             
@@ -355,20 +347,13 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                 ## Storing the surface chla as the insitu comparison. 
                 ## Calculating the irradiance
                 phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
-                cdom = OI.CDOM(z, salt, lam)
-                ocean_irr_sol = OI.ocean_irradiance_shoot_up(
-                                                             z[0],
-                                                             PI.Ed0,
-                                                             PI.Es0,
-                                                             PI.Euh,
-                                                             abscat(lam, 'water'),
-                                                             PI.coefficients,
-                                                             phy=phy,
-                                                             CDOM=None,
-                                                             N=N,
-                                                             pt1_perc_zbot=True,
-                                                             pt1_perc_phy=True
-                                                             )
+                #cdom = OI.CDOM(z, salt, lam)
+                ocean_irr_sol = OI.ocean_irradiance(PI, 
+                                              z[0], 
+                                              abscat(lam, 'water'), 
+                                              phy=phy, 
+                                              N=N)
+ 
                 ## Ed, Es, Eu, z 
 #                ocean_irr_sol = OIS.ocean_irradiance_shubha(z[0], 
 #                                                            PI.Ed0+PI.Es0,
@@ -923,7 +908,7 @@ if __name__ == '__main__':
     #Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species, C2chla_vals)
 
     ## The number of vertical layers in irr grid. 
-    N = 200
+    N = 500
 
     ## The oldest.
     ## should be around 5000 casts. 
@@ -942,8 +927,8 @@ if __name__ == '__main__':
     PI = Param_Init()
 
     ## Running comparison of insitu to irr surface chla for many cal casts. 
-    #Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, 'Diat')
-   # Loop_Species_Irr_Comp_Cal(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species)
+    #Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, 'Diat', plot=True)
+    #Loop_Species_Irr_Comp_Cal(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, species)
 
     save_path = f'{args.save_dir}/{args.save_file_head}'
     phy_type = 'Diat'

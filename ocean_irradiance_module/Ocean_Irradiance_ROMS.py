@@ -574,7 +574,7 @@ if __name__ == '__main__':
     R_nc = ROMS_netcdf(args.romsnc_file)
 
     ## updating default to wavelengths necessary for the OCx_algorithim
-    wavelengths = [443, 551]
+    wavelengths = PI.wavelengths
 
     ## settting time step index
     time_step_index = 1

@@ -12,6 +12,7 @@ import numpy as np
 import ocean_irradiance_module.Read_ROMS_Out as RRO
 import ocean_irradiance_visualization.Plot_Field as PF 
 import ocean_irradiance_module.Wavelength_To_RGB as W2RGB
+from ocean_irradiance_module.PARAMS import Param_Init
 
 
 
@@ -163,12 +164,13 @@ def Plot_Irradiance_Fields(Ei, fields, methods, wavelengths, R_nc, plot_surface=
                 if j==0:
                     ## The initial figure is created and returned by the Plot_Fields function          
                     if i == 1: 
-                        fig = PF.Plot_Fields(N_rows, N_cols, i, field[lam][surf_i,:,:,Ei],  R_nc.lat_rho, R_nc.lon_rho, title, f'{irr_str[Ei]} Surface Value', vmin=vmin, vmax=vmax)
+                        fig = PF.Plot_Fields(N_rows, N_cols, i, field[lam][surf_i,:,:,2],  R_nc.lat_rho, R_nc.lon_rho, title, r'$E_u(z =0)$', vmin=vmin, vmax=vmax)
                     else : 
-                        fig = PF.Plot_Fields(N_rows, N_cols, i, field[lam][surf_i,:,:,Ei], R_nc.lat_rho, R_nc.lon_rho, title, f'{irr_str[Ei]} Surface Value', fig=fig, vmin=vmin, vmax=vmax)
+                        fig = PF.Plot_Fields(N_rows, N_cols, i, field[lam][surf_i,:,:,2], R_nc.lat_rho, R_nc.lon_rho, title, r'$E_u(z =0)$', fig=fig, vmin=vmin, vmax=vmax)
                 else : 
+                    Eu0_diff = (fields[0][lam][-1,:,:,2] - field[lam][-1,:,:,2]) / fields[0][lam][-1,:,:,2]
                     ## Assumes that the scipy method is the first method.
-                    fig = PF.Plot_Fields(N_rows, N_cols, i, fields[0][lam][-1,:,:,Ei] - field[lam][surf_i,:,:,Ei], R_nc.lat_rho, R_nc.lon_rho, title, 'Absolute Difference from Scipy', fig=fig, vmin=vmin, vmax=vmax)
+                    fig = PF.Plot_Fields(N_rows, N_cols, i, Eu0_diff, R_nc.lat_rho, R_nc.lon_rho, title, r'$\frac{Eu0_{\mathrm{scipy}-Eu0{\mathrm{numerical}}}}{Eu0_{\mathrm{scipy}}}$', fig=fig, vmin=vmin, vmax=vmax)
 
 
 
@@ -185,10 +187,10 @@ def Count_Bad_Profs(array):
    	
     ## Number of points less than zero 
     mask_lt0 = np.min(array, axis=0) < -1e-7
-    nlt0 = array[0,:,:][mask_lt0].size
+    nlt0 = array[0,:,:,:][mask_lt0].size
     ## Number of points greater than one 
     mask_gt1 = np.max(array, axis=0) >1
-    ngt1 = array[0,:,:][mask_gt1].size
+    ngt1 = array[0,:,:,:][mask_gt1].size
         
     return nlt0, ngt1
 
@@ -199,6 +201,8 @@ def Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc):
     A bad profile is considered one in which the profile is either negative or greater than one. 
     """
 
+    ## [The total number of points.]
+    num_profs = fields[0][443][0, :,:,3][~np.isnan(fields[0][443][0, :,:,3])].size
     ## number of point less than zero for each method.
     Nlt0 = np.zeros((len(fields), len(wavelengths)))
     ## number of points greater than one for each method.
@@ -206,7 +210,7 @@ def Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc):
 
     for j, field in enumerate(fields):
         for k, lam in enumerate(wavelengths):
-            Nlt0[j,k], Ngt1[j,k] = Count_Bad_Profs(field[lam][:,:,:,Ei])
+            Nlt0[j,k], Ngt1[j,k] = Count_Bad_Profs(field[lam][:,:,:,:3])
  
     fig, axs = plt.subplots(nrows=1, ncols=len(wavelengths))
     
@@ -215,13 +219,18 @@ def Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc):
         ax = axs[k]
         rgb = W2RGB.wavelength_to_rgb(lam)
         ## number of points greater than one.
-        ax.bar(pos, Ngt1[:,k], tick_label=methods, color = rgb, align='center', hatch='xx', label=f'Profiles with Irradiances > 1')
+        ax.bar(pos, 100*(Ngt1[:,k]/(3*num_profs)), tick_label=methods, color = rgb, align='center', hatch='xx', label=f'{lam} [nm], E > 1 ')
         ## number of points less than 0
-        ax.bar(pos, Nlt0[:,k], bottom=Ngt1[:,k], tick_label=methods, color = rgb, align='center', hatch='//', label=f'Profiles with Irradiances < 0 ')
+        ax.bar(pos, 100*(Nlt0[:,k]/(3*num_profs)), bottom=100*(Ngt1[:,k]/(3*num_profs)), tick_label=methods, color = rgb, align='center', hatch='//', label=f'{lam} [nm], E < 0')
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=75)
+
+        if k == 0: 
+            ax.set_ylabel('Percentage of ROMS Profiles')
     
         ax.legend() 
 
     fig.show()
+
 
     return 
 
@@ -229,15 +238,18 @@ def Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc):
 def main(): 
     """
     The main function.
+
     """
 
+    
     irr_out_dir = '/home/midmille/Ocean_Irradiance/ocean_irradiance_out'
     ROMS_file = '/home/midmille/runs/20210812_wc12/output/wc12_his_43532.nc'
     
     ## The irradiance index [ Edi=0, Esi=1, Eui=2, zarri=2] 
     ## Eu
-    Ei = 1
+    Ei = 2
     
+    PI = Param_Init()
 
     #irr_out_scipy, irr_out_shoot_down, irr_out_shoot_up, irr_our_shoot_fp, irr_out_dut = Load_Fields(irr_out_dir)
     fields = Load_Fields(irr_out_dir)
@@ -246,16 +258,16 @@ def main():
                'Scipy',
                'Shoot Down', 
                'Shoot Up', 
-               'Dutkiewicz et al. (2015)'
+               'Dutkiewicz'
               ]
 
     ## The two wavelengths necessary for OCx chla calculation 
-    wavelengths = [443, 551] 
+    wavelengths = PI.wavelengths
 
     ## The ROMS output oobject 
     R_nc = RRO.ROMS_netcdf(ROMS_file)
 
-    Plot_Irradiance_Fields( Ei, fields, methods, wavelengths, R_nc, plot_surface=True, plot_min=True, plot_max=True, plot_surf_diff = True) 
+    Plot_Irradiance_Fields( Ei, fields, methods, wavelengths, R_nc, plot_surface=False, plot_min=False, plot_max=False, plot_surf_diff = True) 
      
     Plot_Number_Bad_Profiles(Ei, fields, methods, wavelengths, R_nc)
    
