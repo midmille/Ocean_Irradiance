@@ -53,7 +53,7 @@ def CI_alg(R_rs_b, R_rs_g, R_rs_r, lam_b, lam_g, lam_r):
 
     return 
 
-def OCx_alg(Rrs_443, Rrs_486, Rrs_510, Rrs_550, method='OC4') :
+def OCx_alg(Rrs_443, Rrs_490, Rrs_510, Rrs_560, method='OC4') :
     """
     Parameters
     ----------
@@ -77,17 +77,17 @@ def OCx_alg(Rrs_443, Rrs_486, Rrs_510, Rrs_550, method='OC4') :
 
     if method == 'OC3V': 
         a0, a1, a2, a3, a4 = OC3V
-        R_rs_b = np.maximum(Rrs_443, Rrs_486) 
+        R_rs_b = np.maximum(Rrs_443, Rrs_490) 
     elif method == 'OC4': 
         a0, a1, a2, a3, a4 = OC4
-        R_rs_b = np.maximum(Rrs_443, Rrs_486) 
+        R_rs_b = np.maximum(Rrs_443, Rrs_490) 
         R_rs_b = np.maximum(R_rs_b, Rrs_510) 
     elif method == 'OC3M': 
         a0, a1, a2, a3, a4 = OC3M
-        R_rs_b = np.maximum(Rrs_443, Rrs_486) 
+        R_rs_b = np.maximum(Rrs_443, Rrs_490) 
     elif method == 'OC4E': 
         a0, a1, a2, a3, a4 = OC4
-        R_rs_b = np.maximum(Rrs_443, Rrs_486) 
+        R_rs_b = np.maximum(Rrs_443, Rrs_490) 
         R_rs_b = np.maximum(R_rs_b, Rrs_510) 
     
     R_rs_g = Rrs_550

@@ -26,7 +26,7 @@ class Param_Init:
         self.Euh = 0 
         
         ## Wavelengths taken from John Wilkin email regarding satelite wavelengths.
-        self.wavelengths = [410,443,488,550,638,671] 
+        self.wavelengths = [410,443,490,560,638,665] 
 
         ## [The path to the ocean_irradiance_module.]
         self.path = '~/Ocean_Irradiance/ocean_irradiance_module/'
