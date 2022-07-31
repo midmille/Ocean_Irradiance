@@ -605,7 +605,8 @@ def ocean_irradiance_scipy(PI,
                            phy = None, 
                            CDOM_refa = None, 
                            det = None, 
-                           N = 30): 
+                           N = 30, 
+                           zabb_b=None): 
     """
     This fucntion uses the scipy.integrate.solve_bvp function to solve the ocean 
     irradiance boundary value problem. This is normally taken to be the truth in 
@@ -662,18 +663,39 @@ def ocean_irradiance_scipy(PI,
     Euh = PI.Euh
 
     coefficients = PI.coefficients
+
+    if zabb_b:  
+        zarr, a, b, b_b = zabb_b
+
+        ## [construct the vertical grid to the designated depth.]
+        grid = PI.grid
+        if grid == 'log': 
+            ## log transformed z grid.
+            z = Log_Trans_Grid(zarr[0], N) 
+        elif grid == 'linear': 
+            ## linear z 
+            z = np.linspace(zarr[0], 0, N)
+        else: 
+            raise ValueError("Invalid grid keyword, either 'log' or 'linear'")
+ 
+        a = np.interp(z, zarr, a)
+        b = np.interp(z, zarr, b)
+        b_b = np.interp(z, zarr, b_b)
+        zarr = z
+        b_f = b - b_b
     
-    zarr, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
-                                         ab_wat, 
-                                         N, 
-                                         Ed0,
-                                         coefficients,
-                                         phy=phy, 
-                                         CDOM_refa=CDOM_refa, 
-                                         det=det, 
-                                         grid=PI.grid, 
-                                         pt1_perc_zbot=PI.pt1_perc_zbot, 
-                                         pt1_perc_phy=PI.pt1_perc_phy)
+    else:
+        zarr, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+                                                ab_wat, 
+                                                N, 
+                                                Ed0,
+                                                coefficients,
+                                                phy=phy, 
+                                                CDOM_refa=CDOM_refa, 
+                                                det=det, 
+                                                grid=PI.grid, 
+                                                pt1_perc_zbot=PI.pt1_perc_zbot, 
+                                                pt1_perc_phy=PI.pt1_perc_phy)
  
     Eguess = np.full((3, N), 1.0)
 
@@ -1458,7 +1480,8 @@ def ocean_irradiance(PI,
                      phy=None,
                      CDOM_refa=None, 
                      det=None,
-                     N=30): 
+                     N=30, 
+                     zabb_b=None): 
     """
     This function runs the ocean irradiance algorithm for the given method.
     """
@@ -1468,7 +1491,7 @@ def ocean_irradiance(PI,
     elif method=='shootup': 
         Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det, N=N)
     elif method=='scipy':
-        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det, N=N, zabb_b = zabb_b)
     elif method=='dutkiewicz':
         Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, det=det, N=N)
     elif method=='analytical': 

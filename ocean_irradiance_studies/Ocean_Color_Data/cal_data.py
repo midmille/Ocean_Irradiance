@@ -35,8 +35,8 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 import datetime
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
+#import cartopy.crs as ccrs
+#import cartopy.feature as cfeature
 import geopy.distance
 ## User made mod
 import ocean_irradiance_module.Ocean_Irradiance as OI
@@ -46,7 +46,7 @@ import ocean_irradiance_module.Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
-import ocean_irradiance_visualization.Plot_Field as PF
+#import ocean_irradiance_visualization.Plot_Field as PF
 import ocean_irradiance_visualization.Plot_Comparison as PC
 import viirs_calcofi_val
 import plymouth_oc
@@ -896,8 +896,9 @@ if __name__ == '__main__':
     ## The url of the plymouth data
     ## From the website : https://www.oceancolour.org/thredds/catalog-cci.html?dataset=CCI_ALL-v5.0-DAILY
     ## time is in units of days since 1970-01-01 00:00:00
-    ply_dat_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
+    #ply_dat_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
 
+    pml_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
     ## getting the data with cal cruises only
     chla_val_cal_dat = chla_val_dat[chla_val_dat['cruise'].str.contains('cal', regex = False) ]
  
@@ -933,7 +934,7 @@ if __name__ == '__main__':
     save_path = f'{args.save_dir}/{args.save_file_head}'
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
-    cal_chla, pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551, pml_ds = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, ply_dat_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
+    cal_chla, pml_chla, pml_Rrs443, pml_Rrs560, irr_chla, irr_Rrs443, irr_Rrs551, pml_ds = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
 #    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, ply_dat_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
 

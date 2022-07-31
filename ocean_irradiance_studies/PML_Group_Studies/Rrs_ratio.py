@@ -60,9 +60,9 @@ def Plot_Chla_vs_Rrs_Ratio(Rrs_field_species, wavelengths, species, chlas, metho
     
     ax.legend(title='Phy Species')
     ax.grid()
-    ax.set_xlim(xlim)
-    ax.set_ylim([0,12])
-    ax.set_xlabel(r'Rrs Ratio $\frac{\mathrm{Rrs}(443)}{\mathrm{Rrs}(551)}$') 
+    ax.set_ylim(xlim)
+    ax.set_xlim([0,12])
+    ax.set_xlabel(r'Rrs Ratio $\frac{\mathrm{Rrs}(\lambda_{\mathrm{blue}})}{\mathrm{Rrs}(\lambda_{\mathrm{green}})}$') 
     ax.set_ylabel(r'Chla [mg $\mathrm{m}^{-3}$]')
     if method == 'shoot_up':
         ax.set_title('UCSC Version of Dutkiewicz et al. (2015) \n Radiative Transfer Model with Uniform Chl-a Profiles')

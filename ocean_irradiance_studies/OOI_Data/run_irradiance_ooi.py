@@ -20,6 +20,7 @@ from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as esd
 from ocean_irradiance_module import Wavelength_To_RGB
+from ocean_irradiance_module.Phytoplankton_Colormap import Get_Phy_Cmap_Dict
 import ocean_irradiance_visualization.Plot_Comparison as PC
 import plymouth_data
 
@@ -89,11 +90,11 @@ def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam)
 
     print('CDOM', CDOM)
             
-    z_irr, a_irr, b_irr, b_b_irr = OI.Calc_Abscat_Grid(flort_z[0],
+    z_irr, a_irr, b_irr, b_b_irr, b_f_irr = OI.Calc_Abscat_Grid(flort_z[0],
                                                        abscat(lam, 'water'), 
                                                        N, 
-                                                       Ed0, 
-                                                       coefficients, 
+                                                       PI.Ed0, 
+                                                       PI.coefficients, 
                                                        phy=phy, 
                                                        CDOM_refa = CDOM, 
                                                        pt1_perc_zbot = False, 
@@ -149,7 +150,7 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
                         abscat(lam, phy_type, C2chla='default')[1])
     
             ## [Get the z_a, a, and lam_ooi for the CDOM_refa object.]
-            z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam, smooth=True)
+            z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam)
 
             ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
             CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
@@ -161,27 +162,32 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
                          abscat(lam, 'detritus')[1], 
                          abscat(lam, 'detritus')[2])
             
-            z_irr, a_irr, b_irr, b_b_irr  = OIS.ocean_irradiance_two_stream_ab(flort_z[0], 
-                                                                            abscat(lam, 'water'), 
-                                                                            N,
-                                                                            phy=phy, 
-                                                                            CDOM_refa=CDOM, 
-                                                                            det = det,
-                                                                            pt1_perc_zbot=False, 
-                                                                            pt1_perc_phy=False)
-
             ## [This solves for the irradiance solution using Dutkiewicz coefficients and 
             ##  CDOM.]
             Ed0 = spkir_profs[k]['spkir_abj_cspp_downwelling_vector'][-1, ODF.Get_Wavelength_Index(spkir_wavelengths, lam)]
-            ocean_irr_sol = OIS.ocean_irradiance_shubha_ooi(flort_z[0], 
-                                                        Ed0, 
-                                                        PI.coefficients, 
-                                                        z_irr, 
-                                                        a_irr, 
-                                                        z_irr, 
-                                                        b_b_irr,
-                                                        N=N, 
-                                                        pt1_perc_zbot=False)
+
+            PI.Ed0 = 0.7 * Ed0
+            PI.Es0 = 0.3 * Ed0
+
+            z_irr, a_irr, b_irr, b_b_irr, b_f_irr = OI.Calc_Abscat_Grid(flort_z[0],
+                                                               abscat(lam, 'water'), 
+                                                               N, 
+                                                               PI.Ed0, 
+                                                               PI.coefficients, 
+                                                               phy=phy, 
+                                                               CDOM_refa = CDOM, 
+                                                               pt1_perc_zbot = False, 
+                                                               pt1_perc_phy = False)
+
+           
+            PI.pt1_perc_zbot = False
+            PI.pt1_perc_phy = False
+
+            ocean_irr_sol = OI.ocean_irradiance(PI, 
+                                                flort_z[0], 
+                                                abscat(lam, 'water'), 
+                                                zabb_b = (z_irr, a_irr, b_irr, b_b_irr), 
+                                                N=N)
 
             ## [Storing output into array.]
             irr_arr[:,k,0] = ocean_irr_sol[0]
@@ -223,18 +229,15 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
             ## [Add water into the absorption/scattering.]
             a_ooi = a_ooi + abscat(lam, 'water')[0]
             bb_wat = 0.551 * abscat(lam, 'water')[1]
-            b_ooi = b_ooi*bb_r + bb_wat
+            b_b_ooi = b_ooi*bb_r + bb_wat
 
             ## [Now running the irr model using abs and scat from ooi.]
-            ocean_irr_sol_ab = OIS.ocean_irradiance_shubha_ooi(z_ooi[0], 
-                                                              Ed0, 
-                                                              PI.coefficients, 
-                                                              z_ooi,  
-                                                              a_ooi, 
-                                                              z_ooi, 
-                                                              b_ooi,
-                                                              N=N, 
-                                                              pt1_perc_zbot=False)
+            print(len(z_ooi))
+            ocean_irr_sol_ab = OI.ocean_irradiance(PI, 
+                                                z_ooi[0], 
+                                                abscat(lam, 'water'), 
+                                                zabb_b = (z_ooi, a_ooi, b_ooi, b_b_ooi), 
+                                                N=N)
 
 
             ## [Storing output into array.]
@@ -363,15 +366,11 @@ def Calc_Chla_Irr(prof_index, irr_field):
     ASSUMES TWO STREAM IRRADIANCE
     """
 
-    ## [The blue wavelength.]
-    lamb = 443
-    ## [The green wavelength.]
-    lamg = 551
+    rrs443 = OIR.R_RS(irr_field[443][-1,prof_index,0], irr_field[443][-1,prof_index,0], irr_field[443][-1,prof_index,2])
+    rrs486 = OIR.R_RS(irr_field[486][-1,prof_index,0], irr_field[486][-1,prof_index,0], irr_field[486][-1,prof_index,2])
+    rrs550 = OIR.R_RS(irr_field[551][-1,prof_index,0], irr_field[551][-1,prof_index,0], irr_field[551][-1,prof_index,2])
 
-    rrsb = OIR.R_RS(irr_field[lamb][-1,prof_index,0], 0, irr_field[lamb][-1,prof_index,2])
-    rrsg = OIR.R_RS(irr_field[lamg][-1,prof_index,0], 0, irr_field[lamg][-1,prof_index,2])
-
-    chla = OIR.OCx_alg(rrsb, rrsg)
+    chla = OIR.OCx_alg(rrs443, rrs486, rrs550)
 
 
     return chla
@@ -890,8 +889,9 @@ if __name__ == '__main__':
     ## [The number of levels for irradiance run.]
     N=1000
 #    wavelengths = np.arange(425, 725, 25)
-    wavelengths = [443, 551]
-    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
+    wavelengths = [443, 486, 551]
+#    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
+    phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 #    phy_species = [ 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
@@ -899,7 +899,7 @@ if __name__ == '__main__':
     depthz = 5
 
     ## [Get color list for each species of phy.]
-    color_dict = ODF.Get_Phy_Cmap_Dict()
+    color_dict = Get_Phy_Cmap_Dict()
 
     ## [Download or load the data sets.]
     ooi_data = ODF.Download_OOI_Data(savefile_head, 
