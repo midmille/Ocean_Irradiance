@@ -53,7 +53,7 @@ def CI_alg(R_rs_b, R_rs_g, R_rs_r, lam_b, lam_g, lam_r):
 
     return 
 
-def OCx_alg(Rrs_443, Rrs_486, Rrs_550, method='OC3V', Rrs_510=None) :
+def OCx_alg(Rrs_443, Rrs_486, Rrs_510, Rrs_550, method='OC4') :
     """
     Parameters
     ----------
@@ -70,6 +70,8 @@ def OCx_alg(Rrs_443, Rrs_486, Rrs_550, method='OC3V', Rrs_510=None) :
     """
     OC3V = (0.2228, -2.4683, 1.5867, -0.4275, -0.7768) 
     OC4 = (0.3272, -2.9940, 2.7218, -1.2259, -0.5683)
+    OC3M = (0.2424, -2.7423, 1.8017, 0.0015, -1.2280)
+    OC4E = (0.3255, -2.7677, 2.4409, -1.1288, -0.4990)
     ## the a values for OCx 0.2228	-2.4683	1.5867	-0.4275	-0.7768
     ## [These are the viirs values.]
 
@@ -77,6 +79,13 @@ def OCx_alg(Rrs_443, Rrs_486, Rrs_550, method='OC3V', Rrs_510=None) :
         a0, a1, a2, a3, a4 = OC3V
         R_rs_b = np.maximum(Rrs_443, Rrs_486) 
     elif method == 'OC4': 
+        a0, a1, a2, a3, a4 = OC4
+        R_rs_b = np.maximum(Rrs_443, Rrs_486) 
+        R_rs_b = np.maximum(R_rs_b, Rrs_510) 
+    elif method == 'OC3M': 
+        a0, a1, a2, a3, a4 = OC3M
+        R_rs_b = np.maximum(Rrs_443, Rrs_486) 
+    elif method == 'OC4E': 
         a0, a1, a2, a3, a4 = OC4
         R_rs_b = np.maximum(Rrs_443, Rrs_486) 
         R_rs_b = np.maximum(R_rs_b, Rrs_510) 

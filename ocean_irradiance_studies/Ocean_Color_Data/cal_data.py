@@ -483,12 +483,6 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
 
     
         cal_chla = np.zeros(N_cst)
-        ## The viirs data
-        #viirs_chla = np.zeros(N_cst)
-        #viirs_Rrs443 = np.zeros(N_cst)
-        #viirs_Rrs551 = np.zeros(N_cst)
-        #viirs_lat = np.zeros(N_cst)
-        #viirs_lon = np.zeros(N_cst)
 
         ## The Plymouth Marine Lab Data. 
         pml_chla = np.zeros(N_cst)
@@ -516,14 +510,6 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, pml_url, save_dir, s
 
              cal_chla[k] = c_chla[-1]
              
-             ## Getting the viiirs data.
-#             v_Rrs443, v_Rrs551, v_chla, v_lat, v_lon = viirs_calcofi_val.Viirs_Rrs_Chla(julian_day[k], year[k], lat[k], lon[k])
-#             viirs_chla[k] = v_chla
-#             viirs_Rrs443[k] = v_Rrs443
-#             viirs_Rrs551[k] = v_Rrs551
-#             viirs_lat[k] = v_lat
-#             viirs_lon[k] = v_lon
-
              ## Getting the PML data.
              p_Rrs443, p_Rrs560, p_chla, p_lat, p_lon = plymouth_oc.Get_Point_PML_Dataset(pml_ds, year[k], julian_day[k], lat[k], lon[k]) 
              pml_chla[k] = p_chla

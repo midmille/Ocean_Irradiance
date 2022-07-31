@@ -23,7 +23,7 @@ import ocean_irradiance_module.Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
-import ocean_irradiance_visualization.Plot_Field as PF
+#import ocean_irradiance_visualization.Plot_Field as PF
 import ocean_irradiance_visualization.Plot_Comparison as PC
 from ocean_irradiance_module import Wavelength_To_RGB
 import reflectance_spectra
@@ -52,17 +52,21 @@ def Plot_Chla_vs_Rrs_Ratio(Rrs_field_species, wavelengths, species, chlas, metho
     ## Plotting the OCx algorithim chla.
     OCx_Rrs_ratio = np.linspace(0, 12, 100)
     ## Setting the blue to be the ratio and Rrs for green to be 1, s.t. ratio is Rrsb. 
-    OC4_chla = OIR.OCx_alg(OCx_Rrs_ratio, 0, np.ones(len(OCx_Rrs_ratio)), Rrs_510 = 0, method ='OC4')
-    OC3V_chla = OIR.OCx_alg(OCx_Rrs_ratio, 0, np.ones(len(OCx_Rrs_ratio)), method ='OC3V')
+    OC4_chla = OIR.OCx_alg(OCx_Rrs_ratio, 0, 0, np.ones(len(OCx_Rrs_ratio)), method ='OC4')
+    OC3V_chla = OIR.OCx_alg(OCx_Rrs_ratio, 0, 0, np.ones(len(OCx_Rrs_ratio)), method ='OC3V')
+    OC4E_chla = OIR.OCx_alg(OCx_Rrs_ratio, 0, 0, np.ones(len(OCx_Rrs_ratio)), method ='OC4E')
+    OC3M_chla = OIR.OCx_alg(OCx_Rrs_ratio, 0, 0, np.ones(len(OCx_Rrs_ratio)), method ='OC3M')
     ax.semilogy(OCx_Rrs_ratio, OC4_chla, '--', color='k', label='OC4')
     ax.semilogy(OCx_Rrs_ratio, OC3V_chla, ':', color='k', label='OC3V')
+    ax.semilogy(OCx_Rrs_ratio, OC4E_chla, '-.', color='k', label='OC4E')
+    ax.semilogy(OCx_Rrs_ratio, OC3M_chla, linestyle=(0, (3,5,1,5,1,5)), color='k', label='OC3M')
 #    ax.loglog(OCx_chla, OCx_Rrs_ratio, '--', color='k', label='OCx')
     
     ax.legend(title='Phy Species')
     ax.grid()
     ax.set_ylim(xlim)
     ax.set_xlim([0,12])
-    ax.set_xlabel(r'Rrs Ratio $\frac{\mathrm{Rrs}(\lambda_{\mathrm{blue}})}{\mathrm{Rrs}(\lambda_{\mathrm{green}})}$') 
+    ax.set_xlabel(r'$\frac{\mathrm{R_{rs}}(\lambda_{\mathrm{blue}})}{\mathrm{R_{rs}}(\lambda_{\mathrm{green}})}$', fontsize=14) 
     ax.set_ylabel(r'Chla [mg $\mathrm{m}^{-3}$]')
     if method == 'shoot_up':
         ax.set_title('UCSC Version of Dutkiewicz et al. (2015) \n Radiative Transfer Model with Uniform Chl-a Profiles')
