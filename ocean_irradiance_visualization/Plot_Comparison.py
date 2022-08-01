@@ -8,14 +8,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None, marker='o', color=None, title_fontsize=10): 
+def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None, marker='o', color=None, title_fontsize=10, markersize=5, linewidth=1): 
     """
     Plots the given values on a given axes
     """
     if color==None:
-        ax.plot(x, y,'o', fillstyle='none', label=label, markersize=5)
+        ax.plot(x, y,'o', fillstyle='none', label=label, markersize=markersize, linewidth=linewidth)
     else:
-        ax.plot(x, y,'o', fillstyle='none', markeredgecolor=color, label=label, markersize=5)
+        ax.plot(x, y,'o', fillstyle='none', markeredgecolor=color, label=label, markersize=markersize, linewidth=linewidth)
     if xlim == None: 
         ax.relim()
     elif ylim == None: 

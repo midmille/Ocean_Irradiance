@@ -11,9 +11,22 @@ from netCDF4 import Dataset
 import numpy as np
 import pickle
 import os
-## User Mods
-import cal_data 
 
+def Date_to_Julian_Date(date, fmt='%Y-%m-%d'):
+    """
+    This function changes a date into a julain day. The date should be formatted as follows:
+    'YEAR-MONTH-DAY'
+
+    https://stackoverflow.com/questions/13943062/extract-day-of-year-and-julian-day-from-a-string-date
+    """
+
+    dt = datetime.datetime.strptime(date, fmt)
+    tt = dt.timetuple()
+    julian = tt.tm_yday
+
+    return julian
+
+ 
 def Days_To_Julian_Date(start_date, days_array):
     """
     Turns a the number of days since a given date into the 
@@ -29,13 +42,13 @@ def Days_To_Julian_Date(start_date, days_array):
         date = date_1 + datetime.timedelta(days=int(days))
         date = date.strftime("%m/%d/%Y")
         ## using the Date_to_Julian_Date function from cal_data.py
-        julian_date[k] = cal_data.Date_to_Julian_Date(date, fmt="%m/%d/%Y")
+        julian_date[k] = Date_to_Julian_Date(date, fmt="%m/%d/%Y")
         ## Getting the year 
         year[k] = int(date.split('/')[2])
 
     return julian_date, year
 
-def Get_PML_OC_Data_Set(erddap_url, year_lims, julian_date_lims, lat_lims, lon_lims):
+def Download_CCI_Data_Set(erddap_url, year_lims, julian_date_lims, lat_lims, lon_lims):
     """
     This function returns the Rrs443, Rrs560, and chla arrays for the given 
     date_time domain and lattitude/longitude domain.

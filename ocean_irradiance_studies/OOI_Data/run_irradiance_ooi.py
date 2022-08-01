@@ -22,7 +22,7 @@ from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equiv
 from ocean_irradiance_module import Wavelength_To_RGB
 from ocean_irradiance_module.Phytoplankton_Colormap import Get_Phy_Cmap_Dict
 import ocean_irradiance_visualization.Plot_Comparison as PC
-import plymouth_data
+from ocean_irradiance_module import cci_oc
 
 ## [External Modules]
 import numpy as np
@@ -191,8 +191,9 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
 
             ## [Storing output into array.]
             irr_arr[:,k,0] = ocean_irr_sol[0]
-            irr_arr[:,k,2] = ocean_irr_sol[1]
-            irr_arr[:,k,3] = ocean_irr_sol[2] 
+            irr_arr[:,k,1] = ocean_irr_sol[1]
+            irr_arr[:,k,2] = ocean_irr_sol[2]
+            irr_arr[:,k,3] = ocean_irr_sol[3] 
 
 #            ## [Now using the OOI absorption and scattering.]
 #            ## [The optaa data.]
@@ -242,8 +243,9 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
 
             ## [Storing output into array.]
             irr_arr_ab[:,k,0] = ocean_irr_sol_ab[0]
-            irr_arr_ab[:,k,2] = ocean_irr_sol_ab[1]
-            irr_arr_ab[:,k,3] = ocean_irr_sol_ab[2] 
+            irr_arr_ab[:,k,1] = ocean_irr_sol_ab[1]
+            irr_arr_ab[:,k,2] = ocean_irr_sol_ab[2]
+            irr_arr_ab[:,k,3] = ocean_irr_sol_ab[3] 
         
         ## [Store array to dictionary.]
         irr_field[lam] = irr_arr
@@ -265,7 +267,7 @@ def Get_CCI_Data(pml_url, flort_dat):
     jd_lims = [str(flort_dat['time'].data.astype('datetime64[D]')[0]), 
                str(flort_dat['time'].data.astype('datetime64[D]')[-1])]
     for k, d in enumerate(jd_lims): 
-        jd_lims[k] = plymouth_data.Date_to_Julian_Date(d)
+        jd_lims[k] = cci_oc.Date_to_Julian_Date(d)
 
     ## [The lattitude limits.]
     lat = flort_dat.attrs['geospatial_lat_min']
@@ -276,7 +278,7 @@ def Get_CCI_Data(pml_url, flort_dat):
     lon_lims = [lon[0] - 0.5, lon[0] + 0.5]
 
     ## [Download the pml cci data set.]
-    cci_dat = plymouth_data.Download_PML_Data(pml_url, year_lims, jd_lims, lat_lims, lon_lims)
+    cci_dat = cci_oc.Download_CCI_Data_Set(pml_url, year_lims, jd_lims, lat_lims, lon_lims)
 
     return cci_dat
 
@@ -313,9 +315,9 @@ def Get_OOI_CCI_Match(cci_ds, flort_dat, flort_profs):
         ## [Convert the day of the flort profile to julian day.]
         ooi_dt = str(prof['time'].data.astype('datetime64[D]')[0])
         ## [This concatinates the year with julain date.]
-        ooi_jd = plymouth_data.Date_to_Julian_Date(ooi_dt)
+        ooi_jd = cci_oc.Date_to_Julian_Date(ooi_dt)
         ## [Conver the CCI data from days since 1970 to julian day, year.]
-        cci_jd, cci_year = plymouth_data.Days_To_Julian_Date('01/01/1970',time)
+        cci_jd, cci_year = cci_oc.Days_To_Julian_Date('01/01/1970',time)
         ## [The date time index.]
         dti = np.where(cci_jd == ooi_jd)[0]
         
@@ -358,7 +360,7 @@ def Get_OOI_CCI_Match(cci_ds, flort_dat, flort_profs):
     return res
 
 
-def Calc_Chla_Irr(prof_index, irr_field): 
+def Calc_Chla_Irr(prof_index, irr_field, wavelengths): 
     """
     This function calculates the chla at the surface using the OCx algorithm and RRs ratios. It takes the 
     irradiance field as an argument and returns the chla.
@@ -366,11 +368,11 @@ def Calc_Chla_Irr(prof_index, irr_field):
     ASSUMES TWO STREAM IRRADIANCE
     """
 
-    rrs443 = OIR.R_RS(irr_field[443][-1,prof_index,0], irr_field[443][-1,prof_index,0], irr_field[443][-1,prof_index,2])
-    rrs486 = OIR.R_RS(irr_field[486][-1,prof_index,0], irr_field[486][-1,prof_index,0], irr_field[486][-1,prof_index,2])
-    rrs550 = OIR.R_RS(irr_field[551][-1,prof_index,0], irr_field[551][-1,prof_index,0], irr_field[551][-1,prof_index,2])
+    rrs = {}
+    for lam in wavelengths:
+        rrs[lam] = OIR.R_RS(irr_field[lam][-1,prof_index,0], irr_field[lam][-1,prof_index,1], irr_field[lam][-1,prof_index,2])
 
-    chla = OIR.OCx_alg(rrs443, rrs486, rrs550)
+    chla = OIR.OCx_alg(rrs[443], rrs[490], rrs[510], rrs[560])
 
 
     return chla
@@ -424,8 +426,8 @@ def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds,
     
             else:
                 ## [Calculate the chla from irradiance.]
-                ooi_chla[k,ip] = Calc_Chla_Irr(k, irr_field)
-                ooi_chla_ab[k,ip] = Calc_Chla_Irr(k, irr_field_ab)
+                ooi_chla[k,ip] = Calc_Chla_Irr(k, irr_field, wavelengths)
+                ooi_chla_ab[k,ip] = Calc_Chla_Irr(k, irr_field_ab, wavelengths)
     
                 ## [Get the fluorometric chla from data.]
                 flort_chla[k,ip] = flort_profs[k].variables['fluorometric_chlorophyll_a'].data[-1]
@@ -574,9 +576,9 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
     N_lam = len(wavelengths)
 
     ## [spkir depth stuff.]
-    spkir_depth = - spkir_dat['depth'].data
-    spkir_dt = spkir_dat['time'].data
-    spkir = spkir_dat['spkir_abj_cspp_downwelling_vector'].data
+    spkir_depth = spkir_prof['depth'].data
+    spkir_dt = spkir_prof['time'].data
+    spkir = spkir_prof['spkir_abj_cspp_downwelling_vector'].data
 
     fig, ax = plt.subplots()
     ## [Get the colors such that they match the wavelengths.] 
@@ -589,23 +591,23 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
         lam_spkir = spkir_wavelengths[lam_i]
 
         ## [Make the 1m avg grid.]
-        depth_avg = np.arange(spkir_depth[0], spkir_depth[-1], 1)
-        spkir_avg = ODF.Grid_Average_Profile(spkir_depth, spkir[:,lam_i], depth_avg)
+    #    depth_avg = np.arange(spkir_depth[0], spkir_depth[-1], 1)
+    #    spkir_avg = ODF.Grid_Average_Profile(spkir_depth, spkir[:,lam_i], depth_avg)
         
         ## [Surface Ed0.]
-        print('surface Ed0+Es0', spkir_avg[-1])
+        print('surface Ed0+Es0', spkir[0,lam_i])
 
         ## [irr arrays for lam.]
         irr_arr = irr_field[lam]
         irr_arr_ab = irr_field_ab[lam]
         ## [ Plotting the downward direct profile. 0 is downward irradiance, 3 is depth.]
         ## [Also must multiply by surface value of spkir prof, since irr_arr is normalized.]
-        ax.plot(spkir_avg[-1] * irr_arr[:, prof_index, 0], irr_arr[:, prof_index, 3], ':', label=f'Irr {lam}', color=colors[k])
-        ax.plot(spkir_avg[-1] * irr_arr_ab[:, prof_index, 0], irr_arr_ab[:, prof_index, 3], '-', label=f'Irr ooi ab {lam}', color=colors[k])
+        ax.plot(irr_arr[:, prof_index, 0]+irr_arr[:, prof_index, 1], irr_arr[:, prof_index, 3], ':', label=f'Irr {lam}', color=colors[k])
+        ax.plot(irr_arr_ab[:, prof_index, 0]+irr_arr_ab[:, prof_index, 1], irr_arr_ab[:, prof_index, 3], '-', label=f'Irr ooi ab {lam}', color=colors[k])
 
         ## [Plotting the spkir profile.]
         #ax.plot(spkir[:, i], depth, '--', label=f'OOI SPKIR {lam}', color=colors[k])
-        ax.plot(spkir_avg, depth_avg, '--', label=f'OOI SPKIR {lam}', color=colors[k])
+        ax.plot(spkir[:,lam_i], spkir_depth, '--', label=f'OOI SPKIR {lam}', color=colors[k])
 
     ## [Labels.]
     #ax.set_ylabel(f"Z [{depth_dat.attrs['units']}]")
@@ -889,7 +891,8 @@ if __name__ == '__main__':
     ## [The number of levels for irradiance run.]
     N=1000
 #    wavelengths = np.arange(425, 725, 25)
-    wavelengths = [443, 486, 551]
+#    wavelengths = [443, 490, 510, 560]
+    wavelengths = [443, 560, 638]
 #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
     phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 #    phy_species = [ 'Syn'] 
@@ -935,13 +938,13 @@ if __name__ == '__main__':
 
     ## [Run the irradiance model using the profiles, over all profiles.]
     phy_type = 'Syn'
-    #irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, phy_type, flort_profs, optaa_profs, cdom_reflam)
+    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
     ## [Plot the resulting irradiance profiles.]
-#    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
+    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
-    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+#    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
 
     
     ## [Plot the absorption in time and chla bins.]

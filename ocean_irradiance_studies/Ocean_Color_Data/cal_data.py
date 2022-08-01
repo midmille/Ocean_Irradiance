@@ -46,26 +46,12 @@ import ocean_irradiance_module.Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
+import ocean_irradiance_module.Wavelength_To_RGB as W2RGB
 #import ocean_irradiance_visualization.Plot_Field as PF
 import ocean_irradiance_visualization.Plot_Comparison as PC
 import viirs_calcofi_val
 import cci_oc
 
-def Date_to_Julian_Date(date, fmt='%Y-%m-%d'):
-    """
-    This function changes a date into a julain day. The date should be formatted as follows:
-    'YEAR-MONTH-DAY'
-
-    https://stackoverflow.com/questions/13943062/extract-day-of-year-and-julian-day-from-a-string-date
-    """
-
-    dt = datetime.datetime.strptime(date, fmt)
-    tt = dt.timetuple()
-    julian = tt.tm_yday
-
-    return julian
-    
-    
 
 def Get_Data(oc_chla_val_file, cal_cast_file, cal_bot_file): 
     """
@@ -339,34 +325,26 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                 print(f'{k}/{N_cst}')
                 ## Getting the chla and depth profile.
                 z, chla, salt = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt, incld_salt=True)     
+
                 ## checking for zero sized return
                 if len(z) == 0: 
                     z = np.zeros(N) * np.nan
                     chla = np.zeros(N) * np.nan
                     salt = np.zeros(N) * np.nan
-                ## Storing the surface chla as the insitu comparison. 
-                ## Calculating the irradiance
-                phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
-                #cdom = OI.CDOM(z, salt, lam)
-                ocean_irr_sol = OI.ocean_irradiance(PI, 
-                                              z[0], 
-                                              abscat(lam, 'water'), 
-                                              phy=phy, 
-                                              N=N)
- 
-                ## Ed, Es, Eu, z 
-#                ocean_irr_sol = OIS.ocean_irradiance_shubha(z[0], 
-#                                                            PI.Ed0+PI.Es0,
-#                                                            abscat(lam, 'water'), 
-#                                                            PI.coefficients, 
-#                                                            phy=phy, 
-#                                                            CDOM=None, 
-#                                                            N=N, 
-#                                                            pt1_perc_zbot=True, 
-#                                                            pt1_perc_phy=True
-#                                                            )
+                    ocean_irr_sol = (np.zeros(N) * np.nan, np.zeros(N) * np.nan, np.zeros(N) * np.nan, np.zeros(N) * np.nan)
 
-                                                            
+                else: 
+                    ## Storing the surface chla as the insitu comparison. 
+                    ## Calculating the irradiance
+                    phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
+                    #cdom = OI.CDOM(z, salt, lam)
+                    ocean_irr_sol = OI.ocean_irradiance(PI, 
+                                                  z[0], 
+                                                  abscat(lam, 'water'), 
+                                                  phy=phy, 
+                                                  N=N)
+
+                                                                
                 irr_arr[:,k,0] = ocean_irr_sol[0]
                 irr_arr[:,k,1] = ocean_irr_sol[1]
                 irr_arr[:,k,2] = ocean_irr_sol[2]
@@ -391,10 +369,11 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
     for lam in wavelengths:
         Eu_surf = np.zeros(N_cst)
         for k,Eu0 in enumerate(irr_field[lam][-1, :, 2]): 
-            if Eu<0 or Eu>1: 
-                Eu = np.nan
-            ## Calculating the Rrs.
-            Rrs[lam] = OIR.R_RS(PI.Ed0, PI.Es0, Eu0)
+            if Eu0<0 or Eu0>1: 
+                Eu0 = np.nan
+            Eu_surf[k] = Eu0
+        ## Calculating the Rrs.
+        Rrs[lam] = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf)
 
     ## calculating the chla 
     chla_irr = OIR.OCx_alg(Rrs[443], Rrs[490], Rrs[510], Rrs[560]) 
@@ -535,7 +514,7 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
         cci_Rrs443 = pickle.load(open(f'{save_path}_cci_Rrs443.p', 'rb'))
         cci_Rrs490 = pickle.load(open(f'{save_path}_cci_Rrs490.p', 'rb'))
         cci_Rrs510 = pickle.load(open(f'{save_path}_cci_Rrs510.p', 'rb'))
-        cci_Rrs560 = pickle.load(open(f'{save_path}_cci_Rrs551.p', 'rb'))
+        cci_Rrs560 = pickle.load(open(f'{save_path}_cci_Rrs560.p', 'rb'))
         cci_lat = pickle.load(open(f'{save_path}_cci_lat.p', 'rb'))
         cci_lon = pickle.load(open(f'{save_path}_cci_lon.p', 'rb'))
 
@@ -604,10 +583,12 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
  
     
     for k in range(N_cst): 
-        dist = geopy.distance.distance((lat[k], lon[k]), (cci_lat[k], cci_lon[k])).miles
-        if dist > 5:
+        dist = geopy.distance.distance((lat[k], lon[k]), (cci_lat[k], cci_lon[k])).kilometers
+        if dist > 3:
             cci_chla[k] = np.NaN
             cci_Rrs443[k] = np.NaN
+            cci_Rrs490[k] = np.NaN
+            cci_Rrs510[k] = np.NaN
             cci_Rrs560[k] = np.NaN
             cci_lat[k] = np.NaN
             cci_lon[k] = np.NaN
@@ -666,15 +647,9 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
 
     cci_Rrs = {}
     cci_Rrs[443] = cci_Rrs443
-    cci_Rrs[490] = cci_Rrs443
+    cci_Rrs[490] = cci_Rrs490
     cci_Rrs[510] = cci_Rrs510
-    cci_Rrs[560] = cci_Rrs510
-    
-    irr_Rrs = {}
-    irr_Rrs[443] = irr_Rrs443
-    irr_Rrs[490] = irr_Rrs490
-    irr_Rrs[510] = irr_Rrs510
-    irr_Rrs[560] = irr_Rrs560
+    cci_Rrs[560] = cci_Rrs560
 
     return cal_chla,  cci_chla, cci_Rrs, irr_chla, irr_Rrs
 
@@ -703,17 +678,52 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     
         ## Rrs Comparison
         rrs_ax = axes_list[k]
-        ## viirs Rrs
-        #PC.Plot_Comparison(rrs_ax, viirs_Rrs443, irr_Rrs443, f'{phy_type} Rrs', '443', 'VIIRS', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
-        #PC.Plot_Comparison(rrs_ax, viirs_Rrs551, irr_Rrs551, f'{phy_type} Rrs', '551', 'VIIRS', 'Irr', xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
-        ## PML rrs
+
         if k == 0: 
             ylabel = 'Irradiance Model'
         else: 
             ylabel = None
             
-        PC.Plot_Comparison(rrs_ax, cci_Rrs[443], irr_Rrs[443], f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', '443 [nm]', 'CCI', ylabel, xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
-        PC.Plot_Comparison(rrs_ax, cci_Rrs[560], irr_Rrs[560], f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', '551 [nm]', 'CCI', ylabel, xlim = Rrs_ax_lims[k][0], ylim=Rrs_ax_lims[k][1]) 
+        PC.Plot_Comparison(rrs_ax, 
+                           cci_Rrs[443], 
+                           irr_Rrs[443], 
+                           f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', '443 [nm]', 
+                           'CCI', 
+                           ylabel, 
+                           xlim = Rrs_ax_lims[k][0], 
+                           ylim=Rrs_ax_lims[k][1], 
+                           color= W2RGB.wavelength_to_rgb(443)) 
+
+        PC.Plot_Comparison(rrs_ax, 
+                           cci_Rrs[490], 
+                           irr_Rrs[490], 
+                           f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', 
+                           '490 [nm]', 'CCI', 
+                           ylabel, 
+                           xlim = Rrs_ax_lims[k][0], 
+                           ylim=Rrs_ax_lims[k][1], 
+                           color=W2RGB.wavelength_to_rgb(490)) 
+        PC.Plot_Comparison(rrs_ax, 
+                           cci_Rrs[510], 
+                           irr_Rrs[510], 
+                           f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', 
+                           '510 [nm]', 
+                           'CCI', 
+                           ylabel, 
+                           xlim = Rrs_ax_lims[k][0], 
+                           ylim=Rrs_ax_lims[k][1], 
+                           color =W2RGB.wavelength_to_rgb(510))
+
+        PC.Plot_Comparison(rrs_ax, 
+                           cci_Rrs[560], 
+                           irr_Rrs[560], 
+                           f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', 
+                           '551 [nm]', 
+                           'CCI', 
+                           ylabel, 
+                           xlim = Rrs_ax_lims[k][0], 
+                           ylim=Rrs_ax_lims[k][1], 
+                           color = W2RGB.wavelength_to_rgb(560)) 
         rrs_ax.legend()  
  
     #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
@@ -730,8 +740,8 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     ## This plot shows a comparison between the CCI calculated chlor and the CCI chlor calculated using
     ## the OCx algorithim from CCI Rrs values. 
     fig, ax = plt.subplots()
-    cci_OCx_chla = OIR.OCx_alg(cci_Rrs[443], cci_Rrs[490], cci_Rrs[510], Rrs[560])
-    ax = PC.Plot_Comparison(ax, cci_chla, cci_OCx_chla, 'CCI Chla Compared to Chla Calculated Using OCx and CCI Rrs', 'CCI', 'CCI chla', 'Chla from CCI Rrs and OCx (VIIRS Params)', marker='v') 
+    cci_OCx_chla = OIR.OCx_alg(cci_Rrs[443], cci_Rrs[490], cci_Rrs[510], cci_Rrs[560])
+    ax = PC.Plot_Comparison(ax, cci_chla, cci_OCx_chla, '', 'CCI', r'CCI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', r'OC4 Chl-a Using CCI $\mathrm{R_{rs}}$ [mg Chl-a $\mathrm{m}^{-3}$]', marker='v') 
     fig.show()
 
 
@@ -925,8 +935,8 @@ if __name__ == '__main__':
     save_path = f'{args.save_dir}/{args.save_file_head}'
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
-    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type) 
-#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, ply_dat_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
+    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
+#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
 
     ## Running the comparison of viirs, calcofi, irr, and nomad
