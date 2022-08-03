@@ -35,8 +35,8 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 import datetime
-#import cartopy.crs as ccrs
-#import cartopy.feature as cfeature
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 import geopy.distance
 ## User made mod
 import ocean_irradiance_module.Ocean_Irradiance as OI
@@ -529,58 +529,6 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
                                                                  cal_bot_dat,
                                                                  phy_type)
  
-
-    if plot:
-        ## Plotting one to one comparison.
-        #fig, ax = plt.subplots()
-        #PC.Plot_Comparison(ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS', 'Calcofi Chla', 'VIIRS Chla') 
-        #PC.Plot_Comparison(ax, cal_chla, irr_chla, 'Comparison to Cal Chla', 'Irradiance' , 'Calcofi Chla', 'Chla') 
-        #ax.legend()
-        #fig.show() 
-    
-        ## Rrs Comparison
-        #fig, ax = plt.subplots()
-        #PC.Plot_Comparison(ax, viirs_Rrs443, irr_Rrs443, 'Comparison of VIIRS to Irradiance Rrs', '443', 'VIIRS', 'Irr') 
-        #PC.Plot_Comparison(ax, viirs_Rrs551, irr_Rrs551, 'Comparison of VIIRS to Irradiance Rrs', '551', 'VIIRS', 'Irr') 
-        #ax.legend()  
-        #fig.show() 
-    
-    
-        ## Plotting Comparison of chla and location
-        fig = plt.figure()
-        
-        ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
-        ax.add_feature(cfeature.COASTLINE)
-        ax.add_feature(cfeature.LAND, color='grey', alpha=.5)
-        #ax.gridlines()
-        ## size of scatter points.
-        s = 15
-        vmin = 0
-        vmax = 3
-        cbar_shrink = 1
-        cbar_label = 'chla [mg chla m^-3]'
-    
-        ## Plotting the cal cofi
-        im = ax.scatter(lon, lat, c=cal_chla, s=s, cmap='nipy_spectral', 
-                         transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='calcofi' )
-        ## The viirs data.
-        im = ax.scatter(cci_lon, cci_lat, c=cci_chla, s=s, cmap='nipy_spectral', 
-                         transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='CCI', marker='v')
-        ## plotting the lins between corresponding points. 
-        for k in range(N_cst):
-            plt.plot([lon[k], cci_lon[k]], [lat[k], cci_lat[k]],linewidth=.5, c ='k')
-    
-        fig.colorbar(im, ax=ax, shrink=cbar_shrink, label = cbar_label)
-        ax.set_title('CalCOFI Profile Positions')  
-        ylims = ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
-        ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
-        gl = ax.gridlines(draw_labels=True)
-        gl.top_labels=False
-        gl.right_labels=False
-        #ax.legend(title=r'mg Chl-a $\mathrm{m}^-1$,)
-
-        fig.show()
- 
     
     for k in range(N_cst): 
         dist = geopy.distance.distance((lat[k], lon[k]), (cci_lat[k], cci_lon[k])).kilometers
@@ -621,20 +569,20 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
         vmin = 0
         vmax = 3
         cbar_shrink = 1
-        cbar_label = 'chla [mg chla m^-3]'
+        cbar_label = r'Chl-a [mg Chl-a $\mathrm{m}^{-3}$]'
     
         ## Plotting the cal cofi
         im = ax.scatter(lon, lat, c=cal_chla, s=s, cmap='nipy_spectral', 
                          transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='calcofi' )
         ## The viirs data.
-        im = ax.scatter(cci_lon, cci_lat, c=cci_chla, s=s, cmap='nipy_spectral', 
-                         transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='CCI', marker='v')
+#        im = ax.scatter(cci_lon, cci_lat, c=cci_chla, s=s, cmap='nipy_spectral', 
+#                         transform=ccrs.PlateCarree(), vmax=vmax, vmin=vmin, label='CCI', marker='v')
         ## plotting the lins between corresponding points. 
-        for k in range(N_cst):
-            plt.plot([lon[k], cci_lon[k]], [lat[k], cci_lat[k]],linewidth=.5, c ='k')
+#        for k in range(N_cst):
+#            plt.plot([lon[k], cci_lon[k]], [lat[k], cci_lat[k]],linewidth=.5, c ='k')
     
         fig.colorbar(im, ax=ax, shrink=cbar_shrink, label = cbar_label)
-        ax.set_title('CalCOFI Profile Positions After Location Filter')  
+        ax.set_title('CalCOFI Cast Locations')  
         ylims = ax.set_ylim(ymin=np.min(lat), ymax=np.max(lat))
         ax.set_xlim(xmin=np.min(lon), xmax=np.max(lon))
         gl = ax.gridlines(draw_labels=True)
@@ -658,10 +606,10 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     """
     """
     ## The limits for the Rrs plots, in order [xlim, ylim].
-    Rrs_ax_lims = [[.014, .014], [.014, .014], [.013, .013], [.0225, .0225], [.014, .014]]
+    Rrs_ax_lims = [[.013, .013], [.013, .013], [.013, .013], [.013, .013], [.014, .014]]
 
     ncols = len(species)
-    fig, axes = plt.subplots(nrows=1, ncols=ncols)
+    fig, axes = plt.subplots(nrows=2, ncols=2)
     ## The zoomed in chla plot with different species.
     fig_z, ax_z = plt.subplots()
     axes_list = axes.flatten()
@@ -679,16 +627,22 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
         ## Rrs Comparison
         rrs_ax = axes_list[k]
 
-        if k == 0: 
-            ylabel = 'Irradiance Model'
+        if k == 0 or k==2: 
+            ylabel = r'Irradiance Model $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
         else: 
             ylabel = None
+        if k==2 or k==3: 
+            xlabel = r'CCI $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+        else: 
+            xlabel = None
+
             
         PC.Plot_Comparison(rrs_ax, 
                            cci_Rrs[443], 
                            irr_Rrs[443], 
-                           f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', '443 [nm]', 
-                           'CCI', 
+                           f'{phy_type}',
+                           '443 [nm]', 
+                           xlabel, 
                            ylabel, 
                            xlim = Rrs_ax_lims[k][0], 
                            ylim=Rrs_ax_lims[k][1], 
@@ -697,8 +651,9 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
         PC.Plot_Comparison(rrs_ax, 
                            cci_Rrs[490], 
                            irr_Rrs[490], 
-                           f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', 
-                           '490 [nm]', 'CCI', 
+                           f'{phy_type}', 
+                           '490 [nm]', 
+                           xlabel, 
                            ylabel, 
                            xlim = Rrs_ax_lims[k][0], 
                            ylim=Rrs_ax_lims[k][1], 
@@ -706,9 +661,9 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
         PC.Plot_Comparison(rrs_ax, 
                            cci_Rrs[510], 
                            irr_Rrs[510], 
-                           f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', 
+                           f'{phy_type}', 
                            '510 [nm]', 
-                           'CCI', 
+                           xlabel, 
                            ylabel, 
                            xlim = Rrs_ax_lims[k][0], 
                            ylim=Rrs_ax_lims[k][1], 
@@ -717,14 +672,15 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
         PC.Plot_Comparison(rrs_ax, 
                            cci_Rrs[560], 
                            irr_Rrs[560], 
-                           f'{phy_type} Rrs ' + r'[$\mathrm{sr}^{-1}$]', 
+                           f'{phy_type}', 
                            '551 [nm]', 
-                           'CCI', 
+                           xlabel, 
                            ylabel, 
                            xlim = Rrs_ax_lims[k][0], 
                            ylim=Rrs_ax_lims[k][1], 
                            color = W2RGB.wavelength_to_rgb(560)) 
-        rrs_ax.legend()  
+        if k==0:
+            rrs_ax.legend()  
  
     #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
     #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, cci_chla, 'Comparison to Cal Chla', 'CCI Chla', 'Calcofi Chla', 'Chla', marker='v', color='black') 
@@ -884,7 +840,7 @@ if __name__ == '__main__':
 
     ## The species that have coefficients.
     #species = ['Diat', 'Cocco']
-    species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
+    species = ['HLPro', 'Cocco', 'Diat', 'Syn']
     #species = ['HLPro', 'Cocco', 'Diat']
  
     ## The spread of different C2chla ratios. 
@@ -935,8 +891,8 @@ if __name__ == '__main__':
     save_path = f'{args.save_dir}/{args.save_file_head}'
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
-    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
-#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
+#    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
+    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
 
     ## Running the comparison of viirs, calcofi, irr, and nomad

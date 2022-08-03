@@ -567,7 +567,7 @@ def ocean_irradiance_analytical(PI,
     Bd = b_b/v_d
     Cd = (a+b)/v_d
 
-    D = 0.5*((Cs+Cu) + np.sqrt((Cu+Cs)**2 + 4*Bs*Bu))
+    D = 0.5*((Cs+Cu) + np.sqrt((Cu+Cs)**2 - 4*Bs*Bu))
 
     x = -(1/(-(Cs-Cd)*(Cu+Cd) + Bs*Bu)) * ((Cu+Cd)*Fd + Bu*Bd)
     y = -(1/(-(Cs-Cd)*(Cu+Cd) + Bs*Bu)) * (Bs*Fd + Bd*(Cs-Cd))
@@ -1620,8 +1620,8 @@ def Demo2():
 
     phy_type = 'Syn'
 
-    phy_prof = artificial_phy_prof(z_phy, -10, 20, 1, prof_type = 'gauss')
-#    phy_prof = np.full(N, 1)
+#    phy_prof = artificial_phy_prof(z_phy, -10, 20, 1, prof_type = 'gauss')
+    phy_prof = np.full(N, 1)
 
     fig, axes = plt.subplots(1, 5, sharey=True)
     ax1 = axes[0]
@@ -1637,10 +1637,10 @@ def Demo2():
         ## Define the Phytoplankton class.
         phy = Phy(z_phy, phy_prof, esd(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
 
-#        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, N=N)
-        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
  
         rgb = W2RGB.wavelength_to_rgb(lam)

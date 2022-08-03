@@ -132,13 +132,13 @@ if __name__ == '__main__':
     PI.pt1_perc_phy = True
 
     ## [The number of vertical layers used for each method.]
-    Ns = np.arange(50, 525, 25)
+    Ns = np.arange(50, 725, 25)
     ## [The different methods]
     methods = ['shootdown', 'shootup', 'scipy', 'dutkiewicz']
     ## [The wavelengths for the study.]
     wavelengths = [443, 551]
     ## [Number of profiles for timing loop.]
-    Nprofs=10
+    Nprofs=5
 
     err_lin, err_log, ct = resolution_sensitivity(PI, methods, Ns, wavelengths, Nprofs)
 

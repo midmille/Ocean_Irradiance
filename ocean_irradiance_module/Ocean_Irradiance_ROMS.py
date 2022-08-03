@@ -125,9 +125,9 @@ def R_RS(E_d_0, E_s_0, E_u_surface ) :
     R = (E_u_surface) / (E_d_0 + E_s_0) ## This is Equation 5 
     
     ##We are assuming that Q =about 4 (Dut. 2015 Eqn. 6)
-#    Q = 4
+    Q = 4
 #    Q = 3
-    Q = 5
+#    Q = 5
     ## This is Rrs sub surface. 
     ## See the following paper by Dutkiewicz et al. 2015.
     ## Modelling ocean -colour derived chlorophyll a 2018
