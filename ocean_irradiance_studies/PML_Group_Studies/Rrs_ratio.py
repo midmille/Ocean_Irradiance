@@ -89,7 +89,8 @@ if __name__ == '__main__':
     N = 200
 
     ## The chla values 
-    chlas = np.logspace(-1.7, 1, N_chla)
+    chlas = np.logspace(-1, 1.5, N_chla)
+#    chlas = np.linspace(0.1, 30, N_chla)
     ## The chla full array
     chla_array = np.zeros((N, len(chlas)))
     for k, chla in enumerate(chlas):

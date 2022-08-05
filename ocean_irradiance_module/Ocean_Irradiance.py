@@ -131,6 +131,21 @@ def Backscatter_Ratio(esd):
     
     return bb_r
 
+def Backscatter_Ratio_2(chla): 
+    """
+    This function comes from 
+    Bidirectional reflectances of ocean waters: accounting for Raman emission and varying particle
+    scattering phase function
+    
+    Authors: Andre Morel, David Antoine, and Bernard Gentili
+
+    Applied Optics Val 41 Issue 30 
+    """
+    
+    bb_r = 0.002 + (0.01*(0.5 - 0.25* np.log10(chla)))
+
+    return bb_r
+
 
 def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=None, det=None, grid='log', pt1_perc_zbot=True, pt1_perc_phy=True):
 
@@ -177,7 +192,8 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
         ## Just one phytoplankton species
         if Nphy == 1 : 
             ## The back scatter ratio
-            bb_r = Backscatter_Ratio(esd)    
+            bb_r = Backscatter_Ratio(esd)
+#            bb_r = Backscatter_Ratio_2(phy_prof)
             a = a + phy_prof * a_phy
             b = b + phy_prof * b_phy
             b_b_phy = b_b_phy + phy_prof * b_phy * bb_r
@@ -1605,10 +1621,13 @@ def Demo2():
     
     PI = Param_Init()
 
-    PI.pt1_perc_phy = False
-    PI.pt1_perc_zbot = False
+    PI.pt1_perc_phy = True
+    PI.pt1_perc_zbot = True
 
     PI.grid = 'log'
+
+    PI.Ed0 = 0.7
+    PI.Es0 = 0.3
     
     N = 30
     Nm1 = N-1 
@@ -1620,8 +1639,8 @@ def Demo2():
 
     phy_type = 'Syn'
 
-#    phy_prof = artificial_phy_prof(z_phy, -10, 20, 1, prof_type = 'gauss')
-    phy_prof = np.full(N, 1)
+    phy_prof = artificial_phy_prof(z_phy, -10, 20, 1, prof_type = 'gauss')
+#    phy_prof = np.full(N, 1)
 
     fig, axes = plt.subplots(1, 5, sharey=True)
     ax1 = axes[0]
@@ -1637,11 +1656,11 @@ def Demo2():
         ## Define the Phytoplankton class.
         phy = Phy(z_phy, phy_prof, esd(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
 
-#        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
-        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
  
         rgb = W2RGB.wavelength_to_rgb(lam)
 

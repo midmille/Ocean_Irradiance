@@ -459,20 +459,20 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
         cal_chla = np.zeros(N_cst)
 
         ## The Plymouth Marine Lab Data. 
-        cci_chla = np.zeros(N_cst)
-        cci_Rrs443 = np.zeros(N_cst)
-        cci_Rrs490 = np.zeros(N_cst)
-        cci_Rrs510 = np.zeros(N_cst)
-        cci_Rrs560 = np.zeros(N_cst)
-        cci_lat = np.zeros(N_cst)
-        cci_lon = np.zeros(N_cst)
+##        cci_chla = np.zeros(N_cst)
+#        cci_Rrs443 = np.zeros(N_cst)
+#        cci_Rrs490 = np.zeros(N_cst)
+#        cci_Rrs510 = np.zeros(N_cst)
+#        cci_Rrs560 = np.zeros(N_cst)
+#        cci_lat = np.zeros(N_cst)
+#        cci_lon = np.zeros(N_cst)
         ## Setting the cal cofi limits for the downloaded domain.
         year_lims = [year[0], year[-1]]
         julian_date_lims = [julian_day[0], julian_day[-1]]
         lat_lims = [lat[0], lon[-1]]
         lon_lims = [lon[0], lon[-1]]
         ## Downloading the sub plymouth data set correspoding to the cal cofi domain.
-        cci_ds = cci_oc.Get_PML_OC_Data_Set(cci_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
+#        cci_ds = cci_oc.Get_PML_OC_Data_Set(cci_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
         
         
         ## Now loop over the casts and calculate the irradiance chla each time.  
@@ -487,24 +487,24 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
              cal_chla[k] = c_chla[-1]
              
              ## Getting the PML data.
-             p_Rrs, p_chla, p_lat, p_lon = cci_oc.Get_Point_PML_Dataset(cci_ds, year[k], julian_day[k], lat[k], lon[k]) 
-             cci_chla[k] = p_chla
-             cci_Rrs443[k] = p_Rrs[443]
-             cci_Rrs490[k] = p_Rrs[490]
-             cci_Rrs510[k] = p_Rrs[510]
-             cci_Rrs560[k] = p_Rrs[560]
-             cci_lat[k] = p_lat
-             cci_lon[k] = p_lon
+#             p_Rrs, p_chla, p_lat, p_lon = cci_oc.Get_Point_PML_Dataset(cci_ds, year[k], julian_day[k], lat[k], lon[k]) 
+#             cci_chla[k] = p_chla
+#             cci_Rrs443[k] = p_Rrs[443]
+#             cci_Rrs490[k] = p_Rrs[490]
+#             cci_Rrs510[k] = p_Rrs[510]
+#             cci_Rrs560[k] = p_Rrs[560]
+#             cci_lat[k] = p_lat
+#             cci_lon[k] = p_lon
 
 
         pickle.dump(cal_chla, open(f'{save_path}_cal_chla.p', "wb"))
-        pickle.dump(cci_chla, open(f'{save_path}_cci_chla.p', 'wb'))
-        pickle.dump(cci_Rrs443, open(f'{save_path}_cci_Rrs443.p', 'wb'))
-        pickle.dump(cci_Rrs490, open(f'{save_path}_cci_Rrs490.p', 'wb'))
-        pickle.dump(cci_Rrs510, open(f'{save_path}_cci_Rrs510.p', 'wb'))
-        pickle.dump(cci_Rrs560, open(f'{save_path}_cci_Rrs560.p', 'wb'))
-        pickle.dump(cci_lat, open(f'{save_path}_cci_lat.p', 'wb'))
-        pickle.dump(cci_lon, open(f'{save_path}_cci_lon.p', 'wb'))
+#        pickle.dump(cci_chla, open(f'{save_path}_cci_chla.p', 'wb'))
+#        pickle.dump(cci_Rrs443, open(f'{save_path}_cci_Rrs443.p', 'wb'))
+#        pickle.dump(cci_Rrs490, open(f'{save_path}_cci_Rrs490.p', 'wb'))
+#        pickle.dump(cci_Rrs510, open(f'{save_path}_cci_Rrs510.p', 'wb'))
+#        pickle.dump(cci_Rrs560, open(f'{save_path}_cci_Rrs560.p', 'wb'))
+#        pickle.dump(cci_lat, open(f'{save_path}_cci_lat.p', 'wb'))
+#        pickle.dump(cci_lon, open(f'{save_path}_cci_lon.p', 'wb'))
 
 
     elif os.path.exists(f'{save_path}_cal_chla.p') == True:

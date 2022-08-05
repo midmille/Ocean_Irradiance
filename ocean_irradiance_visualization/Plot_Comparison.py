@@ -33,6 +33,9 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
     ax.set_title(title, fontsize =title_fontsize)
     ax.set_xlabel(xlabel, fontsize =title_fontsize)
     ax.set_ylabel(ylabel, fontsize =title_fontsize)
+
+    ## [Calculating and printing correlation statisitcs.]
+
     
     return ax 
 
