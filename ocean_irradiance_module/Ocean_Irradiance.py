@@ -88,6 +88,32 @@ class CDOM_refa:
         return 
 
 
+class CDOM_refa: 
+    """
+    This class is meant for the approximation of constant CDOM absorption. This takes a reference absorption and calculates the 
+    absorption spectrum for CDOM.
+
+    This calculates the cdom concentration as a function of chla concentration following: 
+
+    Effect of a nonuniform vertical profile of chlorophylla concentration on remote-sensing reflectance of the ocean
+
+    author: Malgorzata Stramska an dDariusz Stramski
+
+    Applied Optics Vol. 44, Issue 9 pp 1735-1747 2005 
+    """
+
+    def __init__(self, z, chla, wavelength): 
+
+        self.z = z
+        self.chla = chla
+        self.wavelength = wavelength
+        
+        self.a = 0.012*(chla**0.65) *np.exp(-0.0014*(wavelength - 440))
+
+        
+        return 
+
+
 class Det: 
     """
     This class is the class for the detritus. It includes its absorption, 
