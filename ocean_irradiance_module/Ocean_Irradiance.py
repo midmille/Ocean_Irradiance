@@ -1605,12 +1605,12 @@ def Demo2():
     
     PI = Param_Init()
 
-    PI.pt1_perc_phy = True
-    PI.pt1_perc_zbot = True
+    PI.pt1_perc_phy = False
+    PI.pt1_perc_zbot = False
 
     PI.grid = 'log'
     
-    N = 40
+    N = 30
     Nm1 = N-1 
     wavelengths = PI.wavelengths
 
@@ -1637,44 +1637,49 @@ def Demo2():
         ## Define the Phytoplankton class.
         phy = Phy(z_phy, phy_prof, esd(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
 
-        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
-#        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
  
         rgb = W2RGB.wavelength_to_rgb(lam)
 
-        ax2.plot(Ed, z, color = rgb, ls='-', marker='o', fillstyle='none', label=lam, markersize =3)
-        ax3.plot(Es, z, color = rgb, ls='-', marker='o', fillstyle='none', markersize =3)
-        ax4.plot(Ed +Es, z, color = rgb, ls='-', marker='o', fillstyle='none', markersize =3)
-        ax5.plot(Eu, z, color = rgb, ls='-', marker='o', fillstyle='none', markersize =3)
+#        ax2.plot(Ed, z, color = rgb, ls='-', marker='o', fillstyle='none', label=lam, markersize =3)
+#        ax3.plot(Es, z, color = rgb, ls='-', marker='o', fillstyle='none', markersize =3)
+#        ax4.plot(Ed +Es, z, color = rgb, ls='-', marker='o', fillstyle='none', markersize =3)
+#        ax5.plot(Eu, z, color = rgb, ls='-', marker='o', fillstyle='none', markersize =3)
 
+
+        ax2.plot(Ed, z, color = rgb, label=lam, ls='-')
+        ax3.plot(Es, z, color = rgb, ls='-')
+        ax4.plot(Ed +Es, z, color = rgb, ls='-')
+        ax5.plot(Eu, z, color = rgb, ls='-')
     ax1.plot(phy_prof, z_phy)
 
     ax1.set_xlabel('Concentration [mg Chl-a m^-3]')
     ax1.set_ylabel('Z [m]')
-    ax1.set_title(r'$\rho_{\mathrm{phy}}$')
+    ax1.set_title(r'a) $\rho_{\mathrm{phy}}$')
     ax1.grid()
  
 #    ax2.set_xlim(-0.1,1)
-    ax2.set_xlabel('Irradiance')
-    ax2.set_title(r'$E_d$')
+    ax2.set_xlabel('Normalized Irradiance')
+    ax2.set_title(r'b) $E_d$')
     ax2.legend(title='Wavelength [nm]')
     ax2.grid()
 
 #    ax3.set_xlim(-0.1,1)
-    ax3.set_xlabel('Irradiance')
-    ax3.set_title(r'$E_s$')
+    ax3.set_xlabel('Normalized Irradiance')
+    ax3.set_title(r'c) $E_s$')
     ax3.grid()
 
-    ax4.set_xlabel('Irradiance')
-    ax4.set_title(r'$E_d + E_s$')
+    ax4.set_xlabel('Normalized Irradiance')
+    ax4.set_title(r'd) $E_d + E_s$')
     ax4.grid()
 
 #    ax4.set_xlim(-0.1,1)
-    ax5.set_xlabel('Irradiance')
-    ax5.set_title(r'$E_u$')
+    ax5.set_xlabel('Normalized Irradiance')
+    ax5.set_title(r'e) $E_u$')
     ax5.grid()
     
     fig.show()

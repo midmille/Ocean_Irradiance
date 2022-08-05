@@ -42,7 +42,7 @@ def plot_constituent_abscat(phy_species):
     ax_awat.set_ylabel(r'Absorption [$\mathrm{m}^{-1}$]')
     ax_bwat.set_ylabel(r'Scattering [$\mathrm{m}^{-1}$]')
     ax_awat.set_xlabel('Wavelength [nm]')
-    ax_awat.set_title('Water Absorption and Scattering')
+    ax_awat.set_title('a) Water Absorption and Scattering')
     lns = ln0+ln1
     labs = [l.get_label() for l in lns]
     ax_awat.legend(lns, labs)
@@ -72,13 +72,13 @@ def plot_constituent_abscat(phy_species):
     ## [labels for phytoplankton plots.]
     ax_aphy.set_ylabel(r'Absorption [$\mathrm{m}^2 \mathrm{mgChl}^{-1}$]')
     ax_aphy.set_xlabel('Wavelength [nm]')
-    ax_aphy.set_title('Phytoplankton Specific Absorption')
+    ax_aphy.set_title('b) Phytoplankton Specific Absorption')
     ax_aphy.legend()
     ax_aphy.grid()
 
     ax_bphy.set_ylabel(r'Scattering [$\mathrm{m}^2 \mathrm{mgChl}^{-1}$]')
     ax_bphy.set_xlabel('Wavelength [nm]')
-    ax_bphy.set_title('Phytoplankton Specific Scattering')
+    ax_bphy.set_title('c) Phytoplankton Specific Scattering')
     #ax_bphy.legend()
     ax_bphy.grid()
     

@@ -47,6 +47,7 @@ from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as ESD
 import ocean_irradiance_module.Wavelength_To_RGB as W2RGB
+from ocean_irradiance_module.Phytoplankton_Colormap import Get_Phy_Cmap_Dict
 #import ocean_irradiance_visualization.Plot_Field as PF
 import ocean_irradiance_visualization.Plot_Comparison as PC
 import viirs_calcofi_val
@@ -612,18 +613,24 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     fig, axes = plt.subplots(nrows=2, ncols=2)
     ## The zoomed in chla plot with different species.
     fig_z, ax_z = plt.subplots()
+    
+    fig_ccichla, ax_ccichla = plt.subplots()
     axes_list = axes.flatten()
     #chla_ax = axes_list[0]
     #rrs_axes = axes_list[1:]
+    ## [The color map dict for the different species of phytoplankton.] 
+    cmap = Get_Phy_Cmap_Dict()
 
     for k, phy_type in enumerate(species):
         cal_chla, cci_chla, cci_Rrs, irr_chla, irr_Rrs = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
         
         ## Plotting one to one comparison.
         #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
-        ax_z = PC.Plot_Comparison(ax_z, cal_chla, irr_chla, 'Irradiance Model Comparison to CalCOFI', f'Irr {phy_type}' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', '[mg Chl-a $\mathrm{m}^{-3}$]') 
+        ax_z = PC.Plot_Comparison(ax_z, cal_chla, irr_chla, 'Irradiance Model Comparison to CalCOFI', f'Irr {phy_type}' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', '[mg Chl-a $\mathrm{m}^{-3}$]', color=cmap[phy_type]) 
         #ax.legend()
     
+        PC.Plot_Comparison(ax_ccichla, cci_chla, irr_chla, 'Irradiance Model Comparison to CCI Chlorophyll-a', f'Irr {phy_type}' , r'CCI [mg Chl-a $\mathrm{m}^{-3}$]', 'Irradiance Model [mg Chl-a $\mathrm{m}^{-3}$]', color=cmap[phy_type]) 
+
         ## Rrs Comparison
         rrs_ax = axes_list[k]
 
@@ -687,10 +694,12 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     #ax_z = PC.Plot_Comparison(ax_z, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
     ax_z = PC.Plot_Comparison(ax_z, cal_chla, cci_chla, 'Irradiance Model Comparison to CalCOFI', f'CCI Chl-a' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', '[mg Chl-a $\mathrm{m}^{-3}$]', marker='v', color='black') 
     ax_z.legend()
+    ax_ccichla.legend()
     #chla_ax.legend()
     ## Adding the CCI data info to the figure
     #text(0, .1, 'CCI = ESA CCI Ocean Colour Product Level-3 v5.0 Daily', figure=fig)
     fig_z.show()
+    fig_ccichla.show()
     fig.show()
 
     ## This plot shows a comparison between the CCI calculated chlor and the CCI chlor calculated using

@@ -13,6 +13,7 @@ from ocean_irradiance_module.PARAMS import Param_Init
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import pickle
 
 def resolution_sensitivity(PI, methods, Ns, wavelengths, Nprofs):
     """
@@ -94,14 +95,18 @@ def plot_resolution_sensitivity(PI, methods, Ns, wavelengths, err_lin, err_log, 
 
         for j, method in enumerate(methods): 
             
-            l = ax.plot(Ns, err_lin[k,j,:], label=f'{method} linear grid')
-            ax.plot(Ns, err_log[k,j,:], '--', label=f'{method} log grid', color = l[0].get_color())
+            l = ax.plot(Ns, 0.5*err_lin[k,j,:], label=f'{method} linear grid')
+            ax.plot(Ns, 0.5*err_log[k,j,:], '--', label=f'{method} log grid', color = l[0].get_color())
 
         if k ==0: 
-            ax.set_ylabel(r'$\mathrm{RMS}\left(\frac{Es_{\mathrm{analytical}} - Es_{\mathrm{numerical}}}{Es_{0\mathrm{analytical}}}\right) + \mathrm{RMS} \left(\frac{Eu_{\mathrm{analytical}} - Eu_{\mathrm{numerical}}}{Eu_{0\mathrm{analytical}}}\right)$')
+            ax.set_ylabel(r'$\frac{1}{2}\left[\mathrm{RMS}\left(\frac{Es_{\mathrm{analytical}} - Es_{\mathrm{numerical}}}{Es_{0\mathrm{analytical}}}\right) + \mathrm{RMS} \left(\frac{Eu_{\mathrm{analytical}} - Eu_{\mathrm{numerical}}}{Eu_{0\mathrm{analytical}}}\right)\right]$')
             ax.legend()
 
-        ax.set_title(f'Wavelength {lam} [nm]')
+        if k==0:
+            ax.set_title(f'a) Wavelength {lam} [nm]')
+        if k==1: 
+            ax.set_title(f'b) Wavelength {lam} [nm]')
+            
         ax.set_xlabel('Number of Grid Points')
         ax.grid()
 
@@ -110,8 +115,11 @@ def plot_resolution_sensitivity(PI, methods, Ns, wavelengths, err_lin, err_log, 
 
     for j, method in enumerate(methods):
         if method != 'scipy':
-            ax.plot(Ns, ct[j, :], label =method)
-    ax.set_title('Method Efficiency')
+            if method == 'dutkiewicz':
+                ax.plot(Ns, ct[j, :], label =method, color='red')
+            else:
+                ax.plot(Ns, ct[j, :], label =method)
+    ax.set_title('c) Method Efficiency')
     ax.set_xlabel('Number of Grid Points')
     ax.set_ylabel('Profile Compute Time [s]')
     ax.grid()
@@ -132,14 +140,21 @@ if __name__ == '__main__':
     PI.pt1_perc_phy = True
 
     ## [The number of vertical layers used for each method.]
-    Ns = np.arange(50, 725, 25)
+    Ns = np.arange(50, 1025, 25)
     ## [The different methods]
     methods = ['shootdown', 'shootup', 'scipy', 'dutkiewicz']
     ## [The wavelengths for the study.]
     wavelengths = [443, 551]
     ## [Number of profiles for timing loop.]
-    Nprofs=5
+    Nprofs=10
+    run = False
 
-    err_lin, err_log, ct = resolution_sensitivity(PI, methods, Ns, wavelengths, Nprofs)
+    savefile = 'result.p'
+
+    if run: 
+        err_lin, err_log, ct = resolution_sensitivity(PI, methods, Ns, wavelengths, Nprofs)
+        pickle.dump([err_lin, err_log, ct], open(savefile, 'wb'))
+    else: 
+        err_lin, err_log, ct = pickle.load(open(savefile, 'rb'))
 
     plot_resolution_sensitivity(PI, methods, Ns, wavelengths, err_lin, err_log, ct)

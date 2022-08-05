@@ -6,6 +6,7 @@ the ratio of Ed0 to Es0.
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 
 from ocean_irradiance_module import Ocean_Irradiance as OI 
 from ocean_irradiance_module import Ocean_Irradiance_ROMS as OIR
@@ -49,14 +50,20 @@ def Plot_Result(wavelengths, Ed0s, Es0s, Rrss_dict):
     """
 
     fig, ax = plt.subplots()
+    ax2 = ax.twiny()
 
     for k, lam in enumerate(wavelengths): 
         rgb = W2RGB.wavelength_to_rgb(lam)
         Rrss = Rrss_dict[lam]
-        ax.plot(Ed0s, np.absolute(Rrss-Rrss[-1])/Rrss[-1], color=rgb, label =lam)
+        ax.plot(Ed0s, Rrss, color=rgb, label =lam)
+        ax2.plot(Ed0s, Rrss, color=rgb)
 
+    ax.set_ylabel(r'$R_{rs}$ [$sr^{-1}$]', fontsize =12)
+    ax.set_xlabel(r'$E_{d0}$', fontsize =12)
+    ax2.set_xlabel(r'$E_{s0}$', fontsize =12)
+    ax2.set_xticklabels([abs(round(k,1)) for k in 1-ax.get_xticks()])
     ax.grid()
-    ax.legend()
+    ax.legend(title='Wavelength [nm]')
 
     fig.show()
 
@@ -83,11 +90,11 @@ if __name__ == '__main__':
 
     phy_type = 'Diat'
     z_phy = np.linspace(hbot,0,N)
-    phy_conc = 10
+    phy_conc = 1
     phy_prof = np.full(N, phy_conc)
     
     ## [The number of InitiL VALUES TO TRY.]
-    Niv = 10
+    Niv = 50
 
     Ed0s = np.linspace(0, 1, Niv)
     Es0s = 1-Ed0s
