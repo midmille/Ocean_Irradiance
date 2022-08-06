@@ -52,6 +52,7 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
     print("slope:", slope)
     print("intercept:", intercept)
     print("N:", N)
+    print(f'{round(RMS,4)} & {round(mean_bias,4)} &{round(mean_ratio,4)}&{round(slope,4)}& {round(intercept,4)}& {N}')
     
     return ax 
 

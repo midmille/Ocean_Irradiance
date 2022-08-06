@@ -218,8 +218,8 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
         ## Just one phytoplankton species
         if Nphy == 1 : 
             ## The back scatter ratio
-            bb_r = Backscatter_Ratio(esd)
-#            bb_r = Backscatter_Ratio_2(phy_prof)
+#            bb_r = Backscatter_Ratio(esd)
+            bb_r = Backscatter_Ratio_2(phy_prof)
             a = a + phy_prof * a_phy
             b = b + phy_prof * b_phy
             b_b_phy = b_b_phy + phy_prof * b_phy * bb_r
@@ -228,7 +228,8 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
         elif Nphy > 1 : 
             for k in range(Nphy):
                 ## The back scatter ratio
-                bb_r = Backscatter_Ratio(esd[k])    
+#                bb_r = Backscatter_Ratio(esd[k])    
+                bb_r = Backscatter_Ratio_2(phy_prof)
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
                 b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * bb_r
@@ -247,7 +248,6 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
 
     ## [Inclusion of CDOM via chla concen.]
     if CDOM_chla: 
-        print("using CDOM")
         ## [Unpack.]
         z_cdom = CDOM_chla.z
         a_cdom = CDOM_chla.a

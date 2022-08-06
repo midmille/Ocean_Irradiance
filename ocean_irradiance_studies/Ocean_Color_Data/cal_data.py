@@ -35,9 +35,10 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 import datetime
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
+#import cartopy.crs as ccrs
+#import cartopy.feature as cfeature
 import geopy.distance
+import cvxpy as cp
 ## User made mod
 import ocean_irradiance_module.Ocean_Irradiance as OI
 #import ocean_irradiance_shubha.ocean_irradiance_shubha as OIS
@@ -383,7 +384,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
         Rrs[lam] = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf)
 
     ## calculating the chla 
-    chla_irr = OIR.OCx_alg(Rrs[443], Rrs[490], Rrs[510], Rrs[560]) 
+    chla_irr = OIR.OCx_alg(Rrs[443], Rrs[490], Rrs[510], Rrs[547]) 
     ## chla data from calcofi 
     chla_dat = np.zeros(N_cst)
     zbot_dat = np.zeros(N_cst)
@@ -609,14 +610,22 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
     return cal_chla,  cci_chla, cci_Rrs, irr_chla, irr_Rrs
 
 
+def Least_Square_Phy_Community()
+    """
+    """
+
+    return
+
 def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species): 
     """
     """
     ## The limits for the Rrs plots, in order [xlim, ylim].
-    Rrs_ax_lims = [[.013, .013], [.013, .013], [.013, .013], [.013, .013], [.014, .014]]
+    Rrs_ax_lims = [[.013, .013], [.013, .013], [.013, .013], [.013, .013], [.014, .014], 
+                   [.013, .013], [.013, .013], [.013, .013], [.013, .013], [.014, .014]]
+
 
     ncols = len(species)
-    fig, axes = plt.subplots(nrows=2, ncols=2)
+    fig, axes = plt.subplots(nrows=4, ncols=2)
     ## The zoomed in chla plot with different species.
     fig_z, ax_z = plt.subplots()
     
@@ -866,7 +875,7 @@ if __name__ == '__main__':
 
     ## The species that have coefficients.
     #species = ['Diat', 'Cocco']
-    species = ['HLPro', 'Cocco', 'Diat', 'Syn']
+#    species = ['HLPro', 'Cocco', 'Diat', 'Syn']
     #species = ['HLPro', 'Cocco', 'Diat']
  
     ## The spread of different C2chla ratios. 
@@ -899,7 +908,7 @@ if __name__ == '__main__':
     year_min = 2012
  
     ## Wavelengths
-    wavelengths = [443, 490, 510, 560]
+    wavelengths = [443, 490, 510, 547, 560]
 
     ## The species of phytoplankton
     phy_type = 'Diat'
@@ -909,6 +918,8 @@ if __name__ == '__main__':
   
     ## Param Init object 
     PI = Param_Init()
+
+    species = PI.phy_species
 
     ## Running comparison of insitu to irr surface chla for many cal casts. 
     #Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, 'Diat', plot=True)

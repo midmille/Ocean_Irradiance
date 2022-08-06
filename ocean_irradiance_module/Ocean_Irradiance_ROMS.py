@@ -53,7 +53,7 @@ def CI_alg(R_rs_b, R_rs_g, R_rs_r, lam_b, lam_g, lam_r):
 
     return 
 
-def OCx_alg(Rrs_443, Rrs_490, Rrs_510, Rrs_560, method='OC4E') :
+def OCx_alg(Rrs_443, Rrs_490, Rrs_510, Rrs_560, method='OC3M') :
     """
     Parameters
     ----------
