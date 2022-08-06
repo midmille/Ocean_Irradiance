@@ -12,11 +12,6 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
     """
     Plots the given values on a given axes
     """
-    ## [remove any 'nans': 
-    nonan = ~np.isnan(x) * ~np.isnan(y)
-    x = x[nonan]
-    y = y[nonan]
-
     if color==None:
         ax.plot(x, y,'o', fillstyle='none', label=label, markersize=markersize, linewidth=linewidth)
     else:
@@ -40,9 +35,9 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
     ax.set_ylabel(ylabel, fontsize =title_fontsize)
 
     ## [Calculating and printing correlation statisitcs.]
-    RMS = np.sqrt(np.mean(((y-x)/x)**2))
-    mean_bias = np.mean(y-x)
-    mean_ratio = np.mean(y/x)
+    RMS = np.sqrt(np.mean(((x-y)/y)**2))
+    mean_bias = np.mean(x-y)
+    mean_ratio = np.mean(x/y)
     slope, intercept = np.polyfit(x,y,1)
     N = len(x)
 
@@ -52,6 +47,7 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
     print("slope:", slope)
     print("intercept:", intercept)
     print("N:", N)
+#
     
     return ax 
 

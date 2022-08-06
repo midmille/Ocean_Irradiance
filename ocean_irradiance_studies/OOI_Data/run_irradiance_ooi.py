@@ -892,7 +892,7 @@ if __name__ == '__main__':
     N=1000
 #    wavelengths = np.arange(425, 725, 25)
 #    wavelengths = [443, 490, 510, 560]
-    wavelengths = [443, 560, 638]
+    wavelengths = [443, 490, 510, 560]
 #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
     phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 #    phy_species = [ 'Syn'] 
@@ -940,11 +940,11 @@ if __name__ == '__main__':
     phy_type = 'Syn'
     irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
     ## [Plot the resulting irradiance profiles.]
-    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
+#    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
-#    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
 
     
     ## [Plot the absorption in time and chla bins.]

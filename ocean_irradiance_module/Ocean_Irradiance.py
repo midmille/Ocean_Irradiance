@@ -247,6 +247,7 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
 
     ## [Inclusion of CDOM via chla concen.]
     if CDOM_chla: 
+        print("using CDOM")
         ## [Unpack.]
         z_cdom = CDOM_chla.z
         a_cdom = CDOM_chla.a

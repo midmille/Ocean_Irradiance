@@ -160,11 +160,13 @@ def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chl
             ## Calculating the irradiance
             phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
             #cdom = OI.CDOM(z, salt, lam)
+            cdom = OI.CDOM_chla(z, chla, lam)
 
             irr_out = OI.ocean_irradiance(PI, 
                                           z[0], 
                                           abscat(lam, 'water'), 
                                           phy=phy, 
+                                          CDOM_chla = cdom, 
                                           N=1000)
             Eu_surf[k] =  irr_out[2][-1]
         Eu_surf_dict[lam] = np.copy(Eu_surf)
@@ -338,11 +340,15 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                     ## Storing the surface chla as the insitu comparison. 
                     ## Calculating the irradiance
                     phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
+
+                    ## [chla estimate of cdom.]
+                    cdom = OI.CDOM_chla(z, chla, lam)
                     #cdom = OI.CDOM(z, salt, lam)
                     ocean_irr_sol = OI.ocean_irradiance(PI, 
                                                   z[0], 
                                                   abscat(lam, 'water'), 
                                                   phy=phy, 
+                                                  CDOM_chla=cdom,
                                                   N=N)
 
                                                                 
@@ -615,6 +621,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     fig_z, ax_z = plt.subplots()
     
     fig_ccichla, ax_ccichla = plt.subplots()
+    fig_ccicalcofi, ax_ccicalcofi = plt.subplots()
     axes_list = axes.flatten()
     #chla_ax = axes_list[0]
     #rrs_axes = axes_list[1:]
@@ -626,10 +633,14 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
         
         ## Plotting one to one comparison.
         #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
+        print(phy_type)
+
+        print("x = CalCOFI chla, y = irradiance") 
         ax_z = PC.Plot_Comparison(ax_z, cal_chla, irr_chla, 'Irradiance Model Comparison to CalCOFI', f'Irr {phy_type}' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', '[mg Chl-a $\mathrm{m}^{-3}$]', color=cmap[phy_type]) 
         #ax.legend()
     
-        PC.Plot_Comparison(ax_ccichla, cci_chla, irr_chla, 'Irradiance Model Comparison to CCI Chlorophyll-a', f'Irr {phy_type}' , r'CCI [mg Chl-a $\mathrm{m}^{-3}$]', 'Irradiance Model [mg Chl-a $\mathrm{m}^{-3}$]', color=cmap[phy_type]) 
+        print("x = CCI chla, y = irradiance") 
+        ax_ccichla = PC.Plot_Comparison(ax_ccichla, cci_chla, irr_chla, 'Irradiance Model Comparison to CCI Chlorophyll-a', f'Irr {phy_type}' , r'CCI [mg Chl-a $\mathrm{m}^{-3}$]', 'Irradiance Model [mg Chl-a $\mathrm{m}^{-3}$]', color=cmap[phy_type]) 
 
         ## Rrs Comparison
         rrs_ax = axes_list[k]
@@ -644,6 +655,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
             xlabel = None
 
             
+        print("x = rrs cci 443, y = rrs irr 443")
         PC.Plot_Comparison(rrs_ax, 
                            cci_Rrs[443], 
                            irr_Rrs[443], 
@@ -655,6 +667,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
                            ylim=Rrs_ax_lims[k][1], 
                            color= W2RGB.wavelength_to_rgb(443)) 
 
+        print("x = rrs cci 490, y = rrs irr 490")
         PC.Plot_Comparison(rrs_ax, 
                            cci_Rrs[490], 
                            irr_Rrs[490], 
@@ -665,6 +678,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
                            xlim = Rrs_ax_lims[k][0], 
                            ylim=Rrs_ax_lims[k][1], 
                            color=W2RGB.wavelength_to_rgb(490)) 
+        print("x = rrs cci 510, y = rrs irr 510")
         PC.Plot_Comparison(rrs_ax, 
                            cci_Rrs[510], 
                            irr_Rrs[510], 
@@ -676,11 +690,12 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
                            ylim=Rrs_ax_lims[k][1], 
                            color =W2RGB.wavelength_to_rgb(510))
 
+        print("x = rrs cci 560, y = rrs irr 560")
         PC.Plot_Comparison(rrs_ax, 
                            cci_Rrs[560], 
                            irr_Rrs[560], 
                            f'{phy_type}', 
-                           '551 [nm]', 
+                           '560 [nm]', 
                            xlabel, 
                            ylabel, 
                            xlim = Rrs_ax_lims[k][0], 
@@ -692,7 +707,8 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
     #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, cci_chla, 'Comparison to Cal Chla', 'CCI Chla', 'Calcofi Chla', 'Chla', marker='v', color='black') 
     #ax_z = PC.Plot_Comparison(ax_z, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
-    ax_z = PC.Plot_Comparison(ax_z, cal_chla, cci_chla, 'Irradiance Model Comparison to CalCOFI', f'CCI Chl-a' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', '[mg Chl-a $\mathrm{m}^{-3}$]', marker='v', color='black') 
+    print("x = cal_chla, y= cci_chla")
+    ax_ccicalcofi = PC.Plot_Comparison(ax_ccicalcofi, cal_chla, cci_chla, 'Irradiance Model Comparison to CalCOFI', f'CCI Chl-a' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', '[mg Chl-a $\mathrm{m}^{-3}$]', marker='v', color='black') 
     ax_z.legend()
     ax_ccichla.legend()
     #chla_ax.legend()
@@ -701,6 +717,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     fig_z.show()
     fig_ccichla.show()
     fig.show()
+    fig_ccicalcofi.show()
 
     ## This plot shows a comparison between the CCI calculated chlor and the CCI chlor calculated using
     ## the OCx algorithim from CCI Rrs values. 
