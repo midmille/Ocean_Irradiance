@@ -277,7 +277,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     return 
  
 
-def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, plot=False):
+def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, plot=False, species=None, species_ratios=None):
     """
     This calculates the irradiance chla value for many different casts within a given time line. 
    
@@ -339,8 +339,25 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
 
                 else: 
                     ## Storing the surface chla as the insitu comparison. 
-                    ## Calculating the irradiance
-                    phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
+                    ## if multiple species then estimate phy using that.]
+                    if species: 
+                        Nz = len(z)
+                        Nphy = len(species)
+                        abs_phys = np.zeros(Nphy)
+                        scat_phys = np.zeros(Nphy)
+                        ## [not used for bbr2 so doesnt matter.]
+                        esds = np.zeros(Nphy)
+                        chlas_phy = np.zeros((Nz, Nphy))
+                        for j in range(len(species)):
+                            abs_phys[j] = abscat(lam, species[j], C2chla='default')[0]
+                            scat_phys[j] = abscat(lam, species[j], C2chla='default')[1]
+                            chlas_phy[:,j] = chla*species_ratios[j]
+                        ## [using bb_r method 2 so the ESD is not required, just put 'None' for now.]
+                        phy = OI.Phy(z, chlas_phy, esds, abs_phys, scat_phys)
+
+                    ## [otherwise just single designated species.]
+                    else: 
+                        phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
 
                     ## [chla estimate of cdom.]
                     cdom = OI.CDOM_chla(z, chla, lam)
@@ -610,11 +627,71 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
     return cal_chla,  cci_chla, cci_Rrs, irr_chla, irr_Rrs
 
 
-def Least_Square_Phy_Community()
-    """
+def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species):
     """
 
-    return
+    ## Formulating the problem with calcoif data in situ observations first. Not CCI chla obs.
+    """
+    irr_chla_species = []
+
+    for k, phy_type in enumerate(species):
+        cal_chla, cci_chla, cci_Rrs, irr_chla, irr_Rrs = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
+
+        print(len(cal_chla))
+        irr_chla_species.append(irr_chla)
+
+    ## [formulate A.]
+    ## [number of species.]
+    Nphy = len(species)
+
+    
+    cal_nans = ~np.isnan(cal_chla)
+    for k in range(Nphy):
+        chla_phy = irr_chla_species[k]
+        if np.any(np.isnan(chla_phy)): 
+            cal_nans = cal_nans * ~np.isnan(chla_phy)
+
+    print(cal_nans.shape)
+
+    ## [number of data point 
+    Nd = len(irr_chla_species[0][cal_nans])
+    A = np.zeros((Nd, Nphy))
+    for k in range(Nphy): 
+        A[:, k] = irr_chla_species[k][cal_nans]
+
+    print(A)
+    y = cal_chla[cal_nans]
+    print(y) 
+
+    x = cp.Variable(Nphy)
+    objective = cp.Minimize(cp.sum_squares(A@x - y))
+    constraints = [0 <= x, cp.sum(x) == 1.0]
+    prob = cp.Problem(objective, constraints)
+    result = prob.solve()
+    x = x.value
+
+
+    ## [Then run irr with this community structure.]
+
+    ## The irradiance calculation of Rrs and chla
+    cal_chla, irr_field, irr_chla, irr_Rrs = Run_Irr_Comp_Insitu(PI, 
+                                                                 save_dir,
+                                                                 f'{save_head}_{year_min}',
+                                                                 wavelengths,
+                                                                 N,
+                                                                 year_min,
+                                                                 cal_cast_dat,
+                                                                 cal_bot_dat,
+                                                                 ## [no phy_type, since phy_species used.]
+                                                                 "phy_community", 
+                                                                 species = species, 
+                                                                 species_ratios = x)
+ 
+    fig1, ax1 = plt.subplots()
+    ax1 = PC.Plot_Comparison(ax1, cal_chla, irr_chla, 'Irradiance Model with Community Estimation Comparison to CalCOFI', f'Community Estimation' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 'Model [mg Chl-a $\mathrm{m}^{-3}$]', color='black') 
+    fig1.show()  
+
+    return x, irr_chla, irr_field
 
 def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species): 
     """
@@ -637,8 +714,12 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     ## [The color map dict for the different species of phytoplankton.] 
     cmap = Get_Phy_Cmap_Dict()
 
+    irr_chla_species = []
+
     for k, phy_type in enumerate(species):
         cal_chla, cci_chla, cci_Rrs, irr_chla, irr_Rrs = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
+
+        irr_chla_species.append(irr_chla)
         
         ## Plotting one to one comparison.
         #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
@@ -929,8 +1010,11 @@ if __name__ == '__main__':
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
 #    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
-    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
+#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
+
+    ## [Run the least squares phytoplankton estimation.]
+    x, irr_chla, irr_field = Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
     ## Running the comparison of viirs, calcofi, irr, and nomad
 #    Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type)
