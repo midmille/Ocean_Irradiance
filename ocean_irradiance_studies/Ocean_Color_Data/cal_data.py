@@ -669,6 +669,9 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
     prob = cp.Problem(objective, constraints)
     result = prob.solve()
     x = x.value
+    ## [making the near 0 values positive.]
+    x = np.absolute(x)
+
 
 
     ## [Then run irr with this community structure.]
@@ -688,8 +691,61 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
                                                                  species_ratios = x)
  
     fig1, ax1 = plt.subplots()
+    print("x = CalCOFI chla, y = Irradiancer Community") 
     ax1 = PC.Plot_Comparison(ax1, cal_chla, irr_chla, 'Irradiance Model with Community Estimation Comparison to CalCOFI', f'Community Estimation' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 'Model [mg Chl-a $\mathrm{m}^{-3}$]', color='black') 
     fig1.show()  
+
+    fig, ax = plt.subplots()
+
+    ylabel = r'Irradiance Model $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+    xlabel = r'CCI $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+
+    print("x = rrs cci 443, y = rrs irr 443")
+    PC.Plot_Comparison(ax, 
+                        cci_Rrs[443], 
+                        irr_Rrs[443], 
+                        "Phytoplankton Community",
+                        '443 [nm]', 
+                        xlabel, 
+                        ylabel, 
+                        xlim = 0.013, 
+                        ylim=0.013, 
+                        color= W2RGB.wavelength_to_rgb(443)) 
+    print("x = rrs cci 490, y = rrs irr 490")
+    PC.Plot_Comparison(ax, 
+                        cci_Rrs[490], 
+                        irr_Rrs[490], 
+                        "Phytoplankton Community", 
+                        '490 [nm]', 
+                        xlabel, 
+                        ylabel, 
+                        xlim = 0.013, 
+                        ylim=0.013, 
+                        color=W2RGB.wavelength_to_rgb(490)) 
+    print("x = rrs cci 510, y = rrs irr 510")
+    PC.Plot_Comparison(ax, 
+                        cci_Rrs[510], 
+                        irr_Rrs[510], 
+                        "Phytoplankton Community", 
+                        '510 [nm]', 
+                        xlabel, 
+                        ylabel, 
+                        xlim = 0.013, 
+                        ylim=0.013, 
+                        color =W2RGB.wavelength_to_rgb(510))
+#    print("x = rrs cci 560, y = rrs irr 560")
+#    PC.Plot_Comparison(ax, 
+#                        cci_Rrs[560], 
+#                        irr_Rrs[547], 
+#                        "Phytoplankton Community", 
+#                        '547 [nm]', 
+#                        xlabel, 
+#                        ylabel, 
+#                        xlim = 0.013, 
+#                        ylim=0.013, 
+#                        color = W2RGB.wavelength_to_rgb(47))  
+
+    fig.show()
 
     return x, irr_chla, irr_field
 
@@ -780,17 +836,17 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
                            ylim=Rrs_ax_lims[k][1], 
                            color =W2RGB.wavelength_to_rgb(510))
 
-        print("x = rrs cci 560, y = rrs irr 560")
-        PC.Plot_Comparison(rrs_ax, 
-                           cci_Rrs[560], 
-                           irr_Rrs[560], 
-                           f'{phy_type}', 
-                           '560 [nm]', 
-                           xlabel, 
-                           ylabel, 
-                           xlim = Rrs_ax_lims[k][0], 
-                           ylim=Rrs_ax_lims[k][1], 
-                           color = W2RGB.wavelength_to_rgb(560)) 
+#        print("x = rrs cci 560, y = rrs irr 560")
+#        PC.Plot_Comparison(rrs_ax, 
+#                           cci_Rrs[560], 
+#                           irr_Rrs[560], 
+#                           f'{phy_type}', 
+#                           '560 [nm]', 
+#                           xlabel, 
+#                           ylabel, 
+#                           xlim = Rrs_ax_lims[k][0], 
+#                           ylim=Rrs_ax_lims[k][1], 
+#                           color = W2RGB.wavelength_to_rgb(560)) 
         if k==0:
             rrs_ax.legend()  
  
@@ -989,7 +1045,7 @@ if __name__ == '__main__':
     year_min = 2012
  
     ## Wavelengths
-    wavelengths = [443, 490, 510, 547, 560]
+    wavelengths = [443, 490, 510, 547]
 
     ## The species of phytoplankton
     phy_type = 'Diat'
@@ -1010,7 +1066,7 @@ if __name__ == '__main__':
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
 #    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
-#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
+    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
 
     ## [Run the least squares phytoplankton estimation.]
