@@ -277,7 +277,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     return 
  
 
-def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, plot=False, species=None, species_ratios=None):
+def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, plot=False, species=None, species_ratios=None, mask =None):
     """
     This calculates the irradiance chla value for many different casts within a given time line. 
    
@@ -311,6 +311,9 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
     ## The number of casts to be calculated. 
     N_cst = len(cal_cast_dat_bnd)
 
+    if mask:
+        assert N_cst == mask.size
+
     ## The ditionary of irr fields. 
     irr_field = {}
 
@@ -326,6 +329,11 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
          
             ## Now loop over the casts and calculate the irradiance chla each time.  
             for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
+                if mask:
+                    if mask[k] = False:
+                        ocean_irr_sol = (np.zeros(N) * np.nan, np.zeros(N) * np.nan, np.zeros(N) * np.nan, np.zeros(N) * np.nan)
+                        continue
+
                 print(f'{k}/{N_cst}')
                 ## Getting the chla and depth profile.
                 z, chla, salt = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt, incld_salt=True)     
@@ -627,7 +635,7 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
     return cal_chla,  cci_chla, cci_Rrs, irr_chla, irr_Rrs
 
 
-def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, plot=False):
+def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, chlabin, plot=False, run_irr = False):
     """
 
     ## Formulating the problem with calcoif data in situ observations first. Not CCI chla obs.
@@ -649,7 +657,8 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
     Nlam = len(wavelengths)
 
     ##[attempt binning of chl]
-    cci_chla[cal_chla < 1] = np.nan
+    cci_chla[cal_chla < chlabin[0]] = np.nan
+    cci_chla[cal_chla > chlabin[1]] = np.nan
 
     
     cci_nans = ~np.isnan(cci_chla)
@@ -693,18 +702,19 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
     ## [Then run irr with this community structure.]
 
     ## The irradiance calculation of Rrs and chla
-#    cal_chla, irr_field, irr_chla, irr_Rrs = Run_Irr_Comp_Insitu(PI, 
-#                                                                 save_dir,
-#                                                                 f'{save_head}_{year_min}',
-#                                                                 wavelengths,
-#                                                                 N,
-#                                                                 year_min,
-#                                                                 cal_cast_dat,
-#                                                                 cal_bot_dat,
-#                                                                 ## [no phy_type, since phy_species used.]
-#                                                                 "phy_community", 
-#                                                                 species = species, 
-#                                                                 species_ratios = x)
+    if run_irr:
+        cal_chla, irr_field, irr_chla, irr_Rrs = Run_Irr_Comp_Insitu(PI, 
+                                                                     save_dir,
+                                                                     f'{save_head}_{year_min}',
+                                                                     wavelengths,
+                                                                     N,
+                                                                     year_min,
+                                                                     cal_cast_dat,
+                                                                     cal_bot_dat,
+                                                                     ## [no phy_type, since phy_species used.]
+                                                                     "phy_community", 
+                                                                     species = species, 
+                                                                     species_ratios = x)
  
     if plot: 
 
@@ -765,7 +775,57 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
 
         fig.show()
 
-    return x, irr_chla, irr_Rrs
+    return x, cci_nans
+
+def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, bin_edges, plot=False):
+    """
+    """
+
+    Nbins = len(bins_edges) -1
+
+    ratios = []
+    masks = []
+    for k in range(bin_edges): 
+        chlabin = [bin_edges[k], bin_edges[k+1]]
+
+        x, mask =Least_Square_Phy_Community(year_min, 
+                                   cal_cast_dat, 
+                                   cal_bot_dat, 
+                                   cci_url, 
+                                   save_dir, 
+                                   save_head, 
+                                   PI, 
+                                   N, 
+                                   wavelengths, 
+                                   species, 
+                                   chlabin, 
+                                   plot=False, 
+                                   run_irr = False)
+        ratios.append(x)
+        masks.append(mask)
+
+        ## [Run the irradiance algorithm for the given mask and bin.]
+        if run_irr:
+            cal_chla, irr_field, irr_chla, irr_Rrs = Run_Irr_Comp_Insitu(PI, 
+                                                                         save_dir,
+                                                                         f'{save_head}_{year_min}',
+                                                                         wavelengths,
+                                                                         N,
+                                                                         year_min,
+                                                                         cal_cast_dat,
+                                                                         cal_bot_dat,
+                                                                         ## [no phy_type, since phy_species used.]
+                                                                         "phy_community", 
+                                                                         species = species, 
+                                                                         species_ratios = x, 
+                                                                         mask = mask)
+
+        
+
+
+
+    return
+    
 
 def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species): 
     """
