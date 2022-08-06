@@ -702,10 +702,6 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
     ## [making the near 0 values positive.]
     x = np.absolute(x)
 
-    ## [calculate the residual.]
-    resid = np.linalg.norm(A@x - y, ord=2) / np.linalg.norm(y, ord=2)
-
-
 
 
     ## [Then run irr with this community structure.]
@@ -787,10 +783,9 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
     
             fig.show()
 
-    return x, resid, cci_nans
+    return x, cci_nans
 
-
-def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False, plot_community=False):
+def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False):
     """
     """
 
@@ -799,12 +794,11 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
     ratios = []
     masks = []
     bincnt = []
-    residuals = []
     for k in range(Nbins): 
         print(bin_edges[k])
         chlabin = [bin_edges[k], bin_edges[k+1]]
 
-        x, resid, mask =Least_Square_Phy_Community(year_min, 
+        x, mask =Least_Square_Phy_Community(year_min, 
                                    cal_cast_dat, 
                                    cal_bot_dat, 
                                    cci_url, 
@@ -818,7 +812,6 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
                                    plot=False, 
                                    run_irr = False)
         ratios.append(x)
-        residuals.append(resid)
         masks.append(mask)
         bincnt.append(mask[mask].size)
 
@@ -837,10 +830,6 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
                                                                          species = species, 
                                                                          species_ratios = x, 
                                                                          mask = mask)
-
-        if plot_community: 
-            pass
-            
 
         
 
