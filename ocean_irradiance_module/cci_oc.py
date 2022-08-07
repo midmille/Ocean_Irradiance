@@ -100,10 +100,12 @@ def Download_CCI_Data_Set(erddap_url, year_lims, julian_date_lims, lat_lims, lon
     bound_url = bound_url.replace('time[0:1:0]', f'time[{date_il}:1:{date_iu}]')
     ## Now to edit the index bounds of the Rrs443, Rrs560, and chla
     ## The indexs are of the order time[0:1:0]lat[0:1:0]lon[0:1:0]
+    bound_url = bound_url.replace('Rrs_412[0:1:0][0:1:0][0:1:0]', f'Rrs_412[{date_il}:1:{date_iu}][{lat_il}:1:{lat_iu}][{lon_il}:1:{lon_iu}]')
     bound_url = bound_url.replace('Rrs_443[0:1:0][0:1:0][0:1:0]', f'Rrs_443[{date_il}:1:{date_iu}][{lat_il}:1:{lat_iu}][{lon_il}:1:{lon_iu}]')
     bound_url = bound_url.replace('Rrs_490[0:1:0][0:1:0][0:1:0]', f'Rrs_490[{date_il}:1:{date_iu}][{lat_il}:1:{lat_iu}][{lon_il}:1:{lon_iu}]')
     bound_url = bound_url.replace('Rrs_510[0:1:0][0:1:0][0:1:0]', f'Rrs_510[{date_il}:1:{date_iu}][{lat_il}:1:{lat_iu}][{lon_il}:1:{lon_iu}]')
     bound_url = bound_url.replace('Rrs_560[0:1:0][0:1:0][0:1:0]', f'Rrs_560[{date_il}:1:{date_iu}][{lat_il}:1:{lat_iu}][{lon_il}:1:{lon_iu}]')
+    bound_url = bound_url.replace('Rrs_665[0:1:0][0:1:0][0:1:0]', f'Rrs_665[{date_il}:1:{date_iu}][{lat_il}:1:{lat_iu}][{lon_il}:1:{lon_iu}]')
     bound_url = bound_url.replace('chlor_a[0:1:0][0:1:0][0:1:0]', f'chlor_a[{date_il}:1:{date_iu}][{lat_il}:1:{lat_iu}][{lon_il}:1:{lon_iu}]')
 
     pml_ds = Dataset(bound_url)
@@ -134,10 +136,12 @@ def Get_Point_PML_Dataset(pml_ds, year, julian_day, lat, lon):
 
     ## Next to splice the desired value arrays accordingly. 
     Rrs = {}
+    Rrs[412] = pml_ds.variables['Rrs_412'][time_i, lat_i, lon_i]
     Rrs[443] = pml_ds.variables['Rrs_443'][time_i, lat_i, lon_i]
     Rrs[490] = pml_ds.variables['Rrs_490'][time_i, lat_i, lon_i]
     Rrs[510] = pml_ds.variables['Rrs_510'][time_i, lat_i, lon_i]
     Rrs[560] = pml_ds.variables['Rrs_560'][time_i, lat_i, lon_i]
+    Rrs[665] = pml_ds.variables['Rrs_665'][time_i, lat_i, lon_i]
     chla = pml_ds.variables['chlor_a'][time_i, lat_i, lon_i]
     lat = pml_ds.variables['lat'][lat_i]
     lon = pml_ds.variables['lon'][lon_i]

@@ -162,7 +162,8 @@ def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chl
             ## Calculating the irradiance
             phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
             #cdom = OI.CDOM(z, salt, lam)
-            cdom = OI.CDOM_chla(z, chla, lam)
+            #cdom = OI.CDOM_chla(z, chla, lam)
+            cdom =None
 
             irr_out = OI.ocean_irradiance(PI, 
                                           z[0], 
@@ -373,8 +374,9 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                         phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
 
                     ## [chla estimate of cdom.]
-                    cdom = OI.CDOM_chla(z, chla, lam)
+                    #cdom = OI.CDOM_chla(z, chla, lam)
                     #cdom = OI.CDOM(z, salt, lam)
+                    cdom = None
                     ocean_irr_sol = OI.ocean_irradiance(PI, 
                                                   z[0], 
                                                   abscat(lam, 'water'), 
@@ -496,20 +498,22 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
         cal_chla = np.zeros(N_cst)
 
         ## The Plymouth Marine Lab Data. 
-##        cci_chla = np.zeros(N_cst)
-#        cci_Rrs443 = np.zeros(N_cst)
-#        cci_Rrs490 = np.zeros(N_cst)
-#        cci_Rrs510 = np.zeros(N_cst)
-#        cci_Rrs560 = np.zeros(N_cst)
-#        cci_lat = np.zeros(N_cst)
-#        cci_lon = np.zeros(N_cst)
+        cci_chla = np.zeros(N_cst)
+        cci_Rrs412 = np.zeros(N_cst)
+        cci_Rrs443 = np.zeros(N_cst)
+        cci_Rrs490 = np.zeros(N_cst)
+        cci_Rrs510 = np.zeros(N_cst)
+        cci_Rrs560 = np.zeros(N_cst)
+        cci_Rrs665 = np.zeros(N_cst)
+        cci_lat = np.zeros(N_cst)
+        cci_lon = np.zeros(N_cst)
         ## Setting the cal cofi limits for the downloaded domain.
         year_lims = [year[0], year[-1]]
         julian_date_lims = [julian_day[0], julian_day[-1]]
         lat_lims = [lat[0], lon[-1]]
         lon_lims = [lon[0], lon[-1]]
         ## Downloading the sub plymouth data set correspoding to the cal cofi domain.
-#        cci_ds = cci_oc.Get_PML_OC_Data_Set(cci_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
+        cci_ds = cci_oc.Get_PML_OC_Data_Set(cci_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
         
         
         ## Now loop over the casts and calculate the irradiance chla each time.  
@@ -524,24 +528,28 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
              cal_chla[k] = c_chla[-1]
              
              ## Getting the PML data.
-#             p_Rrs, p_chla, p_lat, p_lon = cci_oc.Get_Point_PML_Dataset(cci_ds, year[k], julian_day[k], lat[k], lon[k]) 
-#             cci_chla[k] = p_chla
-#             cci_Rrs443[k] = p_Rrs[443]
-#             cci_Rrs490[k] = p_Rrs[490]
-#             cci_Rrs510[k] = p_Rrs[510]
-#             cci_Rrs560[k] = p_Rrs[560]
-#             cci_lat[k] = p_lat
-#             cci_lon[k] = p_lon
+             p_Rrs, p_chla, p_lat, p_lon = cci_oc.Get_Point_PML_Dataset(cci_ds, year[k], julian_day[k], lat[k], lon[k]) 
+             cci_chla[k] = p_chla
+             cci_Rrs412[k] = p_Rrs[412]
+             cci_Rrs443[k] = p_Rrs[443]
+             cci_Rrs490[k] = p_Rrs[490]
+             cci_Rrs510[k] = p_Rrs[510]
+             cci_Rrs560[k] = p_Rrs[560]
+             cci_Rrs665[k] = p_Rrs[665]
+             cci_lat[k] = p_lat
+             cci_lon[k] = p_lon
 
 
         pickle.dump(cal_chla, open(f'{save_path}_cal_chla.p', "wb"))
-#        pickle.dump(cci_chla, open(f'{save_path}_cci_chla.p', 'wb'))
-#        pickle.dump(cci_Rrs443, open(f'{save_path}_cci_Rrs443.p', 'wb'))
-#        pickle.dump(cci_Rrs490, open(f'{save_path}_cci_Rrs490.p', 'wb'))
-#        pickle.dump(cci_Rrs510, open(f'{save_path}_cci_Rrs510.p', 'wb'))
-#        pickle.dump(cci_Rrs560, open(f'{save_path}_cci_Rrs560.p', 'wb'))
-#        pickle.dump(cci_lat, open(f'{save_path}_cci_lat.p', 'wb'))
-#        pickle.dump(cci_lon, open(f'{save_path}_cci_lon.p', 'wb'))
+        pickle.dump(cci_chla, open(f'{save_path}_cci_chla.p', 'wb'))
+        pickle.dump(cci_Rrs412, open(f'{save_path}_cci_Rrs412.p', 'wb'))
+        pickle.dump(cci_Rrs443, open(f'{save_path}_cci_Rrs443.p', 'wb'))
+        pickle.dump(cci_Rrs490, open(f'{save_path}_cci_Rrs490.p', 'wb'))
+        pickle.dump(cci_Rrs510, open(f'{save_path}_cci_Rrs510.p', 'wb'))
+        pickle.dump(cci_Rrs560, open(f'{save_path}_cci_Rrs560.p', 'wb'))
+        pickle.dump(cci_Rrs665, open(f'{save_path}_cci_Rrs665.p', 'wb'))
+        pickle.dump(cci_lat, open(f'{save_path}_cci_lat.p', 'wb'))
+        pickle.dump(cci_lon, open(f'{save_path}_cci_lon.p', 'wb'))
 
 
     elif os.path.exists(f'{save_path}_cal_chla.p') == True:
@@ -549,10 +557,12 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
         ## Loading data from pickle.
         cal_chla = pickle.load(open(f'{save_path}_cal_chla.p', "rb"))
         cci_chla = pickle.load(open(f'{save_path}_cci_chla.p', 'rb'))
+        cci_Rrs412 = pickle.load(open(f'{save_path}_cci_Rrs412.p', 'rb'))
         cci_Rrs443 = pickle.load(open(f'{save_path}_cci_Rrs443.p', 'rb'))
         cci_Rrs490 = pickle.load(open(f'{save_path}_cci_Rrs490.p', 'rb'))
         cci_Rrs510 = pickle.load(open(f'{save_path}_cci_Rrs510.p', 'rb'))
         cci_Rrs560 = pickle.load(open(f'{save_path}_cci_Rrs560.p', 'rb'))
+        cci_Rrs665 = pickle.load(open(f'{save_path}_cci_Rrs665.p', 'rb'))
         cci_lat = pickle.load(open(f'{save_path}_cci_lat.p', 'rb'))
         cci_lon = pickle.load(open(f'{save_path}_cci_lon.p', 'rb'))
 
@@ -572,10 +582,12 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
         dist = geopy.distance.distance((lat[k], lon[k]), (cci_lat[k], cci_lon[k])).kilometers
         if dist > 3:
             cci_chla[k] = np.NaN
+            cci_Rrs412[k] = np.NaN
             cci_Rrs443[k] = np.NaN
             cci_Rrs490[k] = np.NaN
             cci_Rrs510[k] = np.NaN
             cci_Rrs560[k] = np.NaN
+            cci_Rrs665[k] = np.NaN
             cci_lat[k] = np.NaN
             cci_lon[k] = np.NaN
 
@@ -632,10 +644,12 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
  
 
     cci_Rrs = {}
+    cci_Rrs[412] = cci_Rrs412
     cci_Rrs[443] = cci_Rrs443
     cci_Rrs[490] = cci_Rrs490
     cci_Rrs[510] = cci_Rrs510
     cci_Rrs[560] = cci_Rrs560
+    cci_Rrs[665] = cci_Rrs665
 
     return cal_chla,  cci_chla, cci_Rrs, irr_chla, irr_Rrs
 
@@ -1378,7 +1392,7 @@ if __name__ == '__main__':
     ## time is in units of days since 1970-01-01 00:00:00
     #ply_dat_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
 
-    cci_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_490[0:1:0][0:1:0][0:1:0],Rrs_510[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
+    cci_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_412[0:1:0][0:1:0][0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_490[0:1:0][0:1:0][0:1:0],Rrs_510[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],Rrs_665[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
 #    'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:4319],lon[0:1:8639],time[0:1:8858],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_490[0:1:0][0:1:0][0:1:0],Rrs_510[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0]'
     ## getting the data with cal cruises only
     chla_val_cal_dat = chla_val_dat[chla_val_dat['cruise'].str.contains('cal', regex = False) ]
@@ -1397,7 +1411,7 @@ if __name__ == '__main__':
     year_min = 2012
  
     ## Wavelengths
-    wavelengths = [443, 490, 510, 547]
+    wavelengths = [412, 443, 490, 510, 547, 560, 665]
 
     ## The species of phytoplankton
     phy_type = 'Diat'
@@ -1409,9 +1423,9 @@ if __name__ == '__main__':
     PI = Param_Init()
 
     species = PI.phy_species
-    for k in range(len(species)): 
-        if species[k] == 'Generic': 
-            species.pop(k)
+#    for k in range(len(species)): 
+#        if species[k] == 'Generic': 
+#            species.pop(k)
 
     ## Running comparison of insitu to irr surface chla for many cal casts. 
     #Run_Irr_Comp_Insitu(PI, args.save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, 'Diat', plot=True)
@@ -1429,9 +1443,9 @@ if __name__ == '__main__':
 
 
     ## [The binned rrs least squares implementation.]
-    bin_edges = [0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5,  2, 3, 5, 6, 10]
+#    bin_edges = [0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5,  2, 3, 5, 6, 10]
 #    bin_edges = [0,100]
-    ratios, residuals, masks, bincnt = Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=True, plot_irr=True, plot_rrs_est=False, plot_community=True)
+#    ratios, residuals, masks, bincnt = Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=True, plot_irr=True, plot_rrs_est=False, plot_community=True)
 
     ## Running the comparison of viirs, calcofi, irr, and nomad
 #    Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type)

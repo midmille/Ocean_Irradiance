@@ -198,7 +198,6 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
     """
     b_b_wat = 0.5*b_wat
 
-
     r_s, r_u, v_d, v_s, v_u = coefficients
     
     ## backscattering due to phy
