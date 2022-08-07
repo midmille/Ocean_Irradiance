@@ -359,7 +359,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                         abs_phys = np.zeros(Nphy)
                         scat_phys = np.zeros(Nphy)
                         ## [not used for bbr2 so doesnt matter.]
-                        esds = np.zeros(Nphy)
+                        esds = np.zeros(Nphy)*np.nan
                         chlas_phy = np.zeros((Nz, Nphy))
                         for j in range(len(species)):
                             abs_phys[j] = abscat(lam, species[j], C2chla='default')[0]
@@ -1113,6 +1113,8 @@ def Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, c
 
     for k, phy_type in enumerate(species):
         cal_chla, cci_chla, cci_Rrs, irr_chla, irr_Rrs = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
+
+        
 
     return
 

@@ -192,7 +192,11 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
     a_wat,b_wat = ab_wat 
     a = a_wat
     b = b_wat 
-    b_b_wat = 0.551*b_wat
+    """
+    Remote-sensing reflectance and true colour produced by a coupled hydrodynamic, optical, sediment, biogeochemical model of the Great Barrier Reef, Australia: Comparison with satellite data
+    by Baird et al. claims water is 0.5 backscatter ratio.
+    """
+    b_b_wat = 0.5*b_wat
 
 
     r_s, r_u, v_d, v_s, v_u = coefficients
