@@ -1057,7 +1057,7 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
 
 
 
-    return ratios, residuals, masks, bincnt, irr_Rrs_fulldict
+    return ratios, residuals, masks, bincnt
     
 
 def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species): 
@@ -1392,7 +1392,7 @@ if __name__ == '__main__':
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
 #    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
-#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
+    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
 
     ## [Run the least squares phytoplankton estimation.]
@@ -1400,9 +1400,9 @@ if __name__ == '__main__':
 
 
     ## [The binned rrs least squares implementation.]
-    bin_edges = [0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5,  2, 3, 5, 6, 10]
-#    bin_edges = [2, 3,5]
-    ratios, residuals, masks, bincnt, irr_Rrs_fulldict = Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False, plot_irr=False, plot_rrs_est=True)
+#    bin_edges = [0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5,  2, 3, 5, 6, 10]
+    bin_edges = [0,100]
+    ratios, residuals, masks, bincnt = Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False, plot_irr=False, plot_rrs_est=True)
 
     ## Running the comparison of viirs, calcofi, irr, and nomad
 #    Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type)
