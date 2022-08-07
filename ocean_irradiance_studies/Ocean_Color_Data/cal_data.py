@@ -32,6 +32,7 @@ Implementation
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import os
 import pickle
 import datetime
@@ -790,16 +791,18 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
     return x, resid, cci_nans
 
 
-def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False, plot_community=False):
+def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False, plot_community=True):
     """
     """
 
     Nbins = len(bin_edges) -1
+    Nphy = len(species)
 
-    ratios = []
+    ratios = np.zeros((Nphy, Nbins))
     masks = []
-    bincnt = []
-    residuals = []
+    bincnt = np.zeros(Nbins)
+    residuals = np.zeros(Nbins)
+
     for k in range(Nbins): 
         print(bin_edges[k])
         chlabin = [bin_edges[k], bin_edges[k+1]]
@@ -817,10 +820,10 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
                                    chlabin, 
                                    plot=False, 
                                    run_irr = False)
-        ratios.append(x)
-        residuals.append(resid)
+        ratios[:,k] = x
+        residuals[k] = resid
         masks.append(mask)
-        bincnt.append(mask[mask].size)
+        bincnt[k] = mask[mask].size
 
         ## [Run the irradiance algorithm for the given mask and bin.]
         if run_irr:
@@ -838,13 +841,60 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
                                                                          species_ratios = x, 
                                                                          mask = mask)
 
-        if plot_community: 
-            pass
-            
+    if plot_community: 
 
+        cmap = Get_Phy_Cmap_Dict()
+
+        ## [Three axs for the community, the residuals, and the percentage of points per bin.]
+        fig = plt.figure()
+        gs = mpl.gridspec.GridSpec(2,2)
+        ## [The least sqaures community estimation.]
+        ax_ls = fig.add_subplot(gs[:,0])
+        ## [residual ax.]
+        ax_rs = fig.add_subplot(gs[0,1])
+        ## [bin cnt axis]
+        ax_bc = fig.add_subplot(gs[1,1])
+        ## [First the community.]
+        ## [Loop over the species.]
+        bot = np.zeros(Nbins)
+        pos = [k for k in range(Nbins)]
+        bin_labs = [f"{bin_edges[k]}-{bin_edges[k+1]}" for k in range(Nbins)]
         
+        for k in range(Nphy): 
+            ## [plot the phy species layer of the bar plot.]
+            ax_ls.bar(pos, ratios[k,:], bottom=bot, color = cmap[species[k]], label=species[k], width=0.9, alpha=.8)
+            ## [Update the bottom of the bar plot.]
+            bot = bot + ratios[k,:]
 
-    return ratios, masks, bincnt
+        ax_ls.set_title(f'Constrained Least Squares \n Chlorophyll-a Binned Phytoplankton Community Estimation')
+        ax_ls.set_ylabel('Fractional Populations')
+        ax_ls.set_xlabel(r'Chlorophyll-a Bin [mg Chla $m^{-3}$]')
+        ax_ls.set_xticks(pos)
+        ax_ls.set_xticklabels(bin_labs, rotation =45)
+        ax_ls.legend(loc=2)
+        ax_ls.grid(axis='y')
+
+        ## [plot the residuals.]
+        ax_rs.bar(pos, residuals, color='k', width=0.9)
+        ax_rs.set_title('Two Norm of Residual Vector')
+        ax_rs.set_ylabel(r'$\frac{|\mathbf{A} \mathbf{x} - \mathbf{y} |_2}{|\mathbf{y}|_2}$')
+        ax_bc.set_xticks(pos)
+        ax_bc.set_xticklabels([])
+        ax_rs.grid(axis='y')
+
+        ## [plot the residuals.]
+        ax_bc.bar(pos, bincnt, color='k', width=0.9)
+        ax_bc.set_title('Number of Data Points per Bin')
+        ax_bc.set_ylabel(r'Number of Points')
+        ax_bc.set_xticks(pos)
+        ax_bc.set_xticklabels(bin_labs, rotation=45)
+        ax_bc.grid(axis='y')
+
+        fig.show()
+
+
+
+    return ratios, residuals, masks, bincnt
     
 
 def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species): 
@@ -970,7 +1020,17 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     ax = PC.Plot_Comparison(ax, cci_chla, cci_OCx_chla, '', 'CCI', r'CCI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', r'OC4 Chl-a Using CCI $\mathrm{R_{rs}}$ [mg Chl-a $\mathrm{m}^{-3}$]', marker='v') 
     fig.show()
 
+    return
 
+
+def Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species): 
+    """
+    This plots the corerelation statistics for each phytoplankton species.
+    """
+
+
+    for k, phy_type in enumerate(species):
+        cal_chla, cci_chla, cci_Rrs, irr_chla, irr_Rrs = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
 
     return
 
@@ -1167,7 +1227,7 @@ if __name__ == '__main__':
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
 #    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
-#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
+    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
 
     ## [Run the least squares phytoplankton estimation.]
@@ -1175,8 +1235,8 @@ if __name__ == '__main__':
 
 
     ## [The binned rrs least squares implementation.]
-    bin_edges = [0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5,  2, 3, 5, 6, 10]
-    ratios, masks, bincnt = Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False)
+#    bin_edges = [0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5,  2, 3, 5, 6, 10]
+#    ratios, residuals, masks, bincnt  = Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False)
 
     ## Running the comparison of viirs, calcofi, irr, and nomad
 #    Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type)
