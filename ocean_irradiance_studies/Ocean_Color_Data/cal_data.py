@@ -1186,17 +1186,46 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     return
 
 
+def Correlation_Stats(x, y): 
+    """
+    """
+
+    RMS = np.sqrt(np.mean(((y-x)/x)**2))
+    mean_bias = np.mean(y-x)
+    mean_ratio = np.mean(y/x)
+    slope, intercept = np.polyfit(x,y,1)
+    N = len(x)
+
+    return RMS, mean_bias, mean_ratio, slope, intercept, N
+
+
 def Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species): 
     """
     This plots the corerelation statistics for each phytoplankton species.
     """
 
+    Nlam = len(wavelengths)
+    Nphy = len(species)
 
+    rrs_RMS = np.zeros((Nphy, Nlam))
+    rrs_mean_bias = np.zeros((Nphy, Nlam))
     for k, phy_type in enumerate(species):
+
         cal_chla, cci_chla, cci_Rrs, irr_chla, irr_Rrs = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
-
         
+        for j, lam in enumerate(wavelengths):
+            ## Truth/observation
+            RMS, mean_bias, mean_ratio, slope, intercept, N = Correlation_Stats(cci_Rrs[lam], irr_Rrs[lam])
+            rrs_RMS[k,j] = RMS 
+            rrs_mean_bias[k,j] = mean_bias
+            
 
+    ## plotting rrs stats
+    fig, ax = plt.subplots()
+
+    for k, lam in enumerate(wavelengths): 
+        rgb = W2RGB.wavelength_to_rgb(lam)
+    
     return
 
 
@@ -1400,9 +1429,9 @@ if __name__ == '__main__':
 
 
     ## [The binned rrs least squares implementation.]
-#    bin_edges = [0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5,  2, 3, 5, 6, 10]
-    bin_edges = [0,100]
-    ratios, residuals, masks, bincnt = Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False, plot_irr=False, plot_rrs_est=True)
+    bin_edges = [0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5,  2, 3, 5, 6, 10]
+#    bin_edges = [0,100]
+    ratios, residuals, masks, bincnt = Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=True, plot_irr=True, plot_rrs_est=False, plot_community=True)
 
     ## Running the comparison of viirs, calcofi, irr, and nomad
 #    Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type)
