@@ -704,7 +704,6 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
             yw[j*Nd:(j+1)*Nd] = cci_Rrs[lam][cci_nans]*w_dict[547]
         else: 
             yw[j*Nd:(j+1)*Nd] = cci_Rrs[lam][cci_nans]*w_dict[lam]
-
         y[j*Nd:(j+1)*Nd] = cci_Rrs[lam][cci_nans]
 
     print(y.shape)
