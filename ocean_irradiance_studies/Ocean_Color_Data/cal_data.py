@@ -278,7 +278,7 @@ def Run_and_Plot_Comparison(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, species
     return 
  
 
-def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, plot=False, species=None, species_ratios=None, mask =None):
+def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_cast_dat, cal_bot_dat, phy_type, plot=False, species=None, species_ratios=None, maskf = False, mask =None):
     """
     This calculates the irradiance chla value for many different casts within a given time line. 
    
@@ -312,7 +312,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
     ## The number of casts to be calculated. 
     N_cst = len(cal_cast_dat_bnd)
 
-    if mask:
+    if maskf:
         assert N_cst == mask.size
 
     ## The ditionary of irr fields. 
@@ -330,9 +330,13 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
          
             ## Now loop over the casts and calculate the irradiance chla each time.  
             for k, cst_cnt in enumerate(cal_cast_dat_bnd['Cst_Cnt'].to_numpy()):
-                if mask:
+                if maskf:
                     if mask[k] == False:
                         ocean_irr_sol = (np.zeros(N) * np.nan, np.zeros(N) * np.nan, np.zeros(N) * np.nan, np.zeros(N) * np.nan)
+                        irr_arr[:,k,0] = ocean_irr_sol[0]
+                        irr_arr[:,k,1] = ocean_irr_sol[1]
+                        irr_arr[:,k,2] = ocean_irr_sol[2]
+                        irr_arr[:,k,3] = ocean_irr_sol[3] 
                         continue
 
                 print(f'{k}/{N_cst}')
@@ -788,10 +792,10 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
     
             fig.show()
 
-    return x, resid, cci_nans
+    return x, resid, cci_nans, cal_chla, cci_chla_orig, cci_Rrs_orig
 
 
-def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False, plot_community=True):
+def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=True, plot_community=False, plot_irr=True):
     """
     """
 
@@ -803,11 +807,14 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
     bincnt = np.zeros(Nbins)
     residuals = np.zeros(Nbins)
 
+
+
+
     for k in range(Nbins): 
         print(bin_edges[k])
         chlabin = [bin_edges[k], bin_edges[k+1]]
 
-        x, resid, mask =Least_Square_Phy_Community(year_min, 
+        x, resid, mask, cal_chla_orig, cci_chla_orig, cci_Rrs_orig  =Least_Square_Phy_Community(year_min, 
                                    cal_cast_dat, 
                                    cal_bot_dat, 
                                    cci_url, 
@@ -826,7 +833,19 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
         bincnt[k] = mask[mask].size
 
         ## [Run the irradiance algorithm for the given mask and bin.]
-        if run_irr:
+    if run_irr:
+
+        irr_chla_full = np.zeros(mask.shape)*np.nan
+        irr_Rrs_full = np.zeros(mask.shape)*np.nan
+        irr_Rrs_fulldict = {}
+
+        for lam in wavelengths: 
+            irr_Rrs_fulldict[lam] = irr_Rrs_full
+
+        for k in range(Nbins):
+            print('here')
+            mask = masks[k]
+            x = ratios[:,k]
             cal_chla, irr_field, irr_chla, irr_Rrs = Run_Irr_Comp_Insitu(PI, 
                                                                          save_dir,
                                                                          f'{save_head}_{year_min}',
@@ -836,10 +855,73 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
                                                                          cal_cast_dat,
                                                                          cal_bot_dat,
                                                                          ## [no phy_type, since phy_species used.]
-                                                                         "phy_community", 
+                                                                         f"phy_community_{bin_edges[k]}_{bin_edges[k+1]}", 
                                                                          species = species, 
                                                                          species_ratios = x, 
+                                                                         maskf =True, 
                                                                          mask = mask)
+            irr_chla_full[mask] = irr_chla[mask]
+            for lam in wavelengths: 
+                irr_Rrs_fulldict[lam][mask] = irr_Rrs[lam][mask]
+
+    if plot_irr: 
+
+        fig1, ax1 = plt.subplots()
+        print("x = CalCOFI chla, y = Irradiancer Community") 
+        ax1 = PC.Plot_Comparison(ax1, cal_chla_orig, irr_chla_full, 'Irradiance Model with Community Estimation Comparison to CalCOFI', f'Community Estimation' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 'Model [mg Chl-a $\mathrm{m}^{-3}$]', color='black') 
+        fig1.show()  
+
+        fig, ax = plt.subplots()
+
+        ylabel = r'Irradiance Model $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+        xlabel = r'CCI $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+
+        print("x = rrs cci 443, y = rrs irr 443")
+        PC.Plot_Comparison(ax, 
+                            cci_Rrs_orig[443], 
+                            irr_Rrs_fulldict[443], 
+                            "Phytoplankton Community",
+                            '443 [nm]', 
+                            xlabel, 
+                            ylabel, 
+                            xlim = 0.013, 
+                            ylim=0.013, 
+                            color= W2RGB.wavelength_to_rgb(443)) 
+        print("x = rrs cci 490, y = rrs irr 490")
+        PC.Plot_Comparison(ax, 
+                            cci_Rrs_orig[490], 
+                            irr_Rrs_fulldict[490], 
+                            "Phytoplankton Community", 
+                            '490 [nm]', 
+                            xlabel, 
+                            ylabel, 
+                            xlim = 0.013, 
+                            ylim=0.013, 
+                            color=W2RGB.wavelength_to_rgb(490)) 
+        print("x = rrs cci 510, y = rrs irr 510")
+        PC.Plot_Comparison(ax, 
+                            cci_Rrs_orig[510], 
+                            irr_Rrs_fulldict[510], 
+                            "Phytoplankton Community", 
+                            '510 [nm]', 
+                            xlabel, 
+                            ylabel, 
+                            xlim = 0.013, 
+                            ylim=0.013, 
+                            color =W2RGB.wavelength_to_rgb(510))
+#        print("x = rrs cci 560, y = rrs irr 560")
+#        PC.Plot_Comparison(ax, 
+#                            cci_Rrs_orig[560], 
+#                            irr_Rrs_fulldict[547], 
+#                            "Phytoplankton Community", 
+#                            '547 [nm]', 
+#                            xlabel, 
+#                            ylabel, 
+#                            xlim = 0.013, 
+#                            ylim=0.013, 
+#                            color = W2RGB.wavelength_to_rgb(47))  
+
+        fig.show()
 
     if plot_community: 
 
@@ -894,7 +976,7 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
 
 
 
-    return ratios, residuals, masks, bincnt
+    return ratios, residuals, masks, bincnt, irr_chla_full, irr_Rrs_fulldict
     
 
 def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species): 
@@ -1227,7 +1309,7 @@ if __name__ == '__main__':
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
 #    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
-    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
+#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
 
     ## [Run the least squares phytoplankton estimation.]
@@ -1235,8 +1317,9 @@ if __name__ == '__main__':
 
 
     ## [The binned rrs least squares implementation.]
-#    bin_edges = [0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5,  2, 3, 5, 6, 10]
-#    ratios, residuals, masks, bincnt  = Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=False)
+    bin_edges = [0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5,  2, 3, 5, 6, 10]
+#    bin_edges = [2, 3,5]
+    ratios, residuals, masks, bincnt, irr_chla_full, irr_Rrs_fulldict = Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, bin_edges, plot=False, run_irr=True, plot_irr=True)
 
     ## Running the comparison of viirs, calcofi, irr, and nomad
 #    Comp_Nomad_Viirs_Irr_Cal(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type)
