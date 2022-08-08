@@ -31,6 +31,7 @@ from ooi_data_explorations.data_request import data_request
 import matplotlib.pyplot as plt
 import scipy
 import geopy.distance
+import os
 
 
 def OOI_Abs_Scat(optaa_prof, lam):
@@ -107,7 +108,7 @@ def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam)
     return  z_irr, a_irr, b_irr, z_ooi, a_ooi, b_ooi, lam_ooi
 
 
-def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam):
+def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, savefile):
     """
     This function runs the irradiance model over all the different chla profiles.
     
@@ -125,131 +126,142 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
     PI = Param_Init()
 
     ## [The number of profiles.]
-#    N_profs = len(flort_profs)
-    N_profs = 30
+    N_profs = len(flort_profs)
+#    N_profs = 30
 
     ## [Irradiance field dictionary.]
     irr_field = {}
     irr_field_ab = {}
 
     ## [Loop over the wavelengths.]
-    for lam in wavelengths:
-        ## [The irradiance array.]
-        irr_arr = np.zeros((N, N_profs, 4))
-        irr_arr_ab = np.zeros((N, N_profs, 4))
+    if os.path.exists(savefile) == False:
+        for lam in wavelengths:
+            ## [The irradiance array.]
+            irr_arr = np.zeros((N, N_profs, 4))
+            irr_arr_ab = np.zeros((N, N_profs, 4))
 
-        ## [Loop over the OOI profiles.]
-        for k in range(N_profs):
-            flort_prof = flort_profs[k]
-            optaa_prof = optaa_profs[k]
+            ## [Loop over the OOI profiles.]
+            for k in range(N_profs):
+                print(f'{k}/{N_profs}')
+                flort_prof = flort_profs[k]
+                optaa_prof = optaa_profs[k]
 
-            chla = flort_prof['fluorometric_chlorophyll_a'].data
-            flort_z = flort_prof['depth'].data
-            phy = OI.Phy(flort_z, chla, esd(phy_type), 
-                        abscat(lam, phy_type, C2chla='default')[0], 
-                        abscat(lam, phy_type, C2chla='default')[1])
-    
-            ## [Get the z_a, a, and lam_ooi for the CDOM_refa object.]
-            z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam)
-
-            ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
-            CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
-
-            ## [The detritus parameter.]
-            det_val = 0
-            det = OI.Det(flort_z, np.full(len(flort_z), det_val), 
-                         abscat(lam, 'detritus')[0], 
-                         abscat(lam, 'detritus')[1], 
-                         abscat(lam, 'detritus')[2])
-            
-            ## [This solves for the irradiance solution using Dutkiewicz coefficients and 
-            ##  CDOM.]
-            Ed0 = spkir_profs[k]['spkir_abj_cspp_downwelling_vector'][-1, ODF.Get_Wavelength_Index(spkir_wavelengths, lam)]
-
-            PI.Ed0 = 0.7 * Ed0
-            PI.Es0 = 0.3 * Ed0
-
-            z_irr, a_irr, b_irr, b_b_irr, b_f_irr = OI.Calc_Abscat_Grid(flort_z[0],
-                                                               abscat(lam, 'water'), 
-                                                               N, 
-                                                               PI.Ed0, 
-                                                               PI.coefficients, 
-                                                               phy=phy, 
-                                                               CDOM_refa = CDOM, 
-                                                               pt1_perc_zbot = False, 
-                                                               pt1_perc_phy = False)
-
-           
-            PI.pt1_perc_zbot = False
-            PI.pt1_perc_phy = False
-
-            ocean_irr_sol = OI.ocean_irradiance(PI, 
-                                                flort_z[0], 
-                                                abscat(lam, 'water'), 
-                                                zabb_b = (z_irr, a_irr, b_irr, b_b_irr), 
-                                                N=N)
-
-            ## [Storing output into array.]
-            irr_arr[:,k,0] = ocean_irr_sol[0]
-            irr_arr[:,k,1] = ocean_irr_sol[1]
-            irr_arr[:,k,2] = ocean_irr_sol[2]
-            irr_arr[:,k,3] = ocean_irr_sol[3] 
-
-#            ## [Now using the OOI absorption and scattering.]
-#            ## [The optaa data.]
-#            optaa_depth_dat = optaa_dat.variables['depth'].data
-#            optaa_dt_dat = optaa_dat.variables['time'].data
-#            optaa_abs_dat = optaa_dat.variables['optical_absorption'].data
-#            optaa_wavelength_dat = optaa_dat.variables['wavelength_a'].data
-#
-#            dt_lbnd = dt_profs[k].data[0] 
-#            dt_ubnd = dt_profs[k].data[-1]
-#            prof_mask = ODF.OOI_Dat_Time_Prof_Mask(dt_lbnd, dt_ubnd, optaa_dt_dat)
-#
-#            optaa_dt_prof = optaa_dt_dat[prof_mask]
-#            optaa_depth_prof = optaa_depth_dat[prof_mask]
-#            optaa_abs_prof = optaa_abs_dat[prof_mask]
-#            optaa_wavelengths = optaa_wavelength_dat[prof_mask]
-#
-#            optaa_depth = -np.squeeze(optaa_depth_prof)
-#            ## [Must get the wavelength index.]
-#            lam_i = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], lam)
-#
-#            ## [The squeese makes the array 1-D.]
-#            a = np.squeeze(optaa_abs_prof[:, lam_i])
-#            b = opt_bs_profs[k]
-            
-            ## [Get the absorbtion and scattering for OOI.]
-            z_ooi, a_ooi, b_ooi, lam_ooi = OOI_Abs_Scat(optaa_prof, lam) 
-
-            ## [Change the scattering into backscattering.]
-            esd_v = phy.esd
-            ## [backscatter ratio.]
-            bb_r = OI.Backscatter_Ratio(esd_v)
-
-            ## [Add water into the absorption/scattering.]
-            a_ooi = a_ooi + abscat(lam, 'water')[0]
-            bb_wat = 0.551 * abscat(lam, 'water')[1]
-            b_b_ooi = b_ooi*bb_r + bb_wat
-
-            ## [Now running the irr model using abs and scat from ooi.]
-            print(len(z_ooi))
-            ocean_irr_sol_ab = OI.ocean_irradiance(PI, 
-                                                z_ooi[0], 
-                                                abscat(lam, 'water'), 
-                                                zabb_b = (z_ooi, a_ooi, b_ooi, b_b_ooi), 
-                                                N=N)
-
-
-            ## [Storing output into array.]
-            irr_arr_ab[:,k,0] = ocean_irr_sol_ab[0]
-            irr_arr_ab[:,k,1] = ocean_irr_sol_ab[1]
-            irr_arr_ab[:,k,2] = ocean_irr_sol_ab[2]
-            irr_arr_ab[:,k,3] = ocean_irr_sol_ab[3] 
+                chla = flort_prof['fluorometric_chlorophyll_a'].data
+                flort_z = flort_prof['depth'].data
+                phy = OI.Phy(flort_z, chla, esd(phy_type), 
+                            abscat(lam, phy_type, C2chla='default')[0], 
+                            abscat(lam, phy_type, C2chla='default')[1])
         
-        ## [Store array to dictionary.]
-        irr_field[lam] = irr_arr
-        irr_field_ab[lam] = irr_arr_ab
+                ## [Get the z_a, a, and lam_ooi for the CDOM_refa object.]
+                z_a, cdom_refa, b, lam_ooi = OOI_Abs_Scat(optaa_prof, cdom_reflam)
+
+                ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
+#                CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
+                CDOM =None
+
+                ## [The detritus parameter.]
+#                det_val = 0
+#                det = OI.Det(flort_z, np.full(len(flort_z), det_val), 
+#                             abscat(lam, 'detritus')[0], 
+#                             abscat(lam, 'detritus')[1], 
+#                             abscat(lam, 'detritus')[2])
+                det = None
+                
+                ## [This solves for the irradiance solution using Dutkiewicz coefficients and 
+                ##  CDOM.]
+                Ed0 = spkir_profs[k]['spkir_abj_cspp_downwelling_vector'][-1, ODF.Get_Wavelength_Index(spkir_wavelengths, lam)]
+
+                PI.Ed0 = 0.7 * Ed0
+                PI.Es0 = 0.3 * Ed0
+
+                z_irr, a_irr, b_irr, b_b_irr, b_f_irr = OI.Calc_Abscat_Grid(flort_z[0],
+                                                                   abscat(lam, 'water'), 
+                                                                   N, 
+                                                                   PI.Ed0, 
+                                                                   PI.coefficients, 
+                                                                   phy=phy, 
+                                                                   CDOM_refa = CDOM, 
+                                                                   pt1_perc_zbot = False, 
+                                                                   pt1_perc_phy = False)
+
+               
+                PI.pt1_perc_zbot = False
+                PI.pt1_perc_phy = False
+
+                ocean_irr_sol = OI.ocean_irradiance(PI, 
+                                                    flort_z[0], 
+                                                    abscat(lam, 'water'), 
+                                                    zabb_b = (z_irr, a_irr, b_irr, b_b_irr), 
+                                                    N=N)
+
+                ## [Storing output into array.]
+                irr_arr[:,k,0] = ocean_irr_sol[0]
+                irr_arr[:,k,1] = ocean_irr_sol[1]
+                irr_arr[:,k,2] = ocean_irr_sol[2]
+                irr_arr[:,k,3] = ocean_irr_sol[3] 
+
+#                ## [Now using the OOI absorption and scattering.]
+#                ## [The optaa data.]
+#                optaa_depth_dat = optaa_dat.variables['depth'].data
+#                optaa_dt_dat = optaa_dat.variables['time'].data
+#                optaa_abs_dat = optaa_dat.variables['optical_absorption'].data
+#                optaa_wavelength_dat = optaa_dat.variables['wavelength_a'].data
+#
+#                dt_lbnd = dt_profs[k].data[0] 
+#                dt_ubnd = dt_profs[k].data[-1]
+#                prof_mask = ODF.OOI_Dat_Time_Prof_Mask(dt_lbnd, dt_ubnd, optaa_dt_dat)
+#
+#                optaa_dt_prof = optaa_dt_dat[prof_mask]
+#                optaa_depth_prof = optaa_depth_dat[prof_mask]
+#                optaa_abs_prof = optaa_abs_dat[prof_mask]
+#                optaa_wavelengths = optaa_wavelength_dat[prof_mask]
+#
+#                optaa_depth = -np.squeeze(optaa_depth_prof)
+#                ## [Must get the wavelength index.]
+#                lam_i = ODF.Get_Wavelength_Index(optaa_wavelengths[0,:], lam)
+#
+#                ## [The squeese makes the array 1-D.]
+#                a = np.squeeze(optaa_abs_prof[:, lam_i])
+#                b = opt_bs_profs[k]
+                
+                ## [Get the absorbtion and scattering for OOI.]
+                z_ooi, a_ooi, b_ooi, lam_ooi = OOI_Abs_Scat(optaa_prof, lam) 
+
+                ## [Change the scattering into backscattering.]
+                esd_v = phy.esd
+                ## [backscatter ratio.]
+                bb_r = OI.Backscatter_Ratio(esd_v)
+
+                ## [Add water into the absorption/scattering.]
+                a_ooi = a_ooi + abscat(lam, 'water')[0]
+                bb_wat = 0.551 * abscat(lam, 'water')[1]
+                b_b_ooi = b_ooi*bb_r + bb_wat
+
+                ## [Now running the irr model using abs and scat from ooi.]
+                print(len(z_ooi))
+                ocean_irr_sol_ab = OI.ocean_irradiance(PI, 
+                                                    z_ooi[0], 
+                                                    abscat(lam, 'water'), 
+                                                    zabb_b = (z_ooi, a_ooi, b_ooi, b_b_ooi), 
+                                                    N=N)
+
+
+                ## [Storing output into array.]
+                irr_arr_ab[:,k,0] = ocean_irr_sol_ab[0]
+                irr_arr_ab[:,k,1] = ocean_irr_sol_ab[1]
+                irr_arr_ab[:,k,2] = ocean_irr_sol_ab[2]
+                irr_arr_ab[:,k,3] = ocean_irr_sol_ab[3] 
+            
+            ## [Store array to dictionary.]
+            irr_field[lam] = irr_arr
+            irr_field_ab[lam] = irr_arr_ab
+        pickle.dump([irr_field, irr_field_ab], open(savefile, 'wb'))
+        print('Python calculation complete and saved')
+
+    elif os.path.exists(savefile) == True:
+        irr_field, irr_field_ab = pickle.load(open(savefile, 'rb' ))
+        print('Yay, file loaded :)')
+
 
     return irr_field, irr_field_ab
 
@@ -378,7 +390,7 @@ def Calc_Chla_Irr(prof_index, irr_field, wavelengths):
     return chla
 
 
-def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam, plot_chla=False, plot_rrs=True): 
+def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam, savefile, plot_chla=False, plot_rrs=True): 
     """
     This function compares the ooi flourometric chla, the irradiance chla with dutkiewicz absorption/scattering,
     the irradiance chla with ooi abs/scat, and the chla from cci satellite.
@@ -404,7 +416,7 @@ def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds,
     ## [Loop the phy_species.]
     for ip, phy_type in enumerate(phy_species):     ## [Calculate the irradiance feilds.]
 
-        irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+        irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, savefile)
 
         ## [Get the nearest neighbour CCI indexes.]
         res = Get_OOI_CCI_Match(cci_ds, flort_dat, flort_profs)
@@ -419,7 +431,7 @@ def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds,
     
             ## [If the CCI data is bad for the entire search square ignore it.]
             ## [or if it ismore than 3 kilometers.]
-            if dist == np.NaN or dist >3: 
+            if dist == np.NaN: 
                 ooi_chla[k,ip] = np.NaN
                 ooi_chla_ab[k,ip] = np.NaN
                 flort_chla[k,ip] = np.NaN
@@ -442,7 +454,7 @@ def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds,
                 for lam in wavelengths:
                     irr_rrs[lam] = OIR.R_RS(irr_field[lam][-1,prof_index,0], irr_field[lam][-1,prof_index,1], irr_field[lam][-1,prof_index,2])
                     ## [Cci rrs]
-                    cci_rrs[lam] = cci_ds.variables[f'Rrs_{lam}'][:][dti, jnn, inn]
+                    cci_rrs[lam] = cci_ds.variables[f'Rrs_{lam}'][:].data[dti, jnn, inn]
 
 
 
@@ -747,10 +759,8 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
         save_arr[4,k,:,:] = optaa_b
 
         ## [Save as pickle.]
-        pickle.dump(save_arr, open('OOI_abscat.p', 'wb'))
+#        pickle.dump(save_arr, open('OOI_abscat.p', 'wb'))
             
-    return
-"""
     ## [Plotting.]
     fig, axs = plt.subplots(nrows=2, ncols = Nbins)
     
@@ -820,7 +830,6 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
     fig.show()
 
     return
-"""
     
 
 def Plot_OOI_Abs_Wavelength_Prof(optaa_dat, prof_index, start, stop, site, assembly, method):
@@ -908,6 +917,7 @@ if __name__ == '__main__':
     ## [Data load flag, false means load data from pickle.]
     download = False
     savefile_head = "ooi_data/.archive/ooi_dat"
+    irrsavefile = 'ooi_irr_out/irr_field'
     site = "CE02SHSP"
     node = 'SP001'
     method = 'recovered_cspp'
@@ -929,7 +939,8 @@ if __name__ == '__main__':
 #    wavelengths = [443, 490, 510, 560]
     wavelengths = [412, 443, 490, 510, 560, 665]
 #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
-    phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
+#    phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
+    phy_species = ['Generic']
 #    phy_species = [ 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 412.0
@@ -973,15 +984,16 @@ if __name__ == '__main__':
 
     ## [Run the irradiance model using the profiles, over all profiles.]
     phy_type = 'Syn'
-    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+    irrsavefile = f'{irrsavefile}_{phy_type}.p'
+#    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, irrsavefile)
     ## [Plot the resulting irradiance profiles.]
 #    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
-    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam)
+#    ooi_chla, ooi_chla_ab, cci_chla = Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam, irrsavefile)
 
     
     ## [Plot the absorption in time and chla bins.]
-#    bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
-#    Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)
+    bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
+    Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)
