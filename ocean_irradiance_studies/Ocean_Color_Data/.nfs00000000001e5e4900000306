@@ -375,7 +375,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
 
                     ## [chla estimate of cdom.]
                     cdom = OI.CDOM_chla(z, chla, lam)
-                    cdom.a = cdom.a
+                    cdom.a = 6*cdom.a
                     #cdom = OI.CDOM(z, salt, lam)
                     #cdom = None
                     ocean_irr_sol = OI.ocean_irradiance(PI, 
@@ -1305,7 +1305,7 @@ def Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, c
 
 
     ## plotting chla stats
-    fig, axs = plt.subplots(ncols=2, nrows=1, sharey=True)
+    fig, axs = plt.subplots(ncols=2, nrows=1)
     ax0 = axs[0]
     ax1 = axs[1]
 
@@ -1336,55 +1336,6 @@ def Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, c
     ax0.legend()
 
     fig.show()
-
-
-    ## [See if there is a correlations between rrs RMS and absorption/scattering.]
-    ya = np.zeros(Nphy*Nlam)
-    yb = np.zeros(Nphy*Nlam)
-    x = np.zeros(Nphy*Nlam)
-
-    i=0
-    for k, phy_type in enumerate(species): 
-        for j, lam in enumerate (cci_wavelengths): 
-            ya[i] = abscat(lam, phy_type)[0]
-            yb[i] = abscat(lam, phy_type)[1]
-            x[i] = rrs_RMS[k,j]
-            i+=1
-
-    fig, ax = plt.subplots()
-    ax = PC.Plot_Comparison(ax, 
-                            x, 
-                            ya, 
-                            '',## titlej 
-                            '',## lable 
-                            r'$R_{rs}$ RMSRE', 
-                            r'Absorption $m^2 \mathrm{mgChla}^1$', 
-                            color='blue', 
-                            plot_slope=True, 
-                            slope_color='blue', 
-                            xlim = 0.01, 
-                            plotxeqy=False, 
-                            alpha =1) 
-    ax.legend()
-    fig.show()
-
-    fig, ax = plt.subplots()
-    ax = PC.Plot_Comparison(ax, 
-                            x, 
-                            yb, 
-                            '',## titlej 
-                            '',## lable 
-                            r'$R_{rs}$ RMSRE', 
-                            r'Scattering $m^2 \mathrm{mgChla}^1$', 
-                            color='blue', 
-                            plot_slope=True, 
-                            slope_color='blue', 
-                            xlim = 0.01, 
-                            plotxeqy=False, 
-                            alpha =1) 
-    ax.legend()
-    fig.show()
-
 
 
     
@@ -1588,9 +1539,9 @@ if __name__ == '__main__':
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
 #    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
-#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, cci_wavelengths)
+    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, cci_wavelengths)
 
-    Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, cci_wavelengths)
+#    Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, cci_wavelengths)
     ## [Run the least squares phytoplankton estimation.]
     #x, irr_chla, irr_Rrs= Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 

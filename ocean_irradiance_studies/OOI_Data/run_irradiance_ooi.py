@@ -746,7 +746,7 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
             CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
             CDOM = OI.CDOM_chla(flort_depth, chla, lam)
             ## [The absorption in time.]
-            abs_t[k,i] = (optaa_a[optaa_di, i] - 12*CDOM.a[flort_di]) / chla[flort_di]
+            abs_t[k,i] = (optaa_a[optaa_di, i] - 1*CDOM.a[flort_di]) / chla[flort_di]
             scat_t[k,i] = (optaa_b[optaa_di, i]) / chla[flort_di]
 
     ## [Plotting.]
@@ -776,12 +776,12 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
         uquanta = np.quantile(abs_t, 0.8, axis=0)
         uquantb = np.quantile(scat_t, 0.8, axis=0)
         ## [The actual plotting]
-        ax0.fill_between(wavelength_a[0,:], lquanta, uquanta)
-        ax1.fill_between(wavelength_a[0,:], lquantb, uquantb)
+        ax0.fill_between(wavelength_a[0,:], lquanta, uquanta, alpha=0.8)
+        ax1.fill_between(wavelength_a[0,:], lquantb, uquantb, alpha=0.8)
         ax0.fill_between(wavelength_a[0,:], abs_t.min(axis=0), abs_t.max(axis=0), alpha=0.2)
         ax1.fill_between(wavelength_a[0,:], scat_t.min(axis=0), scat_t.max(axis=0), alpha=0.2)
-        ax0.plot(wavelength_a[0,:], abs_t.mean(axis=0), '-', color ='k')
-        ax1.plot(wavelength_a[0,:], scat_t.mean(axis=0), '-', color ='k')
+        ax0.plot(wavelength_a[0,:], abs_t.mean(axis=0), '-', color ='k', linewidth=2)
+        ax1.plot(wavelength_a[0,:], scat_t.mean(axis=0), '-', color ='k', linewidth=2)
         ## [Plot the mean.]
 #        print(abs_t[mask].min(axis=0))
 
@@ -804,12 +804,15 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
         ax1.set_ylim([0,ylims[1]])
 
         ## [Labels.]
-        ax0.set_xlabel(f"Wavelength [{optaa_profs[0].variables['wavelength_a'].attrs['units']}]")
-        ax0.set_ylabel(r"Absorption [m^2 mgChla^-1]")
+#        ax0.set_xlabel(f"Wavelength [{optaa_profs[0].variables['wavelength_a'].attrs['units']}]")
+        ax0.set_ylabel(r"Absorption [$\mathrm{m}^2 \mathrm{mgChla}^{-1}$]")
 #        ax0.set_title(f'Bin [{bin_edges[j]}, {bin_edges[j+1]}], {len(abs_tm[:,0])} points')
 
         ax1.set_xlabel(f"Wavelength [{optaa_profs[0].variables['wavelength_a'].attrs['units']}]")
-        ax1.set_ylabel(r"Scattering [m^2 mgChla^-1]")
+        ax1.set_ylabel(r"Scattering [$\mathrm{m}^2 \mathrm{mgChla}^{-1}$]")
+
+        ax0.set_title("Absorption")
+        ax1.set_title("Scattering")
 
         ax0.grid()
         ax0.legend()
