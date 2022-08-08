@@ -375,7 +375,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
 
                     ## [chla estimate of cdom.]
                     cdom = OI.CDOM_chla(z, chla, lam)
-                    cdom.a = cdom.a
+                    cdom.a = 12*cdom.a
                     #cdom = OI.CDOM(z, salt, lam)
                     #cdom = None
                     ocean_irr_sol = OI.ocean_irradiance(PI, 
@@ -1076,7 +1076,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
 
 
     ncols = len(species)
-    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(4,6))
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(4,6))
     fig_calchla, axs_calchla = plt.subplots(nrows=1, ncols =2)
     ax_calchla = axs_calchla[0]
     ax1_calchla = axs_calchla[1]
@@ -1084,8 +1084,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     ax_ccichla = axs_ccichla[0]
     ax1_ccichla = axs_ccichla[1]
     
-#    axes_list = axes.flatten()
-    rrs_ax = axes
+    axes_list = axes.flatten()
 
     ## [The color map dict for the different species of phytoplankton.] 
     cmap = Get_Phy_Cmap_Dict()
@@ -1125,7 +1124,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
                                         alpha = 0.9) 
 
         ## Rrs Comparison
-#        rrs_ax = axes_list[k]
+        rrs_ax = axes_list[k]
 
         if k == 0 or k==2: 
             ylabel = r'Irradiance Model $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
@@ -1136,8 +1135,6 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
         else: 
             xlabel = None
 
-        ylabel = r'Irradiance Model $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
-        xlabel = r'CCI $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
         for lam in cci_wavelengths: 
             print(f"x = rrs cci {lam}, y = rrs irr {lam}")
             PC.Plot_Comparison(rrs_ax, 
@@ -1241,34 +1238,18 @@ def Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, c
     Nphy = len(species)
 
     rrs_RMS = np.zeros((Nphy, Nlam))
+    rrs_mean_bias = np.zeros((Nphy, Nlam))
     rrs_rel_mean_bias = np.zeros((Nphy, Nlam))
-
-    calchla_RMS = np.zeros(Nphy)
-    calchla_rel_mean_bias = np.zeros(Nphy)
-
-    ccichla_RMS = np.zeros(Nphy)
-    ccichla_rel_mean_bias = np.zeros(Nphy)
-
     for k, phy_type in enumerate(species):
 
         cal_chla, cci_chla, cci_Rrs, irr_chla, irr_Rrs = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
         
         for j, lam in enumerate(cci_wavelengths):
             ## Truth/observation
-            ## rrs
             RMS, mean_bias, rel_mean_bias, mean_ratio, slope, intercept, N = Correlation_Stats(cci_Rrs[lam], irr_Rrs[lam])
             rrs_RMS[k,j] = RMS * 100
+            rrs_mean_bias[k,j] = mean_bias
             rrs_rel_mean_bias[k,j] = rel_mean_bias*100
-
-        ## calchla
-        RMS, mean_bias, rel_mean_bias, mean_ratio, slope, intercept, N = Correlation_Stats(cal_chla, irr_chla)
-        calchla_RMS[k] = RMS * 100
-        calchla_rel_mean_bias[k] = rel_mean_bias*100
-
-        ## ccichla
-        RMS, mean_bias, rel_mean_bias, mean_ratio, slope, intercept, N = Correlation_Stats(cci_chla, irr_chla)
-        ccichla_RMS[k] = RMS * 100
-        ccichla_rel_mean_bias[k] = rel_mean_bias*100
             
 
     ## plotting rrs stats
@@ -1302,42 +1283,6 @@ def Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, c
     fig.show()
 
     print("MEAN RMS Rrs: ", np.mean(rrs_RMS))
-
-
-    ## plotting chla stats
-    fig, axs = plt.subplots(ncols=2, nrows=1)
-    ax0 = axs[0]
-    ax1 = axs[1]
-
-    cmap = Get_Phy_Cmap_Dict()
-
-    width = 1
-    pos_phy = np.array([k for k in range(Nphy)])
-    pos_phy1 = pos_phy - width/4
-    pos_phy2 = pos_phy + width/4
-    ax0.bar(pos_phy1, calchla_rel_mean_bias, color ='blue', alpha = 0.9, align='center', label=f'Relative Mean Bias', width =width/2)
-    ax0.bar(pos_phy2, calchla_RMS, color ='grey', alpha = 0.9, align='center', label=f'RMSRE', width =width/2)
-
-    ax1.bar(pos_phy1, ccichla_rel_mean_bias, color ='blue', alpha = 0.9, align='center', label=f'Relative Mean Bias', width =width/2)
-    ax1.bar(pos_phy2, ccichla_RMS, color ='grey', alpha = 0.9, align='center', label=f'RMSRE', width =width/2)
-
-    ax0.set_title("CalCOFI and Irradiance Model Chlorophyll-a Correlation")
-    ax0.set_xticks(pos_phy)
-    ax0.set_xticklabels(species, rotation=75)
-    ax0.set_ylabel(r'Percent')
-    ax0.grid(axis='y')
-
-    ax1.set_title("CCI and Irradiance Model Chlorophyll-a Correlation")
-    ax1.set_ylabel(r'Percent')
-    ax1.set_xticks(pos_phy)
-    ax1.set_xticklabels(species, rotation=75)
-    ax1.grid(axis='y')
-
-    ax0.legend(title='Wavelengths [nm]')
-
-    fig.show()
-
-
     
     return
 
@@ -1523,7 +1468,6 @@ if __name__ == '__main__':
     PI = Param_Init()
 
     species = PI.phy_species
-#    species = ['Lgeuk']
 #    species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 #    species = ['Syn', 'Diat', 'HLPro', 'Lgeuk']
 
