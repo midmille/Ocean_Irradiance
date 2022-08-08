@@ -19,7 +19,7 @@ from ocean_irradiance_module import Ocean_Irradiance_ROMS as OIR
 from ocean_irradiance_module.PARAMS import Param_Init
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
 from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as esd
-from ocean_irradiance_module import Wavelength_To_RGB
+from ocean_irradiance_module import Wavelength_To_RGB as W2RGB
 from ocean_irradiance_module.Phytoplankton_Colormap import Get_Phy_Cmap_Dict
 import ocean_irradiance_visualization.Plot_Comparison as PC
 from ocean_irradiance_module import cci_oc
@@ -271,7 +271,7 @@ def Get_CCI_Data(pml_url, flort_dat):
 
     ## [The lattitude limits.]
     lat = flort_dat.attrs['geospatial_lat_min']
-    lat_lims = [lat[0] + 0.3, lat[0] - 0.3]
+    lat_lims = [lat[0] + 0.5, lat[0] - 0.5]
 
     ## [The longitude limits.]
     lon = flort_dat.attrs['geospatial_lon_min']
@@ -378,7 +378,7 @@ def Calc_Chla_Irr(prof_index, irr_field, wavelengths):
     return chla
 
 
-def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam, plot=True): 
+def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds, flort_dat, flort_profs, optaa_profs, spkir_profs, cdom_reflam, plot_chla=False, plot_rrs=True): 
     """
     This function compares the ooi flourometric chla, the irradiance chla with dutkiewicz absorption/scattering,
     the irradiance chla with ooi abs/scat, and the chla from cci satellite.
@@ -418,7 +418,8 @@ def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds,
             dist =  res[k,3]
     
             ## [If the CCI data is bad for the entire search square ignore it.]
-            if dist == np.NaN: 
+            ## [or if it ismore than 3 kilometers.]
+            if dist == np.NaN or dist >3: 
                 ooi_chla[k,ip] = np.NaN
                 ooi_chla_ab[k,ip] = np.NaN
                 flort_chla[k,ip] = np.NaN
@@ -435,13 +436,45 @@ def Comp_OOI_CCI_Irr(PI, N, wavelengths, spkir_wavelengths, phy_species, cci_ds,
                 ## [Get the chla from the cci_ds.]
                 cci_chla[k,ip] = cci_ds.variables['chlor_a'][:][dti, jnn, inn]
 
+    
+                irr_rrs = {}
+                cci_rrs = {}
+                for lam in wavelengths:
+                    irr_rrs[lam] = OIR.R_RS(irr_field[lam][-1,prof_index,0], irr_field[lam][-1,prof_index,1], irr_field[lam][-1,prof_index,2])
+                    ## [Cci rrs]
+                    cci_rrs[lam] = cci_ds.variables[f'Rrs_{lam}'][:][dti, jnn, inn]
+
+
+
                 if ooi_chla[k,ip] > 100: 
                     print('ATTENTION BAD profile', k)
                     irr_field_save = irr_field
                    
+    if plot_rrs: 
+        
+        fig,ax = plt.subplots()
+    
+        ylabel = r'Irradiance Model $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+        xlabel = r'CCI $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+
+        for lam in wavelengths: 
+            PC.Plot_Comparison(ax, 
+                            cci_rrs[lam], 
+                            irr_rrs[lam], 
+                            "Irradiance Model Using OOI Absorption and Scattering",
+                            f'{lam} [nm]', 
+                            xlabel, 
+                            ylabel, 
+                            xlim = 0.013, 
+                            ylim=0.013, 
+                            color= W2RGB.wavelength_to_rgb(lam)) 
+
+        fig.show()
 
 
-    if plot:  
+
+
+    if plot_chla:  
         
         fig, axs = plt.subplots(ncols=3, nrows=2)
 
@@ -885,14 +918,16 @@ if __name__ == '__main__':
     optaa_process_raw = True
 
     ## [CCI sattelite data parameters.]
-    pml_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
+    #pml_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
+
+    cci_url = 'https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v5.0-DAILY?lat[0:1:0],lon[0:1:0],time[0:1:0],Rrs_412[0:1:0][0:1:0][0:1:0],Rrs_443[0:1:0][0:1:0][0:1:0],Rrs_490[0:1:0][0:1:0][0:1:0],Rrs_510[0:1:0][0:1:0][0:1:0],Rrs_560[0:1:0][0:1:0][0:1:0],Rrs_665[0:1:0][0:1:0][0:1:0],chlor_a[0:1:0][0:1:0][0:1:0]' 
 
     ## [Functional parameters.]
     ## [The number of levels for irradiance run.]
     N=1000
 #    wavelengths = np.arange(425, 725, 25)
 #    wavelengths = [443, 490, 510, 560]
-    wavelengths = [443, 490, 510, 560]
+    wavelengths = [412, 443, 490, 510, 560, 665]
 #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
     phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 #    phy_species = [ 'Syn'] 
@@ -930,7 +965,7 @@ if __name__ == '__main__':
     spkir_prof = spkir_profs[prof_index]
 
     ## [Download the relevant CCI data set.]
-    cci_ds = Get_CCI_Data(pml_url, flort_dat)
+    cci_ds = Get_CCI_Data(cci_url, flort_dat)
 
     ## [Get the spkir wavelengths.]
     spkir_wavelengths = np.array(ODF.Get_SPKIR_Wavelengths(

@@ -113,7 +113,7 @@ def Download_CCI_Data_Set(erddap_url, year_lims, julian_date_lims, lat_lims, lon
     return pml_ds
     
     
-def Get_Point_PML_Dataset(pml_ds, year, julian_day, lat, lon):  
+def Get_Point_CCI_Dataset(pml_ds, year, julian_day, lat, lon):  
     """
     This function takes the pml dataset as an argument and returns the 
     Rrs443, Rrs560, and chlor_a value for the desired spatial and temporal

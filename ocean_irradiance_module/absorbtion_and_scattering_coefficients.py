@@ -226,6 +226,8 @@ def equivalent_spherical_diameter(species):
 
     if species == 'HLPro': 
         return 0.6 
+    if species == 'LLPro': 
+        return 0.6 
     if species == 'Cocco': 
         return 4
     if species == 'Diat':
@@ -233,7 +235,11 @@ def equivalent_spherical_diameter(species):
     if species == 'Generic': 
         return 10 
     if species == 'Syn':
-        return .98 
+        return 0.98 
+    if species == 'Lgeuk':
+        return 27.64
+    if species == 'Tricho':
+       return 6.00
     
 
 

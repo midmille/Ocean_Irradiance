@@ -53,7 +53,7 @@ from ocean_irradiance_module.Phytoplankton_Colormap import Get_Phy_Cmap_Dict
 #import ocean_irradiance_visualization.Plot_Field as PF
 import ocean_irradiance_visualization.Plot_Comparison as PC
 import viirs_calcofi_val
-import cci_oc
+from ocean_irradiance_module import cci_oc
 
 
 def Get_Data(oc_chla_val_file, cal_cast_file, cal_bot_file): 
@@ -134,55 +134,55 @@ def Get_Cast_Depth_Chla(cal_bot_dat, cast_count, incld_salt=False):
         return z, chla
 
  
-def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=None): 
-    """
-    This function loops over the cruise data and calculates the irradiances and chla at the surface for each. 
-    """ 
-
-
-
-    ## using my params
-    PI = Param_Init()
-
-    Eu_surf = np.zeros(len(chla_val_cal_dat['cruise']))
-    chla_dat = np.zeros(len(chla_val_cal_dat['cruise']))
-    Eu_surf_dict = {}
-    ## Looping over ocean color wavelengths.
-    for lam in [443, 551]:
-        ## Then loop over cal cruises. 
-        for k, id in enumerate(chla_val_cal_dat['/fields=id']): 
-            ## Getting the cast count. 
-            cst_cnt = Get_Cst_Cnt(chla_val_cal_dat, cal_cast_dat, id)
-            if cst_cnt == None: 
-                Eu_surf[k] = np.nan
-                continue 
-            ## Getting the chla and depth profile.
-            z, chla, salt = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt, incld_salt=True)     
-            chla_dat[k] = chla[-1]
-            ## Calculating the irradiance
-            phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
-            #cdom = OI.CDOM(z, salt, lam)
-            #cdom = OI.CDOM_chla(z, chla, lam)
-            cdom =None
-
-            irr_out = OI.ocean_irradiance(PI, 
-                                          z[0], 
-                                          abscat(lam, 'water'), 
-                                          phy=phy, 
-                                          CDOM_chla = cdom, 
-                                          N=1000)
-            Eu_surf[k] =  irr_out[2][-1]
-        Eu_surf_dict[lam] = np.copy(Eu_surf)
-            
-         
-    ## Calculating the rrs for each wavelength and the chla 
-    rrs_443 = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf_dict[443])
-    rrs_551 = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf_dict[551])
-
-    ## Chla 
-    irr_chla = OIR.ocean_color_sol(Eu_surf_dict, PI.Ed0, PI.Es0)
-
-    return rrs_443, rrs_551, irr_chla, chla_dat        
+#def Loop_Cal_Cruise(chla_val_cal_dat, cal_cast_dat, cal_bot_dat, phy_type, C2chla=None): 
+#    """
+#    This function loops over the cruise data and calculates the irradiances and chla at the surface for each. 
+#    """ 
+#
+#
+#
+#    ## using my params
+#    PI = Param_Init()
+#
+#    Eu_surf = np.zeros(len(chla_val_cal_dat['cruise']))
+#    chla_dat = np.zeros(len(chla_val_cal_dat['cruise']))
+#    Eu_surf_dict = {}
+#    ## Looping over ocean color wavelengths.
+#    for lam in [443, 551]:
+#        ## Then loop over cal cruises. 
+#        for k, id in enumerate(chla_val_cal_dat['/fields=id']): 
+#            ## Getting the cast count. 
+#            cst_cnt = Get_Cst_Cnt(chla_val_cal_dat, cal_cast_dat, id)
+#            if cst_cnt == None: 
+#                Eu_surf[k] = np.nan
+#                continue 
+#            ## Getting the chla and depth profile.
+#            z, chla, salt = Get_Cast_Depth_Chla(cal_bot_dat, cst_cnt, incld_salt=True)     
+#            chla_dat[k] = chla[-1]
+#            ## Calculating the irradiance
+#            phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla=C2chla)[0], abscat(lam, phy_type, C2chla=C2chla)[1])
+#            #cdom = OI.CDOM(z, salt, lam)
+#            #cdom = OI.CDOM_chla(z, chla, lam)
+#            cdom =None
+#
+#            irr_out = OI.ocean_irradiance(PI, 
+#                                          z[0], 
+#                                          abscat(lam, 'water'), 
+#                                          phy=phy, 
+#                                          CDOM_chla = cdom, 
+#                                          N=1000)
+#            Eu_surf[k] =  irr_out[2][-1]
+#        Eu_surf_dict[lam] = np.copy(Eu_surf)
+#            
+#         
+#    ## Calculating the rrs for each wavelength and the chla 
+#    rrs_443 = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf_dict[443])
+#    rrs_551 = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf_dict[551])
+#
+#    ## Chla 
+#    irr_chla = OIR.ocean_color_sol(Eu_surf_dict, PI.Ed0, PI.Es0)
+#
+#    return rrs_443, rrs_551, irr_chla, chla_dat        
 
 
 
@@ -374,9 +374,9 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                         phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
 
                     ## [chla estimate of cdom.]
-                    #cdom = OI.CDOM_chla(z, chla, lam)
+                    cdom = OI.CDOM_chla(z, chla, lam)
                     #cdom = OI.CDOM(z, salt, lam)
-                    cdom = None
+                    #cdom = None
                     ocean_irr_sol = OI.ocean_irradiance(PI, 
                                                   z[0], 
                                                   abscat(lam, 'water'), 
@@ -416,7 +416,7 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
         Rrs[lam] = OIR.R_RS(PI.Ed0, PI.Es0, Eu_surf)
 
     ## calculating the chla 
-    chla_irr = OIR.OCx_alg(Rrs[443], Rrs[490], Rrs[510], Rrs[547]) 
+    chla_irr = OIR.OCx_alg(Rrs[443], Rrs[490], Rrs[510], Rrs[560]) 
     ## chla data from calcofi 
     chla_dat = np.zeros(N_cst)
     zbot_dat = np.zeros(N_cst)
@@ -513,7 +513,7 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
         lat_lims = [lat[0], lon[-1]]
         lon_lims = [lon[0], lon[-1]]
         ## Downloading the sub plymouth data set correspoding to the cal cofi domain.
-        cci_ds = cci_oc.Get_PML_OC_Data_Set(cci_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
+        cci_ds = cci_oc.Download_CCI_Data_Set(cci_url, year_lims, julian_date_lims, lat_lims, lon_lims) 
         
         
         ## Now loop over the casts and calculate the irradiance chla each time.  
@@ -528,7 +528,7 @@ def Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, s
              cal_chla[k] = c_chla[-1]
              
              ## Getting the PML data.
-             p_Rrs, p_chla, p_lat, p_lon = cci_oc.Get_Point_PML_Dataset(cci_ds, year[k], julian_day[k], lat[k], lon[k]) 
+             p_Rrs, p_chla, p_lat, p_lon = cci_oc.Get_Point_CCI_Dataset(cci_ds, year[k], julian_day[k], lat[k], lon[k]) 
              cci_chla[k] = p_chla
              cci_Rrs412[k] = p_Rrs[412]
              cci_Rrs443[k] = p_Rrs[443]
@@ -702,23 +702,15 @@ def Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, sav
     w_dict = {}
     for k in range(Nphy): 
         for j, lam in enumerate(wavelengths):
-            if lam == 547: 
-                w_dict[547] = 1/np.mean(cci_Rrs[560][cci_nans])
-            else: 
-                w_dict[lam] = 1/np.mean(cci_Rrs[lam][cci_nans])
-                
+
+            w_dict[lam] = 1/np.mean(cci_Rrs[lam][cci_nans])
             A[j*Nd:(j+1)*Nd, k] = irr_rrs_species[k][lam][cci_nans]
             Aw[j*Nd:(j+1)*Nd, k] = irr_rrs_species[k][lam][cci_nans] * w_dict[lam]
 
     y = np.zeros(Nd*Nlam)
     yw = np.zeros(Nd*Nlam)
     for j, lam in enumerate(wavelengths):
-        if lam == 547:
-            lam = 560
-            yw[j*Nd:(j+1)*Nd] = cci_Rrs[lam][cci_nans]*w_dict[547]
-        else: 
-            yw[j*Nd:(j+1)*Nd] = cci_Rrs[lam][cci_nans]*w_dict[lam]
-
+        yw[j*Nd:(j+1)*Nd] = cci_Rrs[lam][cci_nans]*w_dict[lam]
         y[j*Nd:(j+1)*Nd] = cci_Rrs[lam][cci_nans]
 
     print(y.shape)
@@ -1074,7 +1066,7 @@ def Binned_Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_u
     return ratios, residuals, masks, bincnt
     
 
-def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species): 
+def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, cci_wavelengths): 
     """
     """
     ## The limits for the Rrs plots, in order [xlim, ylim].
@@ -1083,118 +1075,137 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
 
 
     ncols = len(species)
-    fig, axes = plt.subplots(nrows=4, ncols=2)
-    ## The zoomed in chla plot with different species.
-    fig_z, ax_z = plt.subplots()
+#    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(4,6))
+    fig_calchla, axs_calchla = plt.subplots(nrows=1, ncols =2)
+    ax_calchla = axs_calchla[0]
+    ax1_calchla = axs_calchla[1]
+    fig_ccichla, axs_ccichla = plt.subplots(nrows=1, ncols = 2)
+    ax_ccichla = axs_ccichla[0]
+    ax1_ccichla = axs_ccichla[1]
     
-    fig_ccichla, ax_ccichla = plt.subplots()
-    fig_ccicalcofi, ax_ccicalcofi = plt.subplots()
-    axes_list = axes.flatten()
-    #chla_ax = axes_list[0]
-    #rrs_axes = axes_list[1:]
+#    axes_list = axes.flatten()
+
     ## [The color map dict for the different species of phytoplankton.] 
     cmap = Get_Phy_Cmap_Dict()
-
-    irr_chla_species = []
 
     for k, phy_type in enumerate(species):
         cal_chla, cci_chla, cci_Rrs, irr_chla, irr_Rrs = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
 
-        irr_chla_species.append(irr_chla)
-        
-        ## Plotting one to one comparison.
-        #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, irr_chla, 'Comparison to Cal Chla', f'Irr {phy_type}' , 'Calcofi Chla', 'Chla') 
-        print(phy_type)
-
         print("x = CalCOFI chla, y = irradiance") 
-        ax_z = PC.Plot_Comparison(ax_z, cal_chla, irr_chla, 'Irradiance Model Comparison to CalCOFI', f'Irr {phy_type}' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', '[mg Chl-a $\mathrm{m}^{-3}$]', color=cmap[phy_type]) 
+        ax_calchla = PC.Plot_Comparison(ax_calchla, 
+                                  cal_chla, 
+                                  irr_chla, 
+                                  'Irradiance Model Comparison to CalCOFI', 
+                                  f'{phy_type}' , 
+                                  r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 
+                                  'Irradiance Model Chl-a[mg Chl-a $\mathrm{m}^{-3}$]', 
+                                  xlim =50, 
+                                  ylim = 50, 
+                                  color=cmap[phy_type], 
+                                  plot_slope=True, 
+                                  slope_color = cmap[phy_type], 
+                                  alpha = 0.9) 
         #ax.legend()
     
         print("x = CCI chla, y = irradiance") 
-        ax_ccichla = PC.Plot_Comparison(ax_ccichla, cci_chla, irr_chla, 'Irradiance Model Comparison to CCI Chlorophyll-a', f'Irr {phy_type}' , r'CCI [mg Chl-a $\mathrm{m}^{-3}$]', 'Irradiance Model [mg Chl-a $\mathrm{m}^{-3}$]', color=cmap[phy_type]) 
+        ax_ccichla = PC.Plot_Comparison(ax_ccichla, 
+                                        cci_chla, 
+                                        irr_chla, 
+                                        'Irradiance Model Comparison to CCI Chlorophyll-a', 
+                                        f'{phy_type}' , 
+                                        r'CCI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 
+                                        'Irradiance Model Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 
+                                        xlim =50, 
+                                        ylim = 50, 
+                                        color=cmap[phy_type], 
+                                        plot_slope=True, 
+                                        slope_color = cmap[phy_type], 
+                                        alpha = 0.9) 
 
         ## Rrs Comparison
-        rrs_ax = axes_list[k]
+#        rrs_ax = axes_list[k]
+#
+#        if k == 0 or k==2: 
+#            ylabel = r'Irradiance Model $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+#        else: 
+#            ylabel = None
+#        if k==2 or k==3: 
+#            xlabel = r'CCI $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+#        else: 
+#            xlabel = None
+#
+#        for lam in cci_wavelengths: 
+#            print(f"x = rrs cci {lam}, y = rrs irr {lam}")
+#            PC.Plot_Comparison(rrs_ax, 
+#                               cci_Rrs[lam], 
+#                               irr_Rrs[lam], 
+#                               f'{phy_type}',
+#                               f'{lam} [nm]', 
+#                               xlabel, 
+#                               ylabel, 
+#                               xlim = Rrs_ax_lims[k][0], 
+#                               ylim=Rrs_ax_lims[k][1], 
+#                               color= W2RGB.wavelength_to_rgb(lam), 
+#                               plot_slope =True, 
+#                               slope_color = W2RGB.wavelength_to_rgb(lam), 
+#                               alpha = 0.8)
+#
+#        rrs_ax.legend()  
 
-        if k == 0 or k==2: 
-            ylabel = r'Irradiance Model $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
-        else: 
-            ylabel = None
-        if k==2 or k==3: 
-            xlabel = r'CCI $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
-        else: 
-            xlabel = None
-
-            
-        print("x = rrs cci 443, y = rrs irr 443")
-        PC.Plot_Comparison(rrs_ax, 
-                           cci_Rrs[443], 
-                           irr_Rrs[443], 
-                           f'{phy_type}',
-                           '443 [nm]', 
-                           xlabel, 
-                           ylabel, 
-                           xlim = Rrs_ax_lims[k][0], 
-                           ylim=Rrs_ax_lims[k][1], 
-                           color= W2RGB.wavelength_to_rgb(443)) 
-
-        print("x = rrs cci 490, y = rrs irr 490")
-        PC.Plot_Comparison(rrs_ax, 
-                           cci_Rrs[490], 
-                           irr_Rrs[490], 
-                           f'{phy_type}', 
-                           '490 [nm]', 
-                           xlabel, 
-                           ylabel, 
-                           xlim = Rrs_ax_lims[k][0], 
-                           ylim=Rrs_ax_lims[k][1], 
-                           color=W2RGB.wavelength_to_rgb(490)) 
-        print("x = rrs cci 510, y = rrs irr 510")
-        PC.Plot_Comparison(rrs_ax, 
-                           cci_Rrs[510], 
-                           irr_Rrs[510], 
-                           f'{phy_type}', 
-                           '510 [nm]', 
-                           xlabel, 
-                           ylabel, 
-                           xlim = Rrs_ax_lims[k][0], 
-                           ylim=Rrs_ax_lims[k][1], 
-                           color =W2RGB.wavelength_to_rgb(510))
-
-#        print("x = rrs cci 560, y = rrs irr 560")
-#        PC.Plot_Comparison(rrs_ax, 
-#                           cci_Rrs[560], 
-#                           irr_Rrs[560], 
-#                           f'{phy_type}', 
-#                           '560 [nm]', 
-#                           xlabel, 
-#                           ylabel, 
-#                           xlim = Rrs_ax_lims[k][0], 
-#                           ylim=Rrs_ax_lims[k][1], 
-#                           color = W2RGB.wavelength_to_rgb(560)) 
-        if k==0:
-            rrs_ax.legend()  
- 
-    #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
-    #chla_ax = PC.Plot_Comparison(chla_ax, cal_chla, cci_chla, 'Comparison to Cal Chla', 'CCI Chla', 'Calcofi Chla', 'Chla', marker='v', color='black') 
-    #ax_z = PC.Plot_Comparison(ax_z, cal_chla, viirs_chla, 'Comparison to Cal Chla', 'VIIRS (from Rrs/OCx)', 'Calcofi Chla', 'Chla', marker='v', color='grey') 
-    print("x = cal_chla, y= cci_chla")
-    ax_ccicalcofi = PC.Plot_Comparison(ax_ccicalcofi, cal_chla, cci_chla, 'Irradiance Model Comparison to CalCOFI', f'CCI Chl-a' , r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', '[mg Chl-a $\mathrm{m}^{-3}$]', marker='v', color='black') 
-    ax_z.legend()
+#    fig.show()
     ax_ccichla.legend()
-    #chla_ax.legend()
-    ## Adding the CCI data info to the figure
-    #text(0, .1, 'CCI = ESA CCI Ocean Colour Product Level-3 v5.0 Daily', figure=fig)
-    fig_z.show()
+    ax_calchla.legend()
+    Nbins = 150
+    PC.Plot_Frequency(ax1_ccichla, cci_chla, Nbins, None, bin_edges=[])
+    ax1_ccichla.set_ylabel("Fraction of Observations")
+    ax1_ccichla.set_xlabel(r'CCI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]',)
+    ax1_ccichla.set_title("CCI Chl-a Observation Density")
+    ax1_ccichla.grid(axis='y')
+    PC.Plot_Frequency(ax1_calchla, cal_chla, Nbins, None, bin_edges=[])
+    ax1_calchla.set_ylabel("Fraction of Observations")
+    ax1_calchla.set_xlabel(r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]',)
+    ax1_calchla.set_title("CalCOFI Chl-a Observation Density")
+    ax1_calchla.grid(axis='y')
+
     fig_ccichla.show()
-    fig.show()
-    fig_ccicalcofi.show()
+    fig_calchla.show()
+
+
+
+    fig_ccical, ax_ccical = plt.subplots()
+    print("x = cal_chla, y= cci_chla")
+    ax_ccical = PC.Plot_Comparison(ax_ccical,
+                                   cal_chla, 
+                                   cci_chla, 
+                                   '', 
+                                   f'CCI Chl-a' , 
+                                   r'CalCOFI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 
+                                   'CCI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 
+                                   color='blue', 
+                                   plot_slope=True, 
+                                   slope_color='blue', 
+                                   alpha =1) 
+    ax_ccical.legend()
+    fig_ccical.show()
+
+
 
     ## This plot shows a comparison between the CCI calculated chlor and the CCI chlor calculated using
     ## the OCx algorithim from CCI Rrs values. 
     fig, ax = plt.subplots()
     cci_OCx_chla = OIR.OCx_alg(cci_Rrs[443], cci_Rrs[490], cci_Rrs[510], cci_Rrs[560])
-    ax = PC.Plot_Comparison(ax, cci_chla, cci_OCx_chla, '', 'CCI', r'CCI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', r'OC4 Chl-a Using CCI $\mathrm{R_{rs}}$ [mg Chl-a $\mathrm{m}^{-3}$]', marker='v') 
+    ax = PC.Plot_Comparison(ax, 
+                            cci_chla, 
+                            cci_OCx_chla, 
+                            '', 
+                            r'OCx Chl-a Using CCI $\mathrm{R_{rs}}$', 
+                            r'CCI Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 
+                            r'OCx Chl-a Using CCI $\mathrm{R_{rs}}$ [mg Chl-a $\mathrm{m}^{-3}$]', 
+                            color='blue', 
+                            plot_slope=True, 
+                            slope_color='blue', 
+                            alpha =1) 
+    ax.legend()
     fig.show()
 
     return
@@ -1203,42 +1214,62 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
 def Correlation_Stats(x, y): 
     """
     """
+    nonan = ~np.isnan(x) * ~np.isnan(y)
+    x = x[nonan]
+    y = y[nonan]
 
     RMS = np.sqrt(np.mean(((y-x)/x)**2))
     mean_bias = np.mean(y-x)
+    rel_mean_bias = np.mean((y-x)/x)
     mean_ratio = np.mean(y/x)
     slope, intercept = np.polyfit(x,y,1)
     N = len(x)
 
-    return RMS, mean_bias, mean_ratio, slope, intercept, N
+    return RMS, mean_bias, rel_mean_bias, mean_ratio, slope, intercept, N
 
 
-def Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species): 
+def Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, species, cci_wavelengths): 
     """
     This plots the corerelation statistics for each phytoplankton species.
     """
 
-    Nlam = len(wavelengths)
+    Nlam = len(cci_wavelengths)
     Nphy = len(species)
 
     rrs_RMS = np.zeros((Nphy, Nlam))
     rrs_mean_bias = np.zeros((Nphy, Nlam))
+    rrs_rel_mean_bias = np.zeros((Nphy, Nlam))
     for k, phy_type in enumerate(species):
 
         cal_chla, cci_chla, cci_Rrs, irr_chla, irr_Rrs = Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, save_dir, save_head, PI, N, wavelengths, phy_type, plot=False)
         
-        for j, lam in enumerate(wavelengths):
+        for j, lam in enumerate(cci_wavelengths):
             ## Truth/observation
-            RMS, mean_bias, mean_ratio, slope, intercept, N = Correlation_Stats(cci_Rrs[lam], irr_Rrs[lam])
+            RMS, mean_bias, rel_mean_bias, mean_ratio, slope, intercept, N = Correlation_Stats(cci_Rrs[lam], irr_Rrs[lam])
             rrs_RMS[k,j] = RMS 
             rrs_mean_bias[k,j] = mean_bias
+            rrs_rel_mean_bias[k,j] = rel_mean_bias
             
 
     ## plotting rrs stats
     fig, ax = plt.subplots()
 
-    for k, lam in enumerate(wavelengths): 
+    width = 1/(Nlam*1.3)
+    pos_phy = np.array([k for k in range(Nphy)])
+    pos = pos_phy - (Nlam*width)/2
+    for k, lam in enumerate(cci_wavelengths): 
         rgb = W2RGB.wavelength_to_rgb(lam)
+        ax.bar(pos, rrs_rel_mean_bias[:, k], color =rgb, align='center', label=f'{lam}', width =width)
+        pos = pos+width
+
+    ax.set_title("Relative Mean Bias")
+    ax.set_xticks(pos_phy)
+    ax.set_xticklabels(species, rotation=75)
+    ax.grid(axis='y')
+
+    ax.legend(title='Wavelengths [nm]')
+
+    fig.show()
     
     return
 
@@ -1411,7 +1442,10 @@ if __name__ == '__main__':
     year_min = 2012
  
     ## Wavelengths
-    wavelengths = [412, 443, 490, 510, 547, 560, 665]
+#    wavelengths = [412, 443, 490, 510, 547, 560, 665]
+#    cci_wavelengths = [412, 443, 490, 510, 560, 665]
+    wavelengths = [443, 490, 510, 560]
+    cci_wavelengths = [443, 490, 510, 560]
 
     ## The species of phytoplankton
     phy_type = 'Diat'
@@ -1422,7 +1456,9 @@ if __name__ == '__main__':
     ## Param Init object 
     PI = Param_Init()
 
-    species = PI.phy_species
+#    species = PI.phy_species
+    species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
+#    species = ['Syn', 'Diat', 'Cocco', 'Lgeuk']
 #    for k in range(len(species)): 
 #        if species[k] == 'Generic': 
 #            species.pop(k)
@@ -1435,9 +1471,9 @@ if __name__ == '__main__':
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
 #    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
-    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
+#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, cci_wavelengths)
 
-
+    Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, cci_wavelengths)
     ## [Run the least squares phytoplankton estimation.]
     #x, irr_chla, irr_Rrs= Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 

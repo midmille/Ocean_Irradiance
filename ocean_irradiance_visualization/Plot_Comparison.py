@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None, marker='o', color=None, title_fontsize=10, markersize=5, linewidth=1): 
+def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None, marker='o', color=None, title_fontsize=10, markersize=5, linewidth=1, plot_slope=True, slope_color=None, alpha =1, slope_width=0.8): 
     """
     Plots the given values on a given axes
     """
@@ -18,9 +18,9 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
     y = y[nonan]
 
     if color==None:
-        ax.plot(x, y,'o', fillstyle='none', label=label, markersize=markersize, linewidth=linewidth)
+        ax.plot(x, y,'o', fillstyle='none', label=label, markersize=markersize, linewidth=linewidth, alpha=alpha)
     else:
-        ax.plot(x, y,'o', fillstyle='none', markeredgecolor=color, label=label, markersize=markersize, linewidth=linewidth)
+        ax.plot(x, y,'o', fillstyle='none', markeredgecolor=color, label=label, markersize=markersize, linewidth=linewidth, alpha =alpha)
     if xlim == None: 
         ax.relim()
     elif ylim == None: 
@@ -53,6 +53,15 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
     print("intercept:", intercept)
     print("N:", N)
     print(f'{round(RMS,4)} & {round(mean_bias,4)} &{round(mean_ratio,4)}&{round(slope,4)}& {round(intercept,4)}& {N}')
+
+    if plot_slope:
+        ## {plot the best fit line.]
+        xlim = ax.get_xlim()
+        xl = np.linspace(xlim[0], xlim[1], 100)
+        yl = slope*xl + intercept
+
+        ax.plot(xl, yl, '-', color =slope_color, label=f'm={np.round(slope, 2)}, b={np.round(intercept, 4)}', linewidth = slope_width )
+
     
     return ax 
 
@@ -91,8 +100,20 @@ def Plot_Frequency(ax, y, N_bins, label, bin_edges=[]):
     else:
         hist, bin_edges = np.histogram(y, bins = N_bins)
    
+    hist = hist/len(y)
+    #width = bin_edges[0]*0.9
     bin_centers = bin_edges[:-1] + (abs(bin_edges[0] - bin_edges[1]))
+    
+    pos = [k for k in range(N_bins)]
+    ##  [number or labels]
+    Nlabs = 10
+    tick_pos = []
+    for k in range(0, N_bins, int(N_bins/Nlabs)) : 
+        tick_pos.append(k)
+    width =1
+    ax.bar(pos, hist, label =label, width =width)
+    ax.set_xticks(tick_pos)
+    ax.set_xticklabels([round(bin_centers[k],2) for k in tick_pos])
 
-    ax.plot(bin_centers, hist, label =label)
   
     return ax, bin_edges
