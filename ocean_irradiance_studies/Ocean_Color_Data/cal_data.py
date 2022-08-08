@@ -1442,10 +1442,8 @@ if __name__ == '__main__':
     year_min = 2012
  
     ## Wavelengths
-#    wavelengths = [412, 443, 490, 510, 547, 560, 665]
-#    cci_wavelengths = [412, 443, 490, 510, 560, 665]
-    wavelengths = [443, 490, 510, 560]
-    cci_wavelengths = [443, 490, 510, 560]
+    wavelengths = [412, 443, 490, 510, 547, 560, 665]
+    cci_wavelengths = [412, 443, 490, 510, 560, 665]
 
     ## The species of phytoplankton
     phy_type = 'Diat'
@@ -1456,8 +1454,8 @@ if __name__ == '__main__':
     ## Param Init object 
     PI = Param_Init()
 
-#    species = PI.phy_species
-    species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
+    species = PI.phy_species
+#    species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 #    species = ['Syn', 'Diat', 'Cocco', 'Lgeuk']
 #    for k in range(len(species)): 
 #        if species[k] == 'Generic': 
@@ -1471,9 +1469,9 @@ if __name__ == '__main__':
     phy_type = 'Diat'
     ## Runnning the comparison of calcofi to viirs
 #    Run_Cal_Comp_Viirs(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, phy_type, plot=True) 
-#    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, cci_wavelengths)
+    Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, cci_wavelengths)
 
-    Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, cci_wavelengths)
+#    Plot_Single_Species_Correlation_Stats(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species, cci_wavelengths)
     ## [Run the least squares phytoplankton estimation.]
     #x, irr_chla, irr_Rrs= Least_Square_Phy_Community(year_min, cal_cast_dat, cal_bot_dat, cci_url, args.save_dir, args.save_file_head, PI, N, wavelengths, species)
 
