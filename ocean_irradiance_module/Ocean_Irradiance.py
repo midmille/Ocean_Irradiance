@@ -204,7 +204,7 @@ def Backscatter_Ratio_3(phy_type);
        return 0.000051850
  
 
-def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=None, CDOM_chla=None, det=None, grid='log', pt1_perc_zbot=True, pt1_perc_phy=True):
+def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, ztop=0, phy=None, CDOM_refa=None, CDOM_chla=None, det=None, grid='log', pt1_perc_zbot=True, pt1_perc_phy=True):
 
     """
     This function calculates the irradiance grid, calculates the absorption, scattering, and backscatter 
@@ -335,10 +335,10 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, phy=None, CDOM_refa=Non
     ## [construct the vertical grid to the designated depth.]
     if grid == 'log': 
         ## log transformed z grid.
-        z = Log_Trans_Grid(zbot, N) 
+        z = Log_Trans_Grid(zbot, ztop, N) 
     elif grid == 'linear': 
         ## linear z 
-        z = np.linspace(zbot, 0, N)
+        z = np.linspace(zbot, ztop, N)
     else: 
         raise ValueError("Invalid grid keyword, either 'log' or 'linear'")
     
@@ -499,7 +499,7 @@ def zbot_func(hbot, Ed0, a, b_b, coefficients, light_frac = .01, phy=False, z=No
     return 
    
         
-def Log_Trans_Grid(zbot,Nlayers):
+def Log_Trans_Grid(zbot, ztop, Nlayers):
     """
     Constructs a Log Transformed z grid. 
 
@@ -516,7 +516,7 @@ def Log_Trans_Grid(zbot,Nlayers):
         The resulting z-grid. 
 
     """
-    zarr_exp = np.linspace(np.log(abs(zbot-1)),0, Nlayers)
+    zarr_exp = np.linspace(np.log(abs(zbot-1)), np.log(abs(ztop-1)), Nlayers)
     zarr = 1-np.exp(zarr_exp)
     
     return zarr
@@ -599,6 +599,7 @@ def dEdz_3stream(z, E, a, b, b_b, b_f, coefficients):
 def ocean_irradiance_analytical(PI, 
                                 hbot, 
                                 ab_wat, 
+                                ztop=0, 
                                 phy=None, 
                                 CDOM_refa=None, 
                                 CDOM_chla=None,
@@ -630,6 +631,7 @@ def ocean_irradiance_analytical(PI,
                                             Ed0,
                                             coefficients,
                                             phy=phy, 
+                                            ztop=ztop, 
                                             CDOM_refa=CDOM_refa, 
                                             CDOM_Chla=CDOM_Chla,
                                             det=det, 
@@ -695,6 +697,7 @@ def ocean_irradiance_analytical(PI,
 def ocean_irradiance_scipy(PI, 
                            hbot, 
                            ab_wat, 
+                           ztop=0,
                            phy = None, 
                            CDOM_refa = None, 
                            CDOM_chla = None, 
@@ -765,7 +768,7 @@ def ocean_irradiance_scipy(PI,
         grid = PI.grid
         if grid == 'log': 
             ## log transformed z grid.
-            z = Log_Trans_Grid(zarr[0], N) 
+            z = Log_Trans_Grid(zarr[0], ztop, N) 
         elif grid == 'linear': 
             ## linear z 
             z = np.linspace(zarr[0], 0, N)
@@ -784,6 +787,7 @@ def ocean_irradiance_scipy(PI,
                                                 N, 
                                                 Ed0,
                                                 coefficients,
+                                                ztop = ztop, 
                                                 phy=phy, 
                                                 CDOM_refa=CDOM_refa, 
                                                 CDOM_chla=CDOM_chla, 
@@ -809,6 +813,7 @@ def ocean_irradiance_scipy(PI,
 def ocean_irradiance_shootdown(PI, 
                                 hbot, 
                                 ab_wat, 
+                                ztop=0,
                                 phy = None, 
                                 CDOM_refa = None, 
                                 CDOM_chla = None, 
@@ -885,6 +890,7 @@ def ocean_irradiance_shootdown(PI,
                                             N, 
                                             Ed0,
                                             coefficients,
+                                            ztop=ztop,
                                             phy=phy, 
                                             CDOM_refa=CDOM_refa, 
                                             CDOM_chla=CDOM_chla, 
@@ -934,6 +940,7 @@ def ocean_irradiance_shootdown(PI,
 def ocean_irradiance_shootup(PI, 
                              hbot, 
                              ab_wat, 
+                             ztop=0,
                              phy = None, 
                              CDOM_refa = None, 
                              CDOM_chla = None, 
@@ -1010,6 +1017,7 @@ def ocean_irradiance_shootup(PI,
                                             N, 
                                             Ed0,
                                             coefficients,
+                                            ztop=ztop,
                                             phy=phy, 
                                             CDOM_refa=CDOM_refa, 
                                             CDOM_chla=CDOM_chla, 
@@ -1060,6 +1068,7 @@ def ocean_irradiance_shootup(PI,
 def ocean_irradiance_semianalytic_inversion(PI, 
                                             hbot, 
                                             ab_wat, 
+                                            ztop=0,
                                             phy=None, 
                                             CDOM_refa=None, 
                                             CDOM_chla=None, 
@@ -1188,6 +1197,7 @@ def ocean_irradiance_semianalytic_inversion(PI,
                                             N, 
                                             Ed0,
                                             coefficients,
+                                            ztop=ztop, 
                                             phy=phy, 
                                             CDOM_refa=CDOM_refa, 
                                             CDOM_chla=CDOM_chla, 
@@ -1327,6 +1337,7 @@ def ocean_irradiance_semianalytic_inversion(PI,
                                             N-1, 
                                             Ed0,
                                             coefficients,
+                                            ztop=ztop, 
                                             phy=phy, 
                                             CDOM_refa=CDOM_refa, 
                                             CDOM_chla=CDOM_chla, 
@@ -1356,6 +1367,7 @@ def ocean_irradiance_semianalytic_inversion(PI,
 def ocean_irradiance_semianalytic_inversion_ROMS(PI, 
                                             hbot, 
                                             ab_wat, 
+                                            ztop=0,
                                             phy=None, 
                                             CDOM_refa=None, 
                                             det=None, 
@@ -1444,6 +1456,7 @@ def ocean_irradiance_semianalytic_inversion_ROMS(PI,
                                             N, 
                                             Ed0,
                                             coefficients,
+                                            ztop=ztop,
                                             phy=phy, 
                                             CDOM_refa=CDOM_refa, 
                                             det=det, 
@@ -1579,6 +1592,7 @@ def ocean_irradiance(PI,
                      hbot, 
                      ab_wat, 
                      method='scipy', 
+                     ztop=0,
                      phy=None,
                      CDOM_refa=None, 
                      CDOM_chla=None, 
@@ -1590,15 +1604,15 @@ def ocean_irradiance(PI,
     """
 
     if method=='shootdown': 
-        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, CDOM_chla=CDOM_chla, det=det, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, ztop=ztop, phy=phy, CDOM_refa=CDOM_refa, CDOM_chla=CDOM_chla, det=det, N=N)
     elif method=='shootup': 
-        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, CDOM_chla=CDOM_chla, det=det, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, ztop=ztop, phy=phy, CDOM_refa=CDOM_refa, CDOM_chla=CDOM_chla, det=det, N=N)
     elif method=='scipy':
-        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, CDOM_chla=CDOM_chla, det=det, N=N, zabb_b = zabb_b)
+        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, ztop=ztop, phy=phy, CDOM_refa=CDOM_refa, CDOM_chla=CDOM_chla, det=det, N=N, zabb_b = zabb_b)
     elif method=='dutkiewicz':
-        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, CDOM_chla=CDOM_chla, det=det, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, ztop=ztop, phy=phy, CDOM_refa=CDOM_refa, CDOM_chla=CDOM_chla, det=det, N=N)
     elif method=='analytical': 
-        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, CDOM_refa=CDOM_refa, CDOM_chla=CDOM_chla, det=det, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, ztop=ztop, phy=phy, CDOM_refa=CDOM_refa, CDOM_chla=CDOM_chla, det=det, N=N)
     else: 
         raise ValueError('Ocean irradiance method unrecognized. Please use one of the follwing methods: \n shootup \n shootdown \n scipy \n dutkiewicz \n analytical')
         
