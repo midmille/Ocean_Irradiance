@@ -25,14 +25,13 @@ class Phy:
         --> backscatter coefficient, b [m^-1]
                 -- Vector corresponding to different phytoplankton
     """
-    def __init__(self, z, phy, esd, a, b, phytype):
+    def __init__(self, z, phy, esd, a, b):
         self.z = z
         self.phy = phy
         self.esd = esd
         self.a = a
         self.b = b
         self.Nz = len(z)
-        self.phytype = phytype
         if phy.ndim == 1:
             self.Nphy = 1
         elif phy.ndim == 2:
@@ -173,7 +172,7 @@ def Backscatter_Ratio_2(chla):
 
     return bb_r
 
-def Backscatter_Ratio_3(phy_type); 
+def Backscatter_Ratio_3(phy_type):
     """
     These back scatter ratios b_b/b are from stephanies optics_phytoplankton.txt file in this directory.
 
@@ -768,10 +767,10 @@ def ocean_irradiance_scipy(PI,
         grid = PI.grid
         if grid == 'log': 
             ## log transformed z grid.
-            z = Log_Trans_Grid(zarr[0], ztop, N) 
+            z = Log_Trans_Grid(zarr[0], zarr[-1], N) 
         elif grid == 'linear': 
             ## linear z 
-            z = np.linspace(zarr[0], 0, N)
+            z = np.linspace(zarr[0], zarr[-1], N)
         else: 
             raise ValueError("Invalid grid keyword, either 'log' or 'linear'")
  

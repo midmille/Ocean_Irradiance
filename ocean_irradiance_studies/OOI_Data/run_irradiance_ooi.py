@@ -174,11 +174,12 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
                 PI.Ed0 = 0.7 * Ed0
                 PI.Es0 = 0.3 * Ed0
 
-                z_irr, a_irr, b_irr, b_b_irr, b_f_irr = OI.Calc_Abscat_Grid(flort_z[0],
+                z_irr, a_irr, b_irr, b_b_irr, b_f_irr = OI.Calc_Abscat_Grid(z_a[0],
                                                                    abscat(lam, 'water'), 
                                                                    N, 
                                                                    PI.Ed0, 
                                                                    PI.coefficients, 
+                                                                   zbot = z_a[-1], 
                                                                    phy=phy, 
                                                                    CDOM_refa = CDOM, 
                                                                    pt1_perc_zbot = False, 
@@ -189,7 +190,7 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
                 PI.pt1_perc_phy = False
 
                 ocean_irr_sol = OI.ocean_irradiance(PI, 
-                                                    flort_z[0], 
+                                                    flo_z[0], 
                                                     abscat(lam, 'water'), 
                                                     zabb_b = (z_irr, a_irr, b_irr, b_b_irr), 
                                                     N=N)
@@ -539,7 +540,7 @@ def Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_types, flort_prof, optaa_prof,
     """
 
     ## [Get the colors such that they match the wavelengths.] 
-    colors = [Wavelength_To_RGB.wavelength_to_rgb(wavelength) for wavelength in wavelengths]
+    colors = [W2RGB.wavelength_to_rgb(wavelength) for wavelength in wavelengths]
     
     N_lam = len(wavelengths)
     figa, axas = plt.subplots(ncols=N_lam, nrows=1)
@@ -627,7 +628,7 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
 
     fig, ax = plt.subplots()
     ## [Get the colors such that they match the wavelengths.] 
-    colors = [Wavelength_To_RGB.wavelength_to_rgb(wavelength) for wavelength in wavelengths]
+    colors = [W2RGB.wavelength_to_rgb(wavelength) for wavelength in wavelengths]
     
     ## [Loop over the irradiance wavelengths.]
     for k, lam in enumerate(wavelengths): 
@@ -640,7 +641,7 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
     #    spkir_avg = ODF.Grid_Average_Profile(spkir_depth, spkir[:,lam_i], depth_avg)
         
         ## [Surface Ed0.]
-        print('surface Ed0+Es0', spkir[0,lam_i])
+        print('surface Ed0+Es0', spkir[-1,lam_i])
 
         ## [irr arrays for lam.]
         irr_arr = irr_field[lam]
@@ -935,8 +936,8 @@ if __name__ == '__main__':
 #    phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 #    phy_species = ['Generic']
     PI = Param_Init()
-    phy_species = PI.phy_species
-#    phy_species = [ 'Syn'] 
+#    phy_species = PI.phy_species
+    phy_species = [ 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 400
     prof_index = 0
@@ -980,9 +981,9 @@ if __name__ == '__main__':
     ## [Run the irradiance model using the profiles, over all profiles.]
     phy_type = 'Syn'
     irrsavefile = f'{irrsavefile}_{phy_type}.p'
-#    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, irrsavefile)
+    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, irrsavefile)
     ## [Plot the resulting irradiance profiles.]
-#    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
+    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
@@ -990,5 +991,5 @@ if __name__ == '__main__':
 
     
     ## [Plot the absorption in time and chla bins.]
-    bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
-    Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)
+    #bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
+    #Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)
