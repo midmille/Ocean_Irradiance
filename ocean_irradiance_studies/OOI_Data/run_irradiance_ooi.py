@@ -96,6 +96,7 @@ def Irr_OOI_Abs_Scat(PI, N, lam, phy_type, flort_prof, optaa_prof,  cdom_reflam)
                                                        N, 
                                                        PI.Ed0, 
                                                        PI.coefficients, 
+                                                       ztop=flort_z[-1], 
                                                        phy=phy, 
                                                        CDOM_refa = CDOM, 
                                                        pt1_perc_zbot = False, 
@@ -179,7 +180,7 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
                                                                    N, 
                                                                    PI.Ed0, 
                                                                    PI.coefficients, 
-                                                                   zbot = z_a[-1], 
+                                                                   ztop = z_a[-1], 
                                                                    phy=phy, 
                                                                    CDOM_refa = CDOM, 
                                                                    pt1_perc_zbot = False, 
@@ -190,7 +191,7 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
                 PI.pt1_perc_phy = False
 
                 ocean_irr_sol = OI.ocean_irradiance(PI, 
-                                                    flo_z[0], 
+                                                    z_a[0], 
                                                     abscat(lam, 'water'), 
                                                     zabb_b = (z_irr, a_irr, b_irr, b_b_irr), 
                                                     N=N)
@@ -231,11 +232,13 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
                 ## [Change the scattering into backscattering.]
                 esd_v = phy.esd
                 ## [backscatter ratio.]
-                bb_r = OI.Backscatter_Ratio(esd_v)
+#                bb_r = OI.Backscatter_Ratio(esd_v)
+                chla_ooi = np.interp(z_ooi, flort_z, chla)
+                bb_r = OI.Backscatter_Ratio_2(chla_ooi)
 
                 ## [Add water into the absorption/scattering.]
                 a_ooi = a_ooi + abscat(lam, 'water')[0]
-                bb_wat = 0.551 * abscat(lam, 'water')[1]
+                bb_wat = 0.5 * abscat(lam, 'water')[1]
                 b_b_ooi = b_ooi*bb_r + bb_wat
 
                 ## [Now running the irr model using abs and scat from ooi.]
@@ -266,6 +269,24 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
 
     return irr_field, irr_field_ab
 
+def Run_Irradiance_Species(PI, N, wavelengths, spkir_wavelengths, species, flort_profs, optaa_profs, spkir_profs, cdom_reflam, savefile):
+
+    """
+    Loops species
+    """
+
+    irr_fields = []
+    irr_fields_ab =[]
+
+    for phy_type in species: 
+        savefile =f'savefile_{phy_type}.p'
+        
+        res = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, savefile)
+
+        irr_fields.append(res[0])
+        irr_fields_ab.append(res[1])
+
+    return irr_fields, irr_fields_ab
 
 def Get_CCI_Data(pml_url, flort_dat): 
     """
@@ -591,7 +612,7 @@ def Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_types, flort_prof, optaa_prof,
     return 
 
 
-def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method): 
+def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field_ab, site, method): 
 
     """
     This function plots downwelling irradiance stream solved for using the chla profiles
@@ -626,7 +647,10 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
     spkir_dt = spkir_prof['time'].data
     spkir = spkir_prof['spkir_abj_cspp_downwelling_vector'].data
 
-    fig, ax = plt.subplots()
+    fig, axs = plt.subplots(ncols=2, nrows=1, sharey=True)
+    ax = axs[0]
+    ax1 = axs[1]
+
     ## [Get the colors such that they match the wavelengths.] 
     colors = [W2RGB.wavelength_to_rgb(wavelength) for wavelength in wavelengths]
     
@@ -644,38 +668,135 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
         print('surface Ed0+Es0', spkir[-1,lam_i])
 
         ## [irr arrays for lam.]
-        irr_arr = irr_field[lam]
         irr_arr_ab = irr_field_ab[lam]
         ## [ Plotting the downward direct profile. 0 is downward irradiance, 3 is depth.]
         ## [Also must multiply by surface value of spkir prof, since irr_arr is normalized.]
-        ax.plot(irr_arr[:, prof_index, 0]+irr_arr[:, prof_index, 1], irr_arr[:, prof_index, 3], ':', label=f'Irr {lam}', color=colors[k])
-        ax.plot(irr_arr_ab[:, prof_index, 0]+irr_arr_ab[:, prof_index, 1], irr_arr_ab[:, prof_index, 3], '-', label=f'Irr ooi ab {lam}', color=colors[k])
+#        ax.plot(irr_arr[:, prof_index, 0]+irr_arr[:, prof_index, 1], irr_arr[:, prof_index, 3], ':', label=f'Irr {lam}', color=colors[k])
+        ax.plot(irr_arr_ab[:, prof_index, 0]+irr_arr_ab[:, prof_index, 1], irr_arr_ab[:, prof_index, 3], '--', label=f'Model Using OOI ab {lam}', color=colors[k], linewidth=1.5)
+        ax1.plot(irr_arr_ab[:, prof_index, 2]/ (irr_arr_ab[-1, prof_index, 0]+irr_arr_ab[-1, prof_index, 1]), irr_arr_ab[:, prof_index, 3], '--', label=f'Model Using OOI ab {lam}', color=colors[k], linewidth=1.5)
 
         ## [Plotting the spkir profile.]
         #ax.plot(spkir[:, i], depth, '--', label=f'OOI SPKIR {lam}', color=colors[k])
-        ax.plot(spkir[:,lam_i], spkir_depth, '--', label=f'OOI SPKIR {lam}', color=colors[k])
+        ax.plot(spkir[:,lam_i], spkir_depth, '-', label=f'OOI SPKIR {lam}', color=colors[k], linewidth=1.5)
 
     ## [Labels.kkkkk]
     #ax.set_ylabel(f"Z [{depth_dat.attrs['units']}]")
     ax.set_ylabel(f"Z [m]")
     #ax.set_xlabel(f"Downwelling Spectral Irradiance {spkir_dat.attrs['units']}")
-    ax.set_xlabel(f"Downwelling Spectral Irradiance")
+    ax.set_xlabel(r"$E_d+E_s$ "+ f"{spkir_prof['spkir_abj_cspp_downwelling_vector'].attrs['units']}")
+    ax1.set_xlabel( r"$\frac{E_u}{E_{d0} + E_{s0}}$ ", fontsize=12) 
     #ax.set_title(f"OOI SPKIR Profile and Irradiance Model \n OOI SPKIR Profile Date: {date_time[0]} to {date_time[-1]}")
-    ax.set_title(f"OOI SPKIR Profile and Irradiance Model")
+    ax.set_title(f"Downwelling Irradiance")
+    ax1.set_title(f"Normalized Upwelling Irradiance")
     ## [Putting some identifying text on the figure.]
     ## [10% up the vertical location]
-    txt_y = ax.get_ylim()[1] + 0.5 * ax.get_ylim()[0] 
+#    txt_y = ax.get_ylim()[1] + 0.5 * ax.get_ylim()[0] 
     ## [10% of the horizontal location.]
-    txt_x = ax.get_xlim()[0] + 0.2 * ax.get_xlim()[1]
-    ## [The change in txt location in vertical.]
-    txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
+#    txt_x = ax.get_xlim()[0] + 0.2 * ax.get_xlim()[1]
+#    ## [The change in txt location in vertical.]
+#    txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
     ## [Adding the txt.]
-    ax.text(txt_x, txt_y, f'SITE: {site}')   
-    ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: SPKIR')   
-    ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
-
+#    ax.text(txt_x, txt_y, f'SITE: {site}')   
+#    ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: SPKIR')   
+#    ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
+#
     ax.legend(title='Wavelengths [nm]')
     ax.grid()
+    ax1.grid()
+
+    fig.show()
+
+    return 
+
+
+def Plot_Irraddiance_SPKIR_Irr_Species(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method, phy_species): 
+
+    """
+    This function plots downwelling irradiance stream solved for using the chla profiles
+    from ooi. Then it plots the spkir data that corresponds to the solved irradiance profiles.
+
+    Parameters
+    ----------
+    prof_index: Integer
+        The index of the profile to be plotted. 
+    wavelengths: List, Integer
+        The list of wavelengths, the wavelengths of the ooi SPKIR might differ from the
+        wavelengths used for the coefficients in the irradiance model. Might has to pass
+        the spkir wavelengths eventually. 
+    irr_field: Dictionary, 4-D Array
+        The irradiance field dictionary with wavelengths as keys and the 4-D irradiance array
+        as the values.
+    spkir_depth_profs: List, 1-D Array
+        The list of spkir depth profiles. The depth profiles are positive with the bottom most
+        depth at index 0 and the surface at index -1. 
+    spkir_dt_profs: List, 1-D Array
+        The list of the times associated with each depth and spkir data point. 
+    spkir_profs: List, 2-D Array
+        The list of spkir profiles. The first index of each lsit value is the profile and the
+        second index corresponds to the wavelenth.
+    """
+
+    ## [The number of wavelengths.]    
+    N_lam = len(wavelengths)
+    Nphy = len(phy_species)
+
+    ## [spkir depth stuff.]
+    spkir_depth = spkir_prof['depth'].data
+    spkir_dt = spkir_prof['time'].data
+    spkir = spkir_prof['spkir_abj_cspp_downwelling_vector'].data
+
+    fig, axs = plt.subplots(ncols = N_lam, nrows=1)
+    ## [Get the colors such that they match the wavelengths.] 
+#    colors = [W2RGB.wavelength_to_rgb(wavelength) for wavelength in wavelengths]
+    cmap = Get_Phy_Cmap_Dict()
+    
+    ## [Loop over the irradiance wavelengths.]
+    for k, lam in enumerate(wavelengths): 
+
+        ax = axs[k]
+        ax.set_title(f"{lam} [nm]")
+
+        ## [Get the spkir wavelength index for lam.]
+        lam_i = ODF.Get_Wavelength_Index(spkir_wavelengths, lam)
+        lam_spkir = spkir_wavelengths[lam_i]
+
+        ## [Make the 1m avg grid.]
+    #    depth_avg = np.arange(spkir_depth[0], spkir_depth[-1], 1)
+    #    spkir_avg = ODF.Grid_Average_Profile(spkir_depth, spkir[:,lam_i], depth_avg)
+        
+        ## [Surface Ed0.]
+        print('surface Ed0+Es0', spkir[-1,lam_i])
+
+        for j, phy_type in enumerate(phy_species):
+            irr_arr = irr_fields[j][lam]
+            ax.plot(irr_arr[:, prof_index, 0]+irr_arr[:, prof_index, 1], irr_arr[:, prof_index, 3], '--', label=f'Model {phy_type}', color=cmap[phy_type], linewidth =1.0)
+
+        ## [irr arrays for lam.]
+        ## [since using bbr1 the irr_arr_ab should no longer be species dependent.]
+        irr_arr_ab = irr_fields_ab[0][lam]
+        ax.plot(irr_arr_ab[:, prof_index, 0]+irr_arr_ab[:, prof_index, 1], irr_arr_ab[:, prof_index, 3], '--', label=f'Model Using OOI ab', color='k')
+        ax.plot(spkir[:,lam_i], spkir_depth, '-', label=f'OOI SPKIR', color='k')
+        
+        if k ==0: 
+            ax.set_ylabel(f"Z [m]")
+            ax.legend(title='Wavelengths [nm]')
+        ax.set_xlabel(f"Downwelling Irradiance " + r"$E_d+E_s$ "+ f"{spkir_prof['spkir_abj_cspp_downwelling_vector'].attrs['units']}")
+#        ax.set_xlabel(f"Downwelling Spectral Irradiance")
+
+        ax.grid()
+
+#    ## [Putting some identifying text on the figure.]
+#    ## [10% up the vertical location]
+#    txt_y = ax.get_ylim()[1] + 0.5 * ax.get_ylim()[0] 
+#    ## [10% of the horizontal location.]
+#    txt_x = ax.get_xlim()[0] + 0.2 * ax.get_xlim()[1]
+#    ## [The change in txt location in vertical.]
+#    txt_dz = 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0])
+#    ## [Adding the txt.]
+#    ax.text(txt_x, txt_y, f'SITE: {site}')   
+#    ax.text(txt_x, txt_y+2*txt_dz, f'INSTRUMENT: SPKIR')   
+#    ax.text(txt_x, txt_y+3*txt_dz, f'METHOD: {method}')   
+
 
     fig.show()
 
@@ -911,7 +1032,7 @@ if __name__ == '__main__':
     ## [Data load flag, false means load data from pickle.]
     download = False
     savefile_head = "ooi_data/.archive/ooi_dat"
-    irrsavefile = 'ooi_irr_out/irr_field'
+    irrsavefile_head = 'ooi_irr_out/irr_field'
     site = "CE02SHSP"
     node = 'SP001'
     method = 'recovered_cspp'
@@ -931,13 +1052,14 @@ if __name__ == '__main__':
     N=1000
 #    wavelengths = np.arange(425, 725, 25)
 #    wavelengths = [443, 490, 510, 560]
-    wavelengths = [412, 443, 490, 510, 560, 665]
+    wavelengths = [ 443, 560, 665]
+#    wavelengths = [443, 560]
 #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
 #    phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 #    phy_species = ['Generic']
     PI = Param_Init()
-#    phy_species = PI.phy_species
-    phy_species = [ 'Syn'] 
+    phy_species = PI.phy_species
+#    phy_species = [ 'Syn'] 
     PI = Param_Init()
     cdom_reflam = 400
     prof_index = 0
@@ -980,10 +1102,12 @@ if __name__ == '__main__':
 
     ## [Run the irradiance model using the profiles, over all profiles.]
     phy_type = 'Syn'
-    irrsavefile = f'{irrsavefile}_{phy_type}.p'
-    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, irrsavefile)
+    irrsavefile = f'{irrsavefile_head}_{phy_type}.p'
+#    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, irrsavefile)
+    irr_fields, irr_fields_ab = Run_Irradiance_Species(PI, N, wavelengths, spkir_wavelengths, phy_species, flort_profs, optaa_profs, spkir_profs, cdom_reflam, irrsavefile_head)
     ## [Plot the resulting irradiance profiles.]
-    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_field, irr_field_ab, site, method)
+    Plot_Irraddiance_SPKIR_Irr_Species(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_fields, irr_fields_ab, site, method, phy_species)
+    Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_fields_ab[0], site, method)
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
