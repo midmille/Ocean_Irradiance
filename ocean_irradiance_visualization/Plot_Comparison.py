@@ -6,6 +6,7 @@ Author Miles MIller
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import stats
 
 
 def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None, marker='o', color=None, title_fontsize=10, markersize=5, linewidth=1, plot_slope=True, slope_color=None, alpha =1, slope_width=0.8, plotxeqy=True): 
@@ -43,9 +44,15 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
 
     ## [Calculating and printing correlation statisitcs.]
     RMS = np.sqrt(np.mean(((y-x)/x)**2))
-    mean_bias = np.mean(y-x)
+    mean_bias = np.mean((y-x)/x)
     mean_ratio = np.mean(y/x)
-    slope, intercept = np.polyfit(x,y,1)
+#    slope, intercept = np.polyfit(x,y,1)
+    res = stats.linregress(x,y)
+    slope = res.slope
+    intercept =res.intercept
+    rval = res.rvalue
+    r2 = rval**2
+    pval = res.pvalue
     N = len(x)
 
     print("RMSRE:", RMS)
@@ -53,6 +60,8 @@ def Plot_Comparison(ax, x, y, title, label, xlabel, ylabel, xlim=None, ylim=None
     print("mean_ratio:", mean_ratio)
     print("slope:", slope)
     print("intercept:", intercept)
+    print("r squared:", r2)
+    print("pvalue:", pval)
     print("N:", N)
     print(f'{round(RMS,4)} & {round(mean_bias,4)} &{round(mean_ratio,4)}&{round(slope,4)}& {round(intercept,4)}& {N}')
 

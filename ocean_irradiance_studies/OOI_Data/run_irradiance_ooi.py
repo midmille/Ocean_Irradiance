@@ -654,7 +654,7 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
         #ax.plot(spkir[:, i], depth, '--', label=f'OOI SPKIR {lam}', color=colors[k])
         ax.plot(spkir[:,lam_i], spkir_depth, '--', label=f'OOI SPKIR {lam}', color=colors[k])
 
-    ## [Labels.]
+    ## [Labels.kkkkk]
     #ax.set_ylabel(f"Z [{depth_dat.attrs['units']}]")
     ax.set_ylabel(f"Z [m]")
     #ax.set_xlabel(f"Downwelling Spectral Irradiance {spkir_dat.attrs['units']}")
@@ -746,7 +746,7 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
             CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
             CDOM = OI.CDOM_chla(flort_depth, chla, lam)
             ## [The absorption in time.]
-            abs_t[k,i] = (optaa_a[optaa_di, i] - 1*CDOM.a[flort_di]) / chla[flort_di]
+            abs_t[k,i] = (optaa_a[optaa_di, i] - 10*CDOM.a[flort_di]) / chla[flort_di]
             scat_t[k,i] = (optaa_b[optaa_di, i]) / chla[flort_di]
 
     ## [Plotting.]
@@ -780,8 +780,8 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
         ax1.fill_between(wavelength_a[0,:], lquantb, uquantb, alpha=0.8)
         ax0.fill_between(wavelength_a[0,:], abs_t.min(axis=0), abs_t.max(axis=0), alpha=0.2)
         ax1.fill_between(wavelength_a[0,:], scat_t.min(axis=0), scat_t.max(axis=0), alpha=0.2)
-        ax0.plot(wavelength_a[0,:], abs_t.mean(axis=0), '-', color ='k', linewidth=2)
-        ax1.plot(wavelength_a[0,:], scat_t.mean(axis=0), '-', color ='k', linewidth=2)
+        ax0.plot(wavelength_a[0,:], abs_t.mean(axis=0), '-', color ='k', linewidth=2, label="OOI Mean")
+        ax1.plot(wavelength_a[0,:], scat_t.mean(axis=0), '-', color ='k', linewidth=2, label="OOI Mean")
         ## [Plot the mean.]
 #        print(abs_t[mask].min(axis=0))
 
