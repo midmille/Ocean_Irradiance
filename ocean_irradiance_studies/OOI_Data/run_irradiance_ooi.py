@@ -279,6 +279,7 @@ def Run_Irradiance_Species(PI, N, wavelengths, spkir_wavelengths, species, flort
     irr_fields_ab =[]
 
     for phy_type in species: 
+        print(phy_type)
         savefile =f'savefile_{phy_type}.p'
         
         res = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, savefile)
@@ -1051,8 +1052,8 @@ if __name__ == '__main__':
     ## [The number of levels for irradiance run.]
     N=1000
 #    wavelengths = np.arange(425, 725, 25)
-#    wavelengths = [443, 490, 510, 560]
-    wavelengths = [ 443, 560, 665]
+    wavelengths = [412, 443, 490, 510, 547, 560, 665]
+#    wavelengths = [ 443, 560, 665]
 #    wavelengths = [443, 560]
 #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
 #    phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
