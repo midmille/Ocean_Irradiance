@@ -251,8 +251,11 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, ztop=0, phy=None, CDOM_
         ## Just one phytoplankton species
         if Nphy == 1 : 
             ## The back scatter ratio
-            bb_r = Backscatter_Ratio(esd)
-#            bb_r = Backscatter_Ratio_2(phy_prof)
+            if PI.bbr == 'bbr1':
+                bb_r = Backscatter_Ratio(esd)
+            elif PI.bbr == 'bbr2': 
+                bb_r = Backscatter_Ratio_2(phy_prof)
+
             a = a + phy_prof * a_phy
             b = b + phy_prof * b_phy
             b_b_phy = b_b_phy + phy_prof * b_phy * bb_r
@@ -262,9 +265,12 @@ def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, ztop=0, phy=None, CDOM_
             
 #            bb_r = Backscatter_Ratio_2(np.sum(phy_prof[:,:], axis=1))
             for k in range(Nphy):
-#                bb_r = Backscatter_Ratio_2(np.sum(phy_prof[:,k], axis=1))
+                if PI.bbr == 'bbr1':
+                    bb_r = Backscatter_Ratio(esd[k])    
+                elif PI.bbr == 'bbr2':
+                    bb_r = Backscatter_Ratio_2(np.sum(phy_prof[:,k], axis=1))
+
                 ## The back scatter ratio
-                bb_r = Backscatter_Ratio(esd[k])    
                 a = a + phy_prof[:,k] * a_phy[k]  
                 b = b + phy_prof[:,k] * b_phy[k]
                 b_b_phy = b_b_phy + phy_prof[:,k] * b_phy[k] * bb_r

@@ -158,7 +158,8 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
 
                 ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
 #                CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
-                CDOM =None
+                chla_intrp = np.interp(z_a, flort_z, chla)
+                CDOM = OI.CDOM_chla(z_a, chla_intrp, lam)
 
                 ## [The detritus parameter.]
 #                det_val = 0
@@ -269,7 +270,7 @@ def Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs,
 
     return irr_field, irr_field_ab
 
-def Run_Irradiance_Species(PI, N, wavelengths, spkir_wavelengths, species, flort_profs, optaa_profs, spkir_profs, cdom_reflam, savefile):
+def Run_Irradiance_Species(PI, N, wavelengths, spkir_wavelengths, species, flort_profs, optaa_profs, spkir_profs, cdom_reflam, savefile_head):
 
     """
     Loops species
@@ -279,8 +280,7 @@ def Run_Irradiance_Species(PI, N, wavelengths, spkir_wavelengths, species, flort
     irr_fields_ab =[]
 
     for phy_type in species: 
-        print(phy_type)
-        savefile =f'savefile_{phy_type}.p'
+        savefile =f'{savefile_head}_{phy_type}.p'
         
         res = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, savefile)
 
@@ -803,6 +803,156 @@ def Plot_Irraddiance_SPKIR_Irr_Species(prof_index, wavelengths, spkir_prof, spki
 
     return 
 
+
+def Correlation_Stats(x, y): 
+    """
+    """
+    nonan = ~np.isnan(x) * ~np.isnan(y)
+    x = x[nonan]
+    y = y[nonan]
+
+    RMS = np.sqrt(np.mean(((y-x)/x)**2))
+    mean_bias = np.mean(y-x)
+    rel_mean_bias = np.mean((y-x)/x)
+    mean_ratio = np.mean(y/x)
+    slope, intercept = np.polyfit(x,y,1)
+    N = len(x)
+
+    return RMS, mean_bias, rel_mean_bias, mean_ratio, slope, intercept, N
+
+
+def Plot_Correlation(phy_species, rrs_phy_type, flort_profs, irr_fields, irr_fields_ab, plot_rrs=False, plot_chla=False): 
+    """
+    """
+    
+    Nlam = len(wavelngths)
+    Nphy = len(phy_species)
+    Nprof = len(flort_profs)
+
+    ## start by getting in situ chlorophyll-a
+    for k, flort_prof in enumerate(flort_profs): 
+        
+        chla = flort_prof['fluorometric_chlorophyll_a'].data
+        chla_insitu[k] = chla[-1]
+
+    ## rrs values for different irr model species first
+    rrs_irr_species = {}
+    rrs_irr_ab_species = {}
+    chla_irr_species = {}
+    chla_irr_ab_species = {}
+    for phy_type in phy_species: 
+        rrs_irr_dict = {}
+        rrs_irr_ab_dict = {}
+
+        irr_arr = irr_fields[k]
+        irr_arr_ab = irr_fields_ab[k]
+        for j, lam in enumerate(wavelengths): 
+            for k in range(Nprof):
+                    Ed0 = irr_arr[lam][-1, k, 0]
+                    Ed0 = irr_arr[lam][-1, k, 1]
+                    Ed0 = irr_arr[lam][-1, k, 2]
+                    rrs_irr_dict[lam] = OIR.R_RS(Ed0, Es0, Eu0)
+                    Ed0 = irr_arr_ab[lam][-1, k, 0]
+                    Ed0 = irr_arr_ab[lam][-1, k, 1]
+                    Ed0 = irr_arr_ab[lam][-1, k, 2]
+                    rrs_irr_ab_dict[lam] = OIR.R_RS(Ed0, Es0, Eu0)
+
+        chla_irr = OIR.OCx_alg(rrs_irr_dict[443], rrs_irr_dict[490], rrs_irr_dict[510], rrs_irr_dict[560], method='OC4')
+        chla_irr_ab = OIR.OCx_alg(rrs_irr_ab_dict[443], rrs_irr_ab_dict[490], rrs_irr_ab_dict[510], rrs_irr_ab_dict[560], 'OC4')
+
+        rrs_irr_species[phy_type] = rrs_irr_dict
+        rrs_irr_ab_species[phy_type] = rrs_irr_ab_dict
+        chla_irr_species[phy_type] = chla_irr
+        chla_irr_ab_species[phy_type] = chla_irr_ab
+
+
+    if plot_rrs: 
+    
+        ## first plot the R_rs correlation for the provided type
+        fig, ax = plt.subplots()
+        
+        ylabel = r'Model Single ' + f"{rrs_phy_type} Type" +r'$\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+        xlabel = r'Model Using OOI Absorption/Scattering $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
+        ylim = None
+        xlim = None
+        for lam in wavelengths: 
+            print(f"x = rrs OOI abscat {lam}, y = rrs Model {rrs_phy_type} {lam}")
+            PC.Plot_Comparison(ax, 
+                               rrs_irr_ab_species[rrs_phy_type][lam], 
+                               rrs_irr_species[rrs_phy_type][lam], 
+                               f'{phy_type}',
+                               f'{lam}', 
+                               xlabel, 
+                               ylabel, 
+                               xlim = xlim, 
+                               ylim= ylim, 
+                               color= W2RGB.wavelength_to_rgb(lam), 
+                               plot_slope =True, 
+                               slope_color = W2RGB.wavelength_to_rgb(lam), 
+                               alpha = 0.8)
+
+        rrs_ax.legend(title='Wavelengths [nm]')  
+
+        fig.show()
+
+    ## plotting the chla comparisons.
+    if plot_chla: 
+        
+        ## model using OOI ab compared to insitu.
+        fig, ax = plt.subplots()
+        print("x = OOI Inisitu chla, y = model with OOI ab ") 
+        ax_calchla = PC.Plot_Comparison(ax, 
+                                        chl_insitu, 
+                                        ## [species choice shouldnt matter since we use bbr1 for OOI ab.]
+                                        chla_irr_ab_dict[rrs_phy_type], 
+                                        'Model Using OOI Absorption/Scattering Compared to OOI In Situ Chlorophyll', 
+                                        'Model Using OOI ab', 
+                                        r'OOI In Situ Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 
+                                        'Model Chl-a Using OOI Absorption/Scattering[mg Chl-a $\mathrm{m}^{-3}$]', 
+                                        xlim =50, 
+                                        ylim = 50, 
+                                        color='blue', 
+                                        plot_slope=True, 
+                                        slope_color = 'blue', 
+                                        alpha = 0.9)
+        ax.legend()
+        fig.show()
+
+         
+        fig, ax = plt.subplots()
+
+        cmap = Get_Phy_Cmap_Dict()
+        for k, phy_type in enumerate(species):
+            ## single species model compared to in situ chla.
+            ax_calchla = PC.Plot_Comparison(ax, 
+                                            chla_insitu, 
+                                            chla_irr_species[phy_type], 
+                                            'Model Single Species Compared to OOI In Situ Chlorophyll', 
+                                            f'{phy_type}', 
+                                            r'OOI In Situ Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 
+                                            r'Model Single Species [mg Chl-a $\mathrm{m}^{-3}$]', 
+                                            xlim =50, 
+                                            ylim = 50, 
+                                            color=cmap[phy_type], 
+                                            plot_slope=True, 
+                                            slope_color = cmap[phy_type], 
+                                            alpha = 0.9) 
+        ax.legend()
+        
+        fig.show()
+ 
+
+    return 
+
+
+def Plot_Correlation_Stats():
+    """
+    """
+
+    return
+
+
+
 def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict):
     """
     This plot creates a plot similiar to the one Chris Wingard sent in his email on 4/9/2022. 
@@ -866,7 +1016,7 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
         ## [Loop wavelengths to remove cdom.]
         for i, lam in enumerate(wavelength_a[k,:]):
             ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
-            CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
+#            CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
             CDOM = OI.CDOM_chla(flort_depth, chla, lam)
             ## [The absorption in time.]
             abs_t[k,i] = (optaa_a[optaa_di, i] - 10*CDOM.a[flort_di]) / chla[flort_di]
@@ -1061,7 +1211,6 @@ if __name__ == '__main__':
     PI = Param_Init()
     phy_species = PI.phy_species
 #    phy_species = [ 'Syn'] 
-    PI = Param_Init()
     cdom_reflam = 400
     prof_index = 0
     depthz = 5
