@@ -374,15 +374,22 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                         phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
 
                     ## [chla estimate of cdom.]
-                    cdom = OI.CDOM_chla(z, chla, lam)
-                    cdom.a = cdom.a
+                   # cdom = OI.CDOM_chla(z, chla, lam)
+                    
+                    cdom_reflam = 450
+                    phy_cdom = OI.Phy(z, chla, ESD(phy_type), abscat(cdom_reflam, phy_type, C2chla='default')[0], abscat(cdom_reflam, phy_type, C2chla='default')[1])
+                    wat_cdom = abscat(cdom_reflam, phy_type)[0]
+
+                    cdom_refa = 0.5*(phy_cdom.a+wat_cdom)
+
+                    CDOM = OI.CDOM_refa(z, cdom_refa, cdom_reflam, lam, fraca=0.3)
                     #cdom = OI.CDOM(z, salt, lam)
                     #cdom = None
                     ocean_irr_sol = OI.ocean_irradiance(PI, 
                                                   z[0], 
                                                   abscat(lam, 'water'), 
                                                   phy=phy, 
-                                                  CDOM_chla=cdom,
+                                                  CDOM_chla=CDOM,
                                                   N=N)
 
                                                                 

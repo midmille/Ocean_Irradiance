@@ -648,9 +648,11 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
     spkir_dt = spkir_prof['time'].data
     spkir = spkir_prof['spkir_abj_cspp_downwelling_vector'].data
 
-    fig, axs = plt.subplots(ncols=2, nrows=1, sharey=True)
+    fig, axs = plt.subplots(ncols=4, nrows=1, sharey=True)
     ax = axs[0]
     ax1 = axs[1]
+    ax2 = axs[2]
+    ax3 = axs[3]
 
     ## [Get the colors such that they match the wavelengths.] 
     colors = [W2RGB.wavelength_to_rgb(wavelength) for wavelength in wavelengths]
@@ -674,7 +676,9 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
         ## [Also must multiply by surface value of spkir prof, since irr_arr is normalized.]
 #        ax.plot(irr_arr[:, prof_index, 0]+irr_arr[:, prof_index, 1], irr_arr[:, prof_index, 3], ':', label=f'Irr {lam}', color=colors[k])
         ax.plot(irr_arr_ab[:, prof_index, 0]+irr_arr_ab[:, prof_index, 1], irr_arr_ab[:, prof_index, 3], '--', label=f'Model Using OOI ab {lam}', color=colors[k], linewidth=1.5)
-        ax1.plot(irr_arr_ab[:, prof_index, 2]/ (irr_arr_ab[-1, prof_index, 0]+irr_arr_ab[-1, prof_index, 1]), irr_arr_ab[:, prof_index, 3], '--', label=f'Model Using OOI ab {lam}', color=colors[k], linewidth=1.5)
+        ax1.plot(irr_arr_ab[:, prof_index, 0]/ (irr_arr_ab[-1, prof_index, 0]+irr_arr_ab[-1, prof_index, 1]), irr_arr_ab[:, prof_index, 3], '--', label=f'Model Using OOI ab {lam}', color=colors[k], linewidth=1.5)
+        ax2.plot(irr_arr_ab[:, prof_index, 1]/ (irr_arr_ab[-1, prof_index, 0]+irr_arr_ab[-1, prof_index, 1]), irr_arr_ab[:, prof_index, 3], '--', label=f'Model Using OOI ab {lam}', color=colors[k], linewidth=1.5)
+        ax3.plot(irr_arr_ab[:, prof_index, 2]/ (irr_arr_ab[-1, prof_index, 0]+irr_arr_ab[-1, prof_index, 1]), irr_arr_ab[:, prof_index, 3], '--', label=f'Model Using OOI ab {lam}', color=colors[k], linewidth=1.5)
 
         ## [Plotting the spkir profile.]
         #ax.plot(spkir[:, i], depth, '--', label=f'OOI SPKIR {lam}', color=colors[k])
@@ -685,10 +689,14 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
     ax.set_ylabel(f"Z [m]")
     #ax.set_xlabel(f"Downwelling Spectral Irradiance {spkir_dat.attrs['units']}")
     ax.set_xlabel(r"$E_d+E_s$ "+ f"{spkir_prof['spkir_abj_cspp_downwelling_vector'].attrs['units']}")
-    ax1.set_xlabel( r"$\frac{E_u}{E_{d0} + E_{s0}}$ ", fontsize=12) 
+    ax1.set_xlabel( r"$\frac{E_d}{E_{d0} + E_{s0}}$ ", fontsize=14) 
+    ax2.set_xlabel( r"$\frac{E_s}{E_{d0} + E_{s0}}$ ", fontsize=14) 
+    ax3.set_xlabel( r"$\frac{E_u}{E_{d0} + E_{s0}}$ ", fontsize=14) 
     #ax.set_title(f"OOI SPKIR Profile and Irradiance Model \n OOI SPKIR Profile Date: {date_time[0]} to {date_time[-1]}")
-    ax.set_title(f"Downwelling Irradiance")
-    ax1.set_title(f"Normalized Upwelling Irradiance")
+    ax.set_title(f" Total Downwelling")
+    ax1.set_title(f"Normalized Downward Direct")
+    ax2.set_title(f"Normalized Downward Diffuse")
+    ax3.set_title(f"Normalized Upwelling")
     ## [Putting some identifying text on the figure.]
     ## [10% up the vertical location]
 #    txt_y = ax.get_ylim()[1] + 0.5 * ax.get_ylim()[0] 
@@ -704,6 +712,8 @@ def Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelength
     ax.legend(title='Wavelengths [nm]')
     ax.grid()
     ax1.grid()
+    ax2.grid()
+    ax3.grid()
 
     fig.show()
 
@@ -804,16 +814,22 @@ def Plot_Irraddiance_SPKIR_Irr_Species(prof_index, wavelengths, spkir_prof, spki
     return 
 
 
-def Correlation_Stats(x, y): 
+def Correlation_Stats(x, y, xbot=None): 
     """
     """
     nonan = ~np.isnan(x) * ~np.isnan(y)
     x = x[nonan]
     y = y[nonan]
 
-    RMS = np.sqrt(np.mean(((y-x)/x)**2))
-    mean_bias = np.mean(y-x)
+    if xbot:
+        RMS = np.sqrt(np.mean(((y-x)/xbot)**2))
+        rel_mean_bias = np.mean((y-x)/xbot)
+    else: 
+        RMS = np.sqrt(np.mean(((y-x)/x)**2))
+        rel_mean_bias = np.mean((y-x)/x)
+
     rel_mean_bias = np.mean((y-x)/x)
+    mean_bias = np.mean(y-x)
     mean_ratio = np.mean(y/x)
     slope, intercept = np.polyfit(x,y,1)
     N = len(x)
@@ -821,15 +837,132 @@ def Correlation_Stats(x, y):
     return RMS, mean_bias, rel_mean_bias, mean_ratio, slope, intercept, N
 
 
-def Plot_Correlation(phy_species, rrs_phy_type, flort_profs, irr_fields, irr_fields_ab, plot_rrs=False, plot_chla=False): 
+def Plot_Correlation_Irradiance_Hoff(N, spkir_profs, optaa_profs, phy_species, wavelengths, irr_fields, irr_fields_ab): 
+    """
+    """
+
+    lam = 443
+
+    Nlam=len(wavelengths)
+    Nprof = len(spkir_profs)
+    
+    ## [The total downwelling irradiance..]
+    ## [The plus one if for the OOI observed abscat irr field.]
+    Ed_relbias = np.zeros((N, Nprof))
+    perc_ab = np.zeros(Nprof)
+    perc_spkir = np.zeros(Nprof)
+
+    mask = Ed_relbias>0
+
+    badprof = 0
+    dt_labs = []
+    for k in range(Nprof):  
+        spkir_prof = spkir_profs[k]
+        optaa_prof = optaa_profs[k]
+        ## Get the spkir truth.]
+        spkir_depth = spkir_prof['depth'].data
+        spkir_dt = spkir_prof['time'].data
+        spkir = spkir_prof['spkir_abj_cspp_downwelling_vector'].data
+
+        ## get the absorption and scattering.]
+        z_a, a, b, lam_ooi = OOI_Abs_Scat(optaa_prof, lam)
+
+        c = a+b
+#        mean_c[k] = np.mean(c)
+            
+        lam_i = ODF.Get_Wavelength_Index(spkir_wavelengths, lam)
+        ##interp thre spkir to the irradiance grid for rms comparisons .
+        spkir_intrp = np.interp(irr_fields_ab[0][lam][:,k,3], spkir_depth[:], spkir[:,lam_i])
+
+        if np.mean(spkir_intrp) <10: 
+            mask[:,k] = False
+            badprof +=1
+        else:
+            mask[:,k] = True
+            ### dat eitme
+            dt_labs.append(str(spkir_prof['time'].data.astype("datetime64[D]")[0]))
+
+        x = spkir_intrp
+        x0 = x[-1]
+        ## [the zerro is since species doesnt mater for irr_field_ab.
+        y = irr_fields_ab[0][lam][:, k, 0] + irr_fields_ab[0][lam][:, k,1]
+        Ed_relbias[:,k] = (y-x)/x0
+
+        for j in range(N-1, 0, -1): 
+            if spkir_intrp[j] < 0.01*spkir_intrp[-1]: 
+                perc_spkir[k] = irr_fields_ab[0][lam][j,k,3] 
+                break
+
+        for j in range(N-1, 0, -1): 
+            if irr_fields_ab[0][lam][j, k, 0] + irr_fields_ab[0][lam][j, k,1] < 0.01*(irr_fields_ab[0][lam][-1, k, 0] + irr_fields_ab[0][lam][-1, k,1]): 
+                perc_ab[k] = irr_fields_ab[0][lam][j,k,3] 
+                break
+
+#        mean_c[k] = irr_fields_ab[0][lam][-1,k,0] + irr_fields_ab[0][lam][-1,k,1]
+        
+
+    #masking bad profs
+    Ed_relbias = np.reshape(Ed_relbias[mask], (N, Nprof-badprof))
+    perc_ab = perc_ab[mask[0,:]]
+    perc_spkir = perc_spkir[mask[0,:]]
+
+    dt_pos = np.arange(Nprof-badprof)
+    z = irr_fields_ab[0][lam][:,0,3]
+    dt_posmesh, zmesh = np.meshgrid(dt_pos, z)
+
+#    mean_c_pos = np.linspace(0, dt_pos[-1], 1000)
+    mean_c_pos = dt_pos
+#    mean_c = np.interp(mean_c_pos, dt_pos, mean_c)
+
+    fig, ax = plt.subplots()
+#    axc = ax.twinx()
+
+#    im = ax.pcolormesh(dt_posmesh, zmesh, Ed_relbias, shading = 'gouraud', cmap ='gist_rainbow')
+    im = ax.pcolormesh(dt_posmesh, zmesh, Ed_relbias, cmap ='gist_rainbow')
+    ax.scatter(mean_c_pos, perc_ab, marker='o', linewidth =1.5, facecolor ='none', edgecolor ='black', label=r'1% Model')
+    ax.scatter(mean_c_pos, perc_spkir, marker='o', linewidth = 1.5, facecolor ='none', edgecolor ='white', label=r'1% OOI')
+#    ax.set_ylim([-40,ax.get_ylim()[1]])
+
+#    im = ax.pcolormesh(dt_posmesh, zmesh, Ed_relbias, cmap ='nipy_spectral')
+    
+    cbar= plt.colorbar(im, ax=ax)
+#    cbar.set_label(r'$\frac{E_{d_{\mathrm{model}}} - E_{d_{\mathrm{OOI}}}}{E_{d_{\mathrm{OOI}}}}$', rotation = 90, fontsize = 16)
+    cbar.set_label(r'Relative Bias', rotation = 90, fontsize = 12)
+
+
+    dt_pos = dt_pos[0:-1:3]
+    dt_labs = [dt_labs[k] for k in dt_pos]
+    ax.set_xticks(dt_pos)
+    ax.set_xticklabels(dt_labs, rotation=65, fontsize=8)
+    ax.set_ylabel('Z [m]')
+    ax.legend()
+#    axc.set_ylabel(r'Beam Attenuation $a_{\mathrm{OOI}}+b_{\mathrm{OOI}}$ [$m^{-1}]')
+
+    fig.show()
+
+#            RMS, mean_bias, rel_mean_bias, mean_ratio, slope, intercept, N = Correlcation_Stats(
+#                ## truth
+#                spkir[:,lam_i],
+#                ## model
+#                irr_fields[k][lam][:, k, 0] + irr_arr[:, k,1], 
+#                ## truth bottomr for relatibve stats is the surface Ed0
+#                xbot = spkir[-1,lam_i])
+
+
+            
+
+    return
+
+def Plot_Correlation_Rrs_Chla(phy_species, rrs_phy_type, flort_profs, irr_fields, irr_fields_ab, plot_rrs=True, plot_chla=True): 
     """
     """
     
-    Nlam = len(wavelngths)
+    Nlam = len(wavelengths)
     Nphy = len(phy_species)
     Nprof = len(flort_profs)
 
     ## start by getting in situ chlorophyll-a
+    chla_insitu = np.zeros(Nprof)
     for k, flort_prof in enumerate(flort_profs): 
         
         chla = flort_prof['fluorometric_chlorophyll_a'].data
@@ -840,22 +973,22 @@ def Plot_Correlation(phy_species, rrs_phy_type, flort_profs, irr_fields, irr_fie
     rrs_irr_ab_species = {}
     chla_irr_species = {}
     chla_irr_ab_species = {}
-    for phy_type in phy_species: 
+    for i, phy_type in enumerate(phy_species): 
         rrs_irr_dict = {}
         rrs_irr_ab_dict = {}
 
-        irr_arr = irr_fields[k]
-        irr_arr_ab = irr_fields_ab[k]
+        irr_arr = irr_fields[i]
+        irr_arr_ab = irr_fields_ab[i]
         for j, lam in enumerate(wavelengths): 
-            for k in range(Nprof):
-                    Ed0 = irr_arr[lam][-1, k, 0]
-                    Ed0 = irr_arr[lam][-1, k, 1]
-                    Ed0 = irr_arr[lam][-1, k, 2]
-                    rrs_irr_dict[lam] = OIR.R_RS(Ed0, Es0, Eu0)
-                    Ed0 = irr_arr_ab[lam][-1, k, 0]
-                    Ed0 = irr_arr_ab[lam][-1, k, 1]
-                    Ed0 = irr_arr_ab[lam][-1, k, 2]
-                    rrs_irr_ab_dict[lam] = OIR.R_RS(Ed0, Es0, Eu0)
+            Ed0 = irr_arr[lam][-1, :, 0]
+            Es0 = irr_arr[lam][-1, :, 1]
+            Eu0 = irr_arr[lam][-1, :, 2]
+            rrs_irr_dict[lam] = OIR.R_RS(Ed0, Es0, Eu0)
+            print(OIR.R_RS(Ed0, Es0, Eu0))
+            Ed0 = irr_arr_ab[lam][-1, :, 0]
+            Es0 = irr_arr_ab[lam][-1, :, 1]
+            Eu0 = irr_arr_ab[lam][-1, :, 2]
+            rrs_irr_ab_dict[lam] = OIR.R_RS(Ed0, Es0, Eu0)
 
         chla_irr = OIR.OCx_alg(rrs_irr_dict[443], rrs_irr_dict[490], rrs_irr_dict[510], rrs_irr_dict[560], method='OC4')
         chla_irr_ab = OIR.OCx_alg(rrs_irr_ab_dict[443], rrs_irr_ab_dict[490], rrs_irr_ab_dict[510], rrs_irr_ab_dict[560], 'OC4')
@@ -880,7 +1013,7 @@ def Plot_Correlation(phy_species, rrs_phy_type, flort_profs, irr_fields, irr_fie
             PC.Plot_Comparison(ax, 
                                rrs_irr_ab_species[rrs_phy_type][lam], 
                                rrs_irr_species[rrs_phy_type][lam], 
-                               f'{phy_type}',
+                               f'{rrs_phy_type}',
                                f'{lam}', 
                                xlabel, 
                                ylabel, 
@@ -891,7 +1024,7 @@ def Plot_Correlation(phy_species, rrs_phy_type, flort_profs, irr_fields, irr_fie
                                slope_color = W2RGB.wavelength_to_rgb(lam), 
                                alpha = 0.8)
 
-        rrs_ax.legend(title='Wavelengths [nm]')  
+        ax.legend(title='Wavelengths [nm]')  
 
         fig.show()
 
@@ -902,9 +1035,9 @@ def Plot_Correlation(phy_species, rrs_phy_type, flort_profs, irr_fields, irr_fie
         fig, ax = plt.subplots()
         print("x = OOI Inisitu chla, y = model with OOI ab ") 
         ax_calchla = PC.Plot_Comparison(ax, 
-                                        chl_insitu, 
+                                        chla_insitu, 
                                         ## [species choice shouldnt matter since we use bbr1 for OOI ab.]
-                                        chla_irr_ab_dict[rrs_phy_type], 
+                                        chla_irr_ab_species[rrs_phy_type], 
                                         'Model Using OOI Absorption/Scattering Compared to OOI In Situ Chlorophyll', 
                                         'Model Using OOI ab', 
                                         r'OOI In Situ Chl-a [mg Chl-a $\mathrm{m}^{-3}$]', 
@@ -922,7 +1055,7 @@ def Plot_Correlation(phy_species, rrs_phy_type, flort_profs, irr_fields, irr_fie
         fig, ax = plt.subplots()
 
         cmap = Get_Phy_Cmap_Dict()
-        for k, phy_type in enumerate(species):
+        for k, phy_type in enumerate(phy_species):
             ## single species model compared to in situ chla.
             ax_calchla = PC.Plot_Comparison(ax, 
                                             chla_insitu, 
@@ -1016,10 +1149,10 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
         ## [Loop wavelengths to remove cdom.]
         for i, lam in enumerate(wavelength_a[k,:]):
             ## [Assumes that all absorption at the smallest wavelength is due to CDOM.]
-#            CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=1.0)
-            CDOM = OI.CDOM_chla(flort_depth, chla, lam)
+            CDOM = OI.CDOM_refa(z_a, cdom_refa, 450, lam, fraca=0.3)
+#            CDOM = OI.CDOM_chla(flort_depth, chla, lam)
             ## [The absorption in time.]
-            abs_t[k,i] = (optaa_a[optaa_di, i] - 10*CDOM.a[flort_di]) / chla[flort_di]
+            abs_t[k,i] = (optaa_a[optaa_di, i] - CDOM.a[flort_di]) / chla[flort_di]
             scat_t[k,i] = (optaa_b[optaa_di, i]) / chla[flort_di]
 
     ## [Plotting.]
@@ -1027,7 +1160,7 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
     
     for j in range(1): 
 
-        print('bin_edges:', bin_edges[j], bin_edges[j+1])
+#        print('bin_edges:', bin_edges[j], bin_edges[j+1])
         mask = bin_loc == j
 
         print(mask)
@@ -1060,6 +1193,7 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
 
         phy_abs = np.zeros(Nlam)
         phy_scat = np.zeros(Nlam)
+        phy_abs_tot = np.zeros(Nlam)
         ## [plot the phytoplankton absroption.]
         for pi, phy_type in enumerate(phy_species): 
             for i, lam in enumerate(wavelength_a[0,:]):
@@ -1067,6 +1201,8 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
                 phy_scat[i] = abscat(lam, phy_type, C2chla='default')[1]
 
             ## [Plot the phy absorption line.]
+#            phy_abs_tot = phy_abs_tot + 
+            
             ax0.plot(wavelength_a[0,:], phy_abs, label=phy_type, color = color_dict[phy_type])
             ax1.plot(wavelength_a[0,:], phy_scat, label=phy_type, color = color_dict[phy_type])
 
@@ -1202,8 +1338,8 @@ if __name__ == '__main__':
     ## [The number of levels for irradiance run.]
     N=1000
 #    wavelengths = np.arange(425, 725, 25)
-    wavelengths = [412, 443, 490, 510, 547, 560, 665]
-#    wavelengths = [ 443, 560, 665]
+#    wavelengths = [412, 443, 490, 510, 547, 560, 665]
+    wavelengths = [ 443, 560, 665]
 #    wavelengths = [443, 560]
 #    phy_species = ['HLPro', 'LLPro', 'Cocco', 'Diat', 'Syn', 'Lgeuk'] 
 #    phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
@@ -1256,8 +1392,13 @@ if __name__ == '__main__':
 #    irr_field, irr_field_ab = Run_Irradiance(PI, N, wavelengths, spkir_wavelengths, phy_type, flort_profs, optaa_profs, spkir_profs, cdom_reflam, irrsavefile)
     irr_fields, irr_fields_ab = Run_Irradiance_Species(PI, N, wavelengths, spkir_wavelengths, phy_species, flort_profs, optaa_profs, spkir_profs, cdom_reflam, irrsavefile_head)
     ## [Plot the resulting irradiance profiles.]
-    Plot_Irraddiance_SPKIR_Irr_Species(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_fields, irr_fields_ab, site, method, phy_species)
+#    Plot_Irraddiance_SPKIR_Irr_Species(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_fields, irr_fields_ab, site, method, phy_species)
     Plot_Irraddiance_SPKIR(prof_index, wavelengths, spkir_prof, spkir_wavelengths, irr_fields_ab[0], site, method)
+#    Plot_Correlation(phy_species, phy_type, flort_profs, irr_fields, irr_fields_ab, plot_rrs=False, plot_chla=True)
+
+#    Plot_Correlation_Irradiance_Hoff(N, spkir_profs, optaa_profs,phy_species, wavelengths, irr_fields, irr_fields_ab)
+
+
 
 #    Plot_Irr_OOI_Abs_Scat(PI, wavelengths, N, phy_species, flort_prof, optaa_prof, cdom_reflam)
 
@@ -1265,5 +1406,5 @@ if __name__ == '__main__':
 
     
     ## [Plot the absorption in time and chla bins.]
-    #bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
-    #Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)
+#    bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
+#    Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)

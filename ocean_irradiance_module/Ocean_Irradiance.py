@@ -203,7 +203,7 @@ def Backscatter_Ratio_3(phy_type):
        return 0.000051850
  
 
-def Calc_Abscat_Grid(hbot, ab_wat, N, Ed0, coefficients, ztop=0, phy=None, CDOM_refa=None, CDOM_chla=None, det=None, grid='log', pt1_perc_zbot=True, pt1_perc_phy=True):
+def Calc_Abscat_Grid(PI, hbot, ab_wat, N, Ed0, coefficients, ztop=0, phy=None, CDOM_refa=None, CDOM_chla=None, det=None, grid='log', pt1_perc_zbot=True, pt1_perc_phy=True):
 
     """
     This function calculates the irradiance grid, calculates the absorption, scattering, and backscatter 
@@ -485,7 +485,7 @@ def zbot_func(hbot, Ed0, a, b_b, coefficients, light_frac = .01, phy=False, z=No
     ## For now let the scattering be zero. 
     zlim = -1000
 
-    zbots = Log_Trans_Grid(max(zlim,hbot), 5000) 
+    zbots = Log_Trans_Grid(max(zlim,hbot),0,  5000) 
     
     if phy==True: 
         a = np.interp(zbots, z, a)
@@ -631,7 +631,8 @@ def ocean_irradiance_analytical(PI,
     ## Default number of shots for BVP shoot method solution
     shots = 3 
 
-    z, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+    z, a, b, b_b, b_f = Calc_Abscat_Grid(PI, 
+                                        hbot, 
                                             ab_wat, 
                                             N, 
                                             Ed0,
@@ -788,7 +789,8 @@ def ocean_irradiance_scipy(PI,
         b_f = b - b_b
     
     else:
-        zarr, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+        zarr, a, b, b_b, b_f = Calc_Abscat_Grid(PI, 
+                                                hbot, 
                                                 ab_wat, 
                                                 N, 
                                                 Ed0,
@@ -891,7 +893,8 @@ def ocean_irradiance_shootdown(PI,
     ## Default number of shots for BVP shoot method solution
     shots = 3 
 
-    z, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+    z, a, b, b_b, b_f = Calc_Abscat_Grid(PI, 
+                                        hbot, 
                                             ab_wat, 
                                             N, 
                                             Ed0,
@@ -1018,7 +1021,8 @@ def ocean_irradiance_shootup(PI,
     ## Default number of shots for BVP shoot method solution
     shots = 3 
 
-    z, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+    z, a, b, b_b, b_f = Calc_Abscat_Grid(PI, 
+                                            hbot, 
                                             ab_wat, 
                                             N, 
                                             Ed0,
@@ -1198,7 +1202,8 @@ def ocean_irradiance_semianalytic_inversion(PI,
     Nm1 = N - 1  
 
     ## [The absorption and scattering calcs.]
-    z, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+    z, a, b, b_b, b_f = Calc_Abscat_Grid(PI, 
+                                            hbot, 
                                             ab_wat, 
                                             N, 
                                             Ed0,
@@ -1338,7 +1343,8 @@ def ocean_irradiance_semianalytic_inversion(PI,
       
     #z_out = np.linspace(z[0] ,z[-1], N-1) ##z array for E_s_z and E_u_z 
     #    ## [The absorption and scattering calcs.]
-    z_out, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+    z_out, a, b, b_b, b_f = Calc_Abscat_Grid(PI, 
+                                            hbot, 
                                             ab_wat, 
                                             N-1, 
                                             Ed0,
@@ -1457,7 +1463,8 @@ def ocean_irradiance_semianalytic_inversion_ROMS(PI,
     Nm1 = N - 1  
 
     ## [The absorption and scattering calcs.]
-    zarr, a, b, b_b, b_f = Calc_Abscat_Grid(hbot, 
+    zarr, a, b, b_b, b_f = Calc_Abscat_Grid(PI, 
+                                            hbot, 
                                             ab_wat, 
                                             N, 
                                             Ed0,
