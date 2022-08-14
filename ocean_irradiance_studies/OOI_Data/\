@@ -958,9 +958,6 @@ def Plot_Correlation_Irradiance_Hoff(N, spkir_profs, optaa_profs, phy_species, w
     perc_gen = perc_gen[mask[0,:]]
     perc_spkir = perc_spkir[mask[0,:]]
 
-    
-    print('mean 1% light level bias ab :', np.mean(perc_ab-perc_spkir))
-    print('mean 1% light level bias gen :', np.mean(perc_gen-perc_spkir))
     dt_pos = np.arange(Nprof-badprof)
     z = irr_fields_ab[0][lam][:,0,3]
     dt_posmesh, zmesh = np.meshgrid(dt_pos, z)
@@ -1006,7 +1003,7 @@ def Plot_Correlation_Irradiance_Hoff(N, spkir_profs, optaa_profs, phy_species, w
     ax.legend()
 
     ax.set_title("a) OOI Absorption and Scattering")
-    axg.set_title("b) Modeled Absorption and Scattering Using Generic Coefficents")
+    axg.set_title("b) Modeled Absorption and Scattering with Generic Coefficents")
 #    axc.set_ylabel(r'Beam Attenuation $a_{\mathrm{OOI}}+b_{\mathrm{OOI}}$ [$m^{-1}]')
 
     fig.show()

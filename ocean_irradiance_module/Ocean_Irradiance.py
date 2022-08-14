@@ -114,6 +114,38 @@ class CDOM_chla:
         return 
 
 
+
+class CDOM_sal:
+    """
+    The CDOM_sal Class includes:
+        --> z coordinates corresponding to concentrations [m (< 0)]
+                -- z should be a column vector
+        --> salinity concentrations []
+                --1-D array same size as z
+        --> given wavelength
+                -- float 
+    The CDOM is calculated from the salinity following equations 2 and 3 from 
+    "Remote-sensing reflectance and true colour produced by a coupled
+     hydrodynamic, optical, sediment, biogeochemical model of the 
+     Great Barrier Reef, Australia: Comparison with satellite data"
+    by Mark E. Baird 2016
+
+    """
+    def __init__(self, z, salt, wavelength):
+        self.z = z
+        self.salt = salt
+        self.wavelength = wavelength
+
+        ## calculate cdom from salitnity following Baird 2016 
+        ## Edited by Jonathan such that absorbtion = 0 at 34.
+        salt[salt >= 34] = 34
+        a_443 = -0.0332*salt + 1.1288
+        self.a = a_443*np.exp(-0.012*(wavelength - 443))
+        
+        return 
+
+
+
 class Det: 
     """
     This class is the class for the detritus. It includes its absorption, 

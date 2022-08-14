@@ -374,22 +374,23 @@ def Run_Irr_Comp_Insitu(PI, save_dir, save_file, wavelengths, N, year_min, cal_c
                         phy = OI.Phy(z, chla, ESD(phy_type), abscat(lam, phy_type, C2chla='default')[0], abscat(lam, phy_type, C2chla='default')[1])
 
                     ## [chla estimate of cdom.]
-                   # cdom = OI.CDOM_chla(z, chla, lam)
+                    cdom = OI.CDOM_chla(z, chla, lam)
+                    cdom.a = 24*cdom.a
                     
-                    cdom_reflam = 450
-                    phy_cdom = OI.Phy(z, chla, ESD(phy_type), abscat(cdom_reflam, phy_type, C2chla='default')[0], abscat(cdom_reflam, phy_type, C2chla='default')[1])
-                    wat_cdom = abscat(cdom_reflam, phy_type)[0]
-
-                    cdom_refa = 0.5*(phy_cdom.a+wat_cdom)
-
-                    CDOM = OI.CDOM_refa(z, cdom_refa, cdom_reflam, lam, fraca=0.3)
+#                    cdom_reflam = 450
+#                    phy_cdom = OI.Phy(z, chla, ESD(phy_type), abscat(cdom_reflam, phy_type, C2chla='default')[0], abscat(cdom_reflam, phy_type, C2chla='default')[1])
+#                    wat_cdom = abscat(cdom_reflam, phy_type)[0]
+#
+#                    cdom_refa = 0.5*(phy_cdom.a*phy_cdom.phy+wat_cdom)
+##
+#                    CDOM = OI.CDOM_refa(z, cdom_refa, cdom_reflam, lam, fraca=1)
                     #cdom = OI.CDOM(z, salt, lam)
                     #cdom = None
                     ocean_irr_sol = OI.ocean_irradiance(PI, 
                                                   z[0], 
                                                   abscat(lam, 'water'), 
                                                   phy=phy, 
-                                                  CDOM_chla=CDOM,
+                                                  CDOM_chla=cdom,
                                                   N=N)
 
                                                                 
@@ -1083,7 +1084,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
 
 
     ncols = len(species)
-    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(4,6))
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(4,6))
     fig_calchla, axs_calchla = plt.subplots(nrows=1, ncols =2)
     ax_calchla = axs_calchla[0]
     ax1_calchla = axs_calchla[1]
@@ -1091,7 +1092,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
     ax_ccichla = axs_ccichla[0]
     ax1_ccichla = axs_ccichla[1]
     
-#    axes_list = axes.flatten()
+    axes_list = axes.flatten()
     rrs_ax = axes
 
     ## [The color map dict for the different species of phytoplankton.] 
@@ -1132,7 +1133,7 @@ def Loop_Species_Viirs_Comp_Cal(year_min, cal_cast_dat, cal_bot_dat, cci_url, sa
                                         alpha = 0.9) 
 
         ## Rrs Comparison
-#        rrs_ax = axes_list[k]
+        rrs_ax = axes_list[k]
 
         if k == 0 or k==2: 
             ylabel = r'Irradiance Model $\mathrm{R_{rs}}$ [$\mathrm{sr}^{-1}$]'
@@ -1534,7 +1535,7 @@ if __name__ == '__main__':
 
     ## The species that have coefficients.
     #species = ['Diat', 'Cocco']
-#    species = ['HLPro', 'Cocco', 'Diat', 'Syn']
+    species = ['HLPro', 'Cocco', 'Diat', 'Syn']
     #species = ['HLPro', 'Cocco', 'Diat']
  
     ## The spread of different C2chla ratios. 
@@ -1579,10 +1580,10 @@ if __name__ == '__main__':
     ## Param Init object 
     PI = Param_Init()
 
-    species = PI.phy_species
+#    species = PI.phy_species
 #    species = ['Syn']
 #    species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
-#    species = ['Syn', 'Diat', 'HLPro', 'Lgeuk']
+    species = ['Syn', 'Diat', 'HLPro', 'Lgeuk']
 
 #    for k in range(len(species)): 
 #        if species[k] == 'Generic': 
