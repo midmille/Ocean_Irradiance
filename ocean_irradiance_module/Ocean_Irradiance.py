@@ -131,16 +131,19 @@ class CDOM_sal:
     by Mark E. Baird 2016
 
     """
-    def __init__(self, z, salt, wavelength):
+    def __init__(self, z, salt, wavelength, scdom =0.021):
         self.z = z
         self.salt = salt
         self.wavelength = wavelength
 
         ## calculate cdom from salitnity following Baird 2016 
         ## Edited by Jonathan such that absorbtion = 0 at 34.
-        salt[salt >= 34] = 34
-        a_443 = -0.0332*salt + 1.1288
-        self.a = a_443*np.exp(-0.012*(wavelength - 443))
+        salt[salt >= 36] = 36
+        a_443 = -0.0332*salt + 1.12336
+        ## spectral slope taken from dutkiewicz et al. scdom = 0.021
+        ## baird takes it to be 0.012
+#        scdom = 0.021
+        self.a = a_443*np.exp(-scdom*(wavelength - 443))
         
         return 
 
@@ -672,7 +675,7 @@ def ocean_irradiance_analytical(PI,
                                             phy=phy, 
                                             ztop=ztop, 
                                             CDOM_refa=CDOM_refa, 
-                                            CDOM_Chla=CDOM_Chla,
+                                            CDOM_chla=CDOM_chla,
                                             det=det, 
                                             grid=PI.grid, 
                                             pt1_perc_zbot=PI.pt1_perc_zbot, 
@@ -1636,7 +1639,7 @@ def ocean_irradiance_semianalytic_inversion_ROMS(PI,
 def ocean_irradiance(PI, 
                      hbot, 
                      ab_wat, 
-                     method='scipy', 
+                     method='shootup', 
                      ztop=0,
                      phy=None,
                      CDOM_refa=None, 
@@ -1683,8 +1686,8 @@ def Demo():
     
     PI = Param_Init()
 
-    PI.pt1_perc_phy = True
-    PI.pt1_perc_zbot = True
+    PI.pt1_perc_phy = False
+    PI.pt1_perc_zbot = False
 
     PI.grid = 'log'
     
@@ -1692,13 +1695,13 @@ def Demo():
     Nm1 = N-1 
     wavelengths = [443, 551]
 
-    hbot = -700
+    hbot = -80
     
     z_phy = np.linspace(hbot,0,N)
 
     phy_type = 'Syn'
 
-    phy_prof = artificial_phy_prof(z_phy, -10, 20, 10, prof_type = 'gauss')
+#    phy_prof = artificial_phy_prof(z_phy, -10, 20, 10, prof_type = 'gauss')
     phy_prof = np.full(N, 1)
 
     fig, axes = plt.subplots(1, 3, sharey=True)
@@ -1716,11 +1719,11 @@ def Demo():
 #        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
 #        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, N=N)
-        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
-#        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N)
  
 
-        markers = ['-.', '-.'] 
+        markers = ['-', '-'] 
         Ed_c = 'g'
         Es_c = 'b'
         Eu_c = 'r'
@@ -1740,14 +1743,14 @@ def Demo():
     ax1.set_title('Phytoplankton Concentration')
     ax1.grid()
  
-    ax2.set_xlim(-0.1,1)
-    ax2.set_xlabel('Irradiance')
+    ax2.set_xlim(-0.1,0.75)
+    ax2.set_xlabel('Normalized Irradiance')
     ax2.set_title(r'Irradiance Profiles $\lambda=443$')
     ax2.legend()
     ax2.grid()
 
-    ax3.set_xlim(-0.1,1)
-    ax3.set_xlabel('Irradiance')
+    ax3.set_xlim(-0.1,0.75)
+    ax3.set_xlabel('Normalized Irradiance')
     ax3.set_title(r'Irradiance Profiles $\lambda=551$')
     ax3.legend()
     ax3.grid()
@@ -1858,10 +1861,92 @@ def Demo2():
     return Ed, Es, Eu, z
 
 
+def Atten_Depth_Demo(): 
+    """
+    This shows the attenuations depth as a rainbow of colors.
+    """
+    import matplotlib.pyplot as plt
+    from ocean_irradiance_module.absorbtion_and_scattering_coefficients import absorbtion_scattering as abscat
+    from ocean_irradiance_module.absorbtion_and_scattering_coefficients import equivalent_spherical_diameter as esd
+    from ocean_irradiance_module.PARAMS import Param_Init 
+    
+    Nlam = 2000
+
+    PI = Param_Init()
+
+    PI.pt1_perc_phy = True
+    PI.pt1_perc_zbot = True
+
+    PI.grid = 'log'
+
+    PI.Ed0 = 0.7
+    PI.Es0 = 0.3
+    
+    N = 30
+    Nm1 = N-1 
+#    wavelengths = PI.wavelengths
+    wavelengths = np.linspace(400, 700, Nlam)
+
+    hbot = -1000
+    
+    z_phy = np.linspace(hbot,0,N)
+
+    phy_type = 'Diat'
+
+#    phy_prof = artificial_phy_prof(z_phy, -10, 20, 5, prof_type = 'gauss')
+    phy_prof = np.full(N, 3)
+    phy_profcdom = np.full(N, 2)
+
+    zbots = np.zeros(Nlam)
+
+    for j, lam in enumerate(wavelengths):
+        ab_wat = abscat(lam, 'water')
+            
+        ## Define the Phytoplankton class.
+        phy = Phy(z_phy, phy_prof, esd(phy_type), abscat(lam, phy_type)[0], abscat(lam, phy_type)[1])
+        
+        cdom_chla = CDOM_chla(z_phy, phy_profcdom, lam)
+        cdom_chla.a = 6*cdom_chla.a
+#        cdom_chla = None
+
+#        Ed, Es, Eu, z = ocean_irradiance_scipy(PI, hbot, ab_wat, phy = phy, CDOM_chla=cdom_chla, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_shootup(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_shootdown(PI, hbot, ab_wat, phy=phy, N=N)
+#        Ed, Es, Eu, z = ocean_irradiance_semianalytic_inversion(PI, hbot, ab_wat, phy=phy, N=N)
+        Ed, Es, Eu, z = ocean_irradiance_analytical(PI, hbot, ab_wat, phy=phy, N=N, CDOM_chla=cdom_chla)
+ 
+        
+
+        zbots[j] = z[0]
+
+    fig, ax = plt.subplots()
+
+#    N, bins, patches = ax.bar(wavelengths, zbots[j])
+
+    dlam = wavelengths[1] - wavelengths[0]
+
+    for j, lam in enumerate(wavelengths): 
+        rgb = W2RGB.wavelength_to_rgb(lam)
+
+        ax.bar(lam, zbots[j], color=rgb, width=dlam)
+#        patches[j].set_facecolor(rgb)
+    
+    ax.set_facecolor('black')
+
+    ax.set_xlabel('Wavelength [nm]')
+    ax.set_ylabel('z [m]')
+    ax.set_title('1% Light Level')
+
+    fig.show()
+
+
+
+
+
 #-------------------------------------MAIN-------------------------------------
 
 if __name__ == '__main__':
     
-    Ed, Es, Eu, z = Demo2()
+#    Ed, Es, Eu, z = Demo()
     
-
+    Atten_Depth_Demo()

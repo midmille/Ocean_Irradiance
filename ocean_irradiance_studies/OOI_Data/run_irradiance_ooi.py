@@ -1224,17 +1224,23 @@ def Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, 
 #            cdom_refa = abscat(cdom_reflam,'water')[0] + cdom_refa
             cdom_refa = cdom_refa
 #            cdom_refa = (abscat(cdom_reflam, 'Generic')[0] * chla[:] + abscat(cdom_reflam, 'water')[0])
-            detab = abscat(lam, 'detritus')
+#            detab = abscat(lam, 'detritus')
 
-            deta = detab[0]
-            detb = detab[1]
-            det_conc  = 1.7e15
+#            deta = detab[0]
+#            detb = detab[1]
+#            det_conc  = 1.7e15
 
-            CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=0.85)
+#            CDOM = OI.CDOM_refa(z_a, cdom_refa, cdom_reflam, lam, fraca=0.85)
+            CDOM = OI.CDOM_sal(z_a, flort_prof['salinity'].data, lam, scdom=0.001)
+#            CDOM = None
+
 #            CDOM = OI.CDOM_chla(flort_depth, chla, lam)
             ## [The absorption in time.]
-            abs_t[k,i] = (optaa_a[optaa_di, i] - CDOM.a[flort_di] - deta*det_conc) / chla[flort_di]
-            scat_t[k,i] = (optaa_b[optaa_di, i] - detb*det_conc) / chla[flort_di]
+#            abs_t[k,i] = (optaa_a[optaa_di, i] - CDOM.a[flort_di] - deta*det_conc) / chla[flort_di]
+#            scat_t[k,i] = (optaa_b[optaa_di, i] - detb*det_conc) / chla[flort_di]
+            abs_t[k,i] = (optaa_a[optaa_di, i] - CDOM.a[flort_di])/ chla[flort_di]
+#            abs_t[k,i] = (optaa_a[optaa_di, i])/ chla[flort_di]
+            scat_t[k,i] = (optaa_b[optaa_di, i]) / chla[flort_di]
 
     ## [Plotting.]
     fig, axs = plt.subplots(nrows=2, ncols =1)
@@ -1428,8 +1434,8 @@ if __name__ == '__main__':
 #    phy_species = ['HLPro', 'Cocco', 'Diat', 'Generic', 'Syn']
 #    phy_species = ['Generic']
     PI = Param_Init()
-#    phy_species = PI.phy_species
-    phy_species = [ 'Generic'] 
+    phy_species = PI.phy_species
+#    phy_species = [ 'Generic'] 
     cdom_reflam = 400
     prof_index = 0
     depthz = -10
@@ -1479,7 +1485,7 @@ if __name__ == '__main__':
 #    Plot_Irraddiance_SPKIR(prof_index, wavelengths, optaa_prof, spkir_prof, spkir_wavelengths, irr_fields_ab[0], site, method)
 #    Plot_Correlation(phy_species, phy_type, flort_profs, irr_fields, irr_fields_ab, plot_rrs=False, plot_chla=True)
 
-    Plot_Correlation_Irradiance_Hoff(N, spkir_profs, optaa_profs,phy_species, wavelengths, irr_fields, irr_fields_ab)
+#    Plot_Correlation_Irradiance_Hoff(N, spkir_profs, optaa_profs,phy_species, wavelengths, irr_fields, irr_fields_ab)
 
 
 
@@ -1489,5 +1495,5 @@ if __name__ == '__main__':
 
     
     ## [Plot the absorption in time and chla bins.]
-#    bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
-#    Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)
+    bin_edges = [0.0,0.5,1.0, 2.0, 100.0]
+    Plot_OOI_Abs_Wavelength_Time(optaa_profs, flort_profs, phy_species, depthz, bin_edges, cdom_reflam, color_dict)
